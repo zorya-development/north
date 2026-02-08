@@ -91,6 +91,7 @@ pub async fn get_inbox_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
 #[server(CreateInboxTask, "/api")]
 pub async fn create_inbox_task(
     title: String,
+    body: Option<String>,
 ) -> Result<Task, ServerFnError> {
     let pool = expect_context::<sqlx::PgPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
@@ -105,6 +106,7 @@ pub async fn create_inbox_task(
     .map_err(|e| ServerFnError::new(e.to_string()))?;
 
     let position = max_pos.unwrap_or(0) + 1;
+    let body = body.filter(|b| !b.trim().is_empty());
 
     #[derive(sqlx::FromRow)]
     struct InsertedTask {
@@ -126,8 +128,8 @@ pub async fn create_inbox_task(
     }
 
     let row = sqlx::query_as::<_, InsertedTask>(
-        "INSERT INTO tasks (user_id, title, position, sequential_limit) \
-         VALUES ($1, $2, $3, 1) \
+        "INSERT INTO tasks (user_id, title, body, position, sequential_limit) \
+         VALUES ($1, $2, $3, $4, 1) \
          RETURNING id, project_id, parent_id, column_id, user_id, \
          title, body, position, sequential_limit, \
          start_date, due_date, completed_at, reviewed_at, \
@@ -135,6 +137,7 @@ pub async fn create_inbox_task(
     )
     .bind(user_id)
     .bind(&title)
+    .bind(&body)
     .bind(position)
     .fetch_one(&pool)
     .await
@@ -159,13 +162,75 @@ pub async fn create_inbox_task(
     })
 }
 
+#[server(UpdateInboxTask, "/api")]
+pub async fn update_inbox_task(
+    id: i64,
+    title: String,
+    body: Option<String>,
+) -> Result<(), ServerFnError> {
+    let pool = expect_context::<sqlx::PgPool>();
+    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
+    let body = body.filter(|b| !b.trim().is_empty());
+
+    let result = sqlx::query(
+        "UPDATE tasks SET title = $1, body = $2, updated_at = now() \
+         WHERE id = $3 AND user_id = $4",
+    )
+    .bind(&title)
+    .bind(&body)
+    .bind(id)
+    .bind(user_id)
+    .execute(&pool)
+    .await
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    if result.rows_affected() == 0 {
+        return Err(ServerFnError::new("Task not found".to_string()));
+    }
+
+    Ok(())
+}
+
+#[server(DeleteInboxTask, "/api")]
+pub async fn delete_inbox_task(id: i64) -> Result<(), ServerFnError> {
+    let pool = expect_context::<sqlx::PgPool>();
+    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
+
+    let result = sqlx::query(
+        "DELETE FROM tasks WHERE id = $1 AND user_id = $2",
+    )
+    .bind(id)
+    .bind(user_id)
+    .execute(&pool)
+    .await
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    if result.rows_affected() == 0 {
+        return Err(ServerFnError::new("Task not found".to_string()));
+    }
+
+    Ok(())
+}
+
 #[component]
 pub fn InboxPage() -> impl IntoView {
     let inbox_tasks = Resource::new(|| (), |_| get_inbox_tasks());
 
-    let create_action = Action::new(|title: &String| {
-        let title = title.clone();
-        create_inbox_task(title)
+    let create_action =
+        Action::new(|input: &(String, Option<String>)| {
+            let (title, body) = input.clone();
+            create_inbox_task(title, body)
+        });
+
+    let update_action =
+        Action::new(|input: &(i64, String, Option<String>)| {
+            let (id, title, body) = input.clone();
+            update_inbox_task(id, title, body)
+        });
+
+    let delete_action = Action::new(|id: &i64| {
+        let id = *id;
+        delete_inbox_task(id)
     });
 
     Effect::new(move || {
@@ -174,9 +239,30 @@ pub fn InboxPage() -> impl IntoView {
         }
     });
 
-    let on_create = move |title: String| {
-        create_action.dispatch(title);
+    Effect::new(move || {
+        if let Some(Ok(_)) = update_action.value().get() {
+            inbox_tasks.refetch();
+        }
+    });
+
+    Effect::new(move || {
+        if let Some(Ok(_)) = delete_action.value().get() {
+            inbox_tasks.refetch();
+        }
+    });
+
+    let on_create = move |title: String, body: Option<String>| {
+        create_action.dispatch((title, body));
     };
+
+    let on_delete = move |id: i64| {
+        delete_action.dispatch(id);
+    };
+
+    let on_update =
+        move |id: i64, title: String, body: Option<String>| {
+            update_action.dispatch((id, title, body));
+        };
 
     view! {
         <div class="space-y-4">
@@ -186,41 +272,63 @@ pub fn InboxPage() -> impl IntoView {
 
             <Suspense fallback=move || {
                 view! {
-                    <div class="text-sm text-text-secondary py-4">"Loading tasks..."</div>
+                    <div class="text-sm text-text-secondary py-4">
+                        "Loading tasks..."
+                    </div>
                 }
             }>
-                {move || Suspend::new(async move {
-                    match inbox_tasks.await {
-                        Ok(tasks) => {
-                            if tasks.is_empty() {
-                                view! {
-                                    <div class="text-sm text-text-secondary py-8 text-center">
-                                        "No tasks in your inbox. Add one above."
-                                    </div>
+                {move || {
+                    let on_delete = on_delete.clone();
+                    let on_update = on_update.clone();
+                    Suspend::new(async move {
+                        match inbox_tasks.await {
+                            Ok(tasks) => {
+                                if tasks.is_empty() {
+                                    view! {
+                                        <div class="text-sm text-text-secondary \
+                                                    py-8 text-center">
+                                            "No tasks in your inbox. \
+                                             Add one above."
+                                        </div>
+                                    }
+                                        .into_any()
+                                } else {
+                                    view! {
+                                        <div>
+                                            {tasks
+                                                .into_iter()
+                                                .map(|task| {
+                                                    let on_delete =
+                                                        on_delete.clone();
+                                                    let on_update =
+                                                        on_update.clone();
+                                                    view! {
+                                                        <TaskCard
+                                                            task=task
+                                                            on_delete=on_delete
+                                                            on_update=on_update
+                                                        />
+                                                    }
+                                                })
+                                                .collect::<Vec<_>>()}
+                                        </div>
+                                    }
+                                        .into_any()
                                 }
-                                    .into_any()
-                            } else {
+                            }
+                            Err(e) => {
                                 view! {
-                                    <div class="space-y-2">
-                                        {tasks
-                                            .into_iter()
-                                            .map(|task| view! { <TaskCard task=task/> })
-                                            .collect::<Vec<_>>()}
+                                    <div class="text-sm text-red-500 py-4">
+                                        {format!(
+                                            "Failed to load tasks: {e}"
+                                        )}
                                     </div>
                                 }
                                     .into_any()
                             }
                         }
-                        Err(e) => {
-                            view! {
-                                <div class="text-sm text-red-500 py-4">
-                                    {format!("Failed to load tasks: {e}")}
-                                </div>
-                            }
-                                .into_any()
-                        }
-                    }
-                })}
+                    })
+                }}
             </Suspense>
         </div>
     }

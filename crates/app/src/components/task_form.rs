@@ -1,39 +1,299 @@
 use leptos::ev::KeyboardEvent;
 use leptos::prelude::*;
 
+use crate::components::markdown::MarkdownView;
+
 #[component]
 pub fn InlineTaskForm<F>(on_submit: F) -> impl IntoView
 where
-    F: Fn(String) + Send + Sync + 'static,
+    F: Fn(String, Option<String>) + Send + Sync + 'static,
 {
-    let input_ref = NodeRef::<leptos::html::Input>::new();
+    let (expanded, set_expanded) = signal(false);
+    let (title, set_title) = signal(String::new());
+    let (body, set_body) = signal(String::new());
+    let (preview, set_preview) = signal(false);
     let on_submit = std::sync::Arc::new(on_submit);
 
-    let on_keydown = move |ev: KeyboardEvent| {
-        if ev.key() == "Enter" {
-            ev.prevent_default();
-            if let Some(input) = input_ref.get() {
-                let value = input.value().trim().to_string();
-                if !value.is_empty() {
-                    on_submit(value);
-                    input.set_value("");
+    let on_cancel = move |_| {
+        set_expanded.set(false);
+        set_title.set(String::new());
+        set_body.set(String::new());
+        set_preview.set(false);
+    };
+
+    let on_save = {
+        let on_submit = on_submit.clone();
+        move |_| {
+            let t = title.get_untracked().trim().to_string();
+            if !t.is_empty() {
+                let b = body.get_untracked().trim().to_string();
+                let body_opt = if b.is_empty() { None } else { Some(b) };
+                on_submit(t, body_opt);
+                set_expanded.set(false);
+                set_title.set(String::new());
+                set_body.set(String::new());
+                set_preview.set(false);
+            }
+        }
+    };
+
+    let on_title_keydown = {
+        let on_submit = on_submit.clone();
+        move |ev: KeyboardEvent| {
+            if ev.key() == "Enter" && !ev.shift_key() {
+                ev.prevent_default();
+                let t = title.get_untracked().trim().to_string();
+                if !t.is_empty() {
+                    let b = body.get_untracked().trim().to_string();
+                    let body_opt =
+                        if b.is_empty() { None } else { Some(b) };
+                    on_submit(t, body_opt);
+                    set_expanded.set(false);
+                    set_title.set(String::new());
+                    set_body.set(String::new());
+                    set_preview.set(false);
                 }
+            } else if ev.key() == "Escape" {
+                set_expanded.set(false);
+                set_title.set(String::new());
+                set_body.set(String::new());
+                set_preview.set(false);
             }
         }
     };
 
     view! {
-        <div class="flex items-center gap-2 p-3 border border-border \
-                    rounded-lg focus-within:border-accent transition-colors">
-            <span class="text-accent text-sm font-medium">"+"</span>
+        <Show
+            when=move || expanded.get()
+            fallback=move || {
+                view! {
+                    <button
+                        on:click=move |_| set_expanded.set(true)
+                        class="flex items-center gap-2 p-3 w-full text-left \
+                               border border-border rounded-lg \
+                               hover:border-accent transition-colors"
+                    >
+                        <span class="text-accent text-sm font-medium">"+"</span>
+                        <span class="text-sm text-text-secondary">
+                            "Add a task..."
+                        </span>
+                    </button>
+                }
+            }
+        >
+            <div class="border border-border rounded-lg p-3 \
+                        focus-within:border-accent transition-colors">
+                <input
+                    type="text"
+                    placeholder="Task title"
+                    prop:value=move || title.get()
+                    on:input=move |ev| {
+                        set_title.set(event_target_value(&ev));
+                    }
+                    on:keydown=on_title_keydown
+                    class="w-full text-sm font-semibold bg-transparent \
+                           outline-none placeholder:text-text-secondary \
+                           text-text-primary mb-2"
+                />
+
+                <Show
+                    when=move || preview.get()
+                    fallback=move || {
+                        view! {
+                            <textarea
+                                placeholder="Description (markdown supported)"
+                                prop:value=move || body.get()
+                                on:input=move |ev| {
+                                    set_body.set(event_target_value(&ev));
+                                }
+                                rows="3"
+                                class="w-full text-sm bg-transparent outline-none \
+                                       placeholder:text-text-tertiary \
+                                       text-text-secondary resize-none"
+                            />
+                        }
+                    }
+                >
+                    {move || {
+                        let b = body.get();
+                        if b.trim().is_empty() {
+                            view! {
+                                <p class="text-sm text-text-tertiary py-2">
+                                    "Nothing to preview"
+                                </p>
+                            }
+                                .into_any()
+                        } else {
+                            view! {
+                                <div class="py-1">
+                                    <MarkdownView content=b/>
+                                </div>
+                            }
+                                .into_any()
+                        }
+                    }}
+                </Show>
+
+                <div class="flex items-center justify-between mt-2 \
+                            pt-2 border-t border-border">
+                    <button
+                        on:click=move |_| set_preview.update(|p| *p = !*p)
+                        class="text-xs text-text-tertiary \
+                               hover:text-text-secondary transition-colors"
+                    >
+                        {move || {
+                            if preview.get() { "Edit" } else { "Preview" }
+                        }}
+                    </button>
+                    <div class="flex gap-2">
+                        <button
+                            on:click=on_cancel
+                            class="px-3 py-1 text-sm text-text-secondary \
+                                   hover:text-text-primary transition-colors"
+                        >
+                            "Cancel"
+                        </button>
+                        <button
+                            on:click=on_save
+                            class="px-3 py-1 text-sm bg-accent \
+                                   text-white rounded hover:bg-accent-hover \
+                                   transition-colors"
+                        >
+                            "Add task"
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Show>
+    }
+}
+
+#[component]
+pub fn EditTaskForm<S, C>(
+    title: String,
+    body: Option<String>,
+    on_save: S,
+    on_cancel: C,
+) -> impl IntoView
+where
+    S: Fn(String, Option<String>) + Send + Sync + 'static,
+    C: Fn() + Send + Sync + 'static,
+{
+    let (title_sig, set_title) = signal(title);
+    let (body_sig, set_body) = signal(body.unwrap_or_default());
+    let (preview, set_preview) = signal(false);
+    let on_save = std::sync::Arc::new(on_save);
+
+    let handle_save = {
+        let on_save = on_save.clone();
+        move |_| {
+            let t = title_sig.get_untracked().trim().to_string();
+            if !t.is_empty() {
+                let b = body_sig.get_untracked().trim().to_string();
+                let body_opt = if b.is_empty() { None } else { Some(b) };
+                on_save(t, body_opt);
+            }
+        }
+    };
+
+    let handle_keydown = {
+        let on_save = on_save.clone();
+        move |ev: KeyboardEvent| {
+            if ev.key() == "Enter" && !ev.shift_key() {
+                ev.prevent_default();
+                let t = title_sig.get_untracked().trim().to_string();
+                if !t.is_empty() {
+                    let b = body_sig.get_untracked().trim().to_string();
+                    let body_opt =
+                        if b.is_empty() { None } else { Some(b) };
+                    on_save(t, body_opt);
+                }
+            } else if ev.key() == "Escape" {
+                on_cancel();
+            }
+        }
+    };
+
+    view! {
+        <div class="border border-border rounded-lg p-3 \
+                    focus-within:border-accent transition-colors">
             <input
                 type="text"
-                node_ref=input_ref
-                placeholder="Add a task..."
-                on:keydown=on_keydown
-                class="flex-1 text-sm bg-transparent outline-none \
-                       placeholder:text-text-secondary text-text-primary"
+                prop:value=move || title_sig.get()
+                on:input=move |ev| {
+                    set_title.set(event_target_value(&ev));
+                }
+                on:keydown=handle_keydown
+                class="w-full text-sm font-semibold bg-transparent \
+                       outline-none placeholder:text-text-secondary \
+                       text-text-primary mb-2"
             />
+
+            <Show
+                when=move || preview.get()
+                fallback=move || {
+                    view! {
+                        <textarea
+                            placeholder="Description (markdown supported)"
+                            prop:value=move || body_sig.get()
+                            on:input=move |ev| {
+                                set_body.set(event_target_value(&ev));
+                            }
+                            rows="3"
+                            class="w-full text-sm bg-transparent outline-none \
+                                   placeholder:text-text-tertiary \
+                                   text-text-secondary resize-none"
+                        />
+                    }
+                }
+            >
+                {move || {
+                    let b = body_sig.get();
+                    if b.trim().is_empty() {
+                        view! {
+                            <p class="text-sm text-text-tertiary py-2">
+                                "Nothing to preview"
+                            </p>
+                        }
+                            .into_any()
+                    } else {
+                        view! {
+                            <div class="py-1">
+                                <MarkdownView content=b/>
+                            </div>
+                        }
+                            .into_any()
+                    }
+                }}
+            </Show>
+
+            <div class="flex items-center justify-between mt-2 \
+                        pt-2 border-t border-border">
+                <button
+                    on:click=move |_| set_preview.update(|p| *p = !*p)
+                    class="text-xs text-text-tertiary \
+                           hover:text-text-secondary transition-colors"
+                >
+                    {move || if preview.get() { "Edit" } else { "Preview" }}
+                </button>
+                <div class="flex gap-2">
+                    <button
+                        on:click=move |_| on_cancel()
+                        class="px-3 py-1 text-sm text-text-secondary \
+                               hover:text-text-primary transition-colors"
+                    >
+                        "Cancel"
+                    </button>
+                    <button
+                        on:click=handle_save
+                        class="px-3 py-1 text-sm bg-accent text-white \
+                               rounded hover:bg-accent-hover \
+                               transition-colors"
+                    >
+                        "Save"
+                    </button>
+                </div>
+            </div>
         </div>
     }
 }
