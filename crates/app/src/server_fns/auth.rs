@@ -1,9 +1,21 @@
 use leptos::prelude::*;
 
+#[server(CheckAuth, "/api")]
+pub async fn check_auth() -> Result<(), ServerFnError> {
+    match get_auth_user_id().await {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            leptos_axum::redirect("/login");
+            Err(e)
+        }
+    }
+}
+
 /// Extracts the authenticated user's ID from the JWT cookie.
 ///
 /// Reads the "token" cookie from the request via `leptos_axum::extract()`,
 /// decodes and validates the JWT, and returns the `sub` claim as the user ID.
+#[cfg(feature = "ssr")]
 pub async fn get_auth_user_id() -> Result<i64, ServerFnError> {
     use axum_extra::extract::CookieJar;
     use jsonwebtoken::{decode, DecodingKey, Validation};

@@ -1,7 +1,12 @@
 pub mod app;
 pub mod components;
 pub mod pages;
-#[cfg(feature = "ssr")]
 pub mod server_fns;
 
 pub use app::*;
+
+#[cfg(feature = "hydrate")]
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn hydrate() {
+    leptos::mount::hydrate_body(App);
+}

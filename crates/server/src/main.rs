@@ -118,7 +118,7 @@ async fn main() {
         .nest_service("/public", ServeDir::new("public"))
         .with_state(app_state);
 
-    let addr = "0.0.0.0:3000";
+    let addr = leptos_options.site_addr;
     tracing::info!("Listening on {addr}");
 
     let listener = tokio::net::TcpListener::bind(addr)

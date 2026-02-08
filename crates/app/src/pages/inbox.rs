@@ -180,13 +180,13 @@ pub fn InboxPage() -> impl IntoView {
 
     view! {
         <div class="space-y-4">
-            <h1 class="text-xl font-semibold text-teal-950">"Inbox"</h1>
+            <h1 class="text-xl font-semibold text-text-primary">"Inbox"</h1>
 
             <InlineTaskForm on_submit=on_create/>
 
             <Suspense fallback=move || {
                 view! {
-                    <div class="text-sm text-sage-400 py-4">"Loading tasks..."</div>
+                    <div class="text-sm text-text-secondary py-4">"Loading tasks..."</div>
                 }
             }>
                 {move || Suspend::new(async move {
@@ -194,7 +194,7 @@ pub fn InboxPage() -> impl IntoView {
                         Ok(tasks) => {
                             if tasks.is_empty() {
                                 view! {
-                                    <div class="text-sm text-sage-400 py-8 text-center">
+                                    <div class="text-sm text-text-secondary py-8 text-center">
                                         "No tasks in your inbox. Add one above."
                                     </div>
                                 }

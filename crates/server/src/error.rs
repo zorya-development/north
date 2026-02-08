@@ -10,6 +10,7 @@ pub enum AppError {
     #[error("{0}")]
     Unauthorized(String),
 
+    #[allow(dead_code)]
     #[error("{0}")]
     Forbidden(String),
 

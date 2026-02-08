@@ -4,9 +4,9 @@ use leptos_router::hooks::use_location;
 #[component]
 pub fn Sidebar() -> impl IntoView {
     view! {
-        <aside class="w-56 bg-teal-950 flex flex-col h-full">
+        <aside class="w-56 bg-bg-secondary flex flex-col h-full">
             <div class="p-4">
-                <span class="text-lg font-semibold text-peach-100">"North"</span>
+                <span class="text-lg font-semibold text-text-primary">"North"</span>
             </div>
 
             <nav class="flex-1 px-2 space-y-1">
@@ -15,7 +15,7 @@ pub fn Sidebar() -> impl IntoView {
                 <NavItem href="/tasks" label="All Tasks"/>
 
                 <div class="pt-4">
-                    <span class="px-3 text-xs font-medium text-sage-400 uppercase tracking-wide">
+                    <span class="px-3 text-xs font-medium text-text-secondary uppercase tracking-wide">
                         "Projects"
                     </span>
                 </div>
@@ -27,7 +27,7 @@ pub fn Sidebar() -> impl IntoView {
                 </div>
             </nav>
 
-            <div class="p-2 border-t border-teal-900">
+            <div class="p-2 border-t border-border">
                 <NavItem href="/settings" label="Settings"/>
             </div>
         </aside>
@@ -44,9 +44,9 @@ fn NavItem(href: &'static str, label: &'static str) -> impl IntoView {
 
     let class = move || {
         let base = "flex items-center px-3 py-2 rounded-md text-sm \
-                    text-peach-100 hover:bg-teal-700 transition-colors";
+                    text-text-primary hover:bg-bg-tertiary transition-colors";
         if is_active() {
-            format!("{base} bg-teal-900 font-medium")
+            format!("{base} bg-bg-tertiary font-medium")
         } else {
             base.to_string()
         }

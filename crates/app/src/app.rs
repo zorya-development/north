@@ -19,7 +19,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <HydrationScripts options/>
                 <link rel="stylesheet" id="leptos" href="/pkg/north.css"/>
             </head>
-            <body class="bg-white text-teal-950 font-sans">
+            <body class="bg-bg-primary text-text-primary font-sans">
                 <App/>
             </body>
         </html>
@@ -32,7 +32,7 @@ pub fn App() -> impl IntoView {
 
     view! {
         <Router>
-            <Routes fallback=|| view! { <p class="p-8 text-sage-400">"Page not found"</p> }>
+            <Routes fallback=|| view! { <p class="p-8 text-text-secondary">"Page not found"</p> }>
                 <Route path=path!("/login") view=pages::login::LoginPage/>
                 <Route
                     path=path!("/")

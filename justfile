@@ -29,6 +29,6 @@ sqlx-prepare:
     cargo sqlx prepare --workspace
 
 seed:
-    cargo run --bin north --features ssr -- --seed
+    cargo run --bin north-server --features ssr -- --seed
 
 check: fmt-check lint test

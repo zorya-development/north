@@ -81,8 +81,6 @@ pub async fn login(
         .map_err(|e| ServerFnError::new(e.to_string()))?,
     );
 
-    leptos_axum::redirect("/inbox");
-
     Ok(())
 }
 
@@ -119,16 +117,17 @@ pub fn LoginPage() -> impl IntoView {
     };
 
     view! {
-        <div class="min-h-screen bg-teal-950 flex items-center justify-center px-4">
-            <div class="w-full max-w-sm bg-white rounded-lg shadow-lg p-8">
-                <h1 class="text-xl font-semibold text-teal-950 text-center mb-6">
+        <div class="min-h-screen bg-bg-primary flex items-center justify-center px-4">
+            <div class="w-full max-w-sm bg-bg-secondary rounded-lg border border-border p-8">
+                <h1 class="text-xl font-semibold text-text-primary text-center mb-6">
                     "North"
                 </h1>
 
                 {move || {
                     error_message().map(|msg| {
                         view! {
-                            <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-500 text-sm">
+                            <div class="mb-4 p-3 bg-accent/10 border border-accent/30 \
+                                        rounded-md text-accent text-sm">
                                 {msg}
                             </div>
                         }
@@ -139,7 +138,7 @@ pub fn LoginPage() -> impl IntoView {
                     <div>
                         <label
                             for="email"
-                            class="block text-sm font-medium text-teal-700 mb-1"
+                            class="block text-sm font-medium text-text-secondary mb-1"
                         >
                             "Email"
                         </label>
@@ -151,9 +150,10 @@ pub fn LoginPage() -> impl IntoView {
                             on:input=move |ev| {
                                 set_email.set(event_target_value(&ev));
                             }
-                            class="w-full px-3 py-2 text-sm border border-peach-200 rounded-md \
-                                   focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 \
-                                   outline-none transition-colors text-teal-950"
+                            class="w-full px-3 py-2 text-sm bg-bg-input border border-border \
+                                   rounded-md focus:border-accent focus:ring-1 \
+                                   focus:ring-accent/20 outline-none transition-colors \
+                                   text-text-primary placeholder:text-text-tertiary"
                             placeholder="you@example.com"
                         />
                     </div>
@@ -161,7 +161,7 @@ pub fn LoginPage() -> impl IntoView {
                     <div>
                         <label
                             for="password"
-                            class="block text-sm font-medium text-teal-700 mb-1"
+                            class="block text-sm font-medium text-text-secondary mb-1"
                         >
                             "Password"
                         </label>
@@ -173,9 +173,10 @@ pub fn LoginPage() -> impl IntoView {
                             on:input=move |ev| {
                                 set_password.set(event_target_value(&ev));
                             }
-                            class="w-full px-3 py-2 text-sm border border-peach-200 rounded-md \
-                                   focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 \
-                                   outline-none transition-colors text-teal-950"
+                            class="w-full px-3 py-2 text-sm bg-bg-input border border-border \
+                                   rounded-md focus:border-accent focus:ring-1 \
+                                   focus:ring-accent/20 outline-none transition-colors \
+                                   text-text-primary placeholder:text-text-tertiary"
                             placeholder="Enter your password"
                         />
                     </div>
@@ -184,7 +185,7 @@ pub fn LoginPage() -> impl IntoView {
                         type="submit"
                         disabled=pending
                         class="w-full py-2 px-4 text-sm font-medium rounded-md \
-                               bg-peach-300 text-teal-950 hover:bg-peach-200 \
+                               bg-accent text-white hover:bg-accent-hover \
                                disabled:opacity-50 disabled:cursor-not-allowed \
                                transition-colors"
                     >

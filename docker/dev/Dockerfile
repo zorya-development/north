@@ -1,4 +1,4 @@
-FROM rust:1.84-bookworm
+FROM rust:1.93-bookworm
 
 RUN apt-get update && apt-get install -y \
     pkg-config libssl-dev postgresql-client curl \

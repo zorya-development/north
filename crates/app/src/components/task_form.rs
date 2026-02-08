@@ -23,16 +23,16 @@ where
     };
 
     view! {
-        <div class="flex items-center gap-2 p-3 bg-white border border-peach-200 \
-                    rounded-lg focus-within:border-teal-500 transition-colors">
-            <span class="text-sage-400 text-sm">"+"</span>
+        <div class="flex items-center gap-2 p-3 border border-border \
+                    rounded-lg focus-within:border-accent transition-colors">
+            <span class="text-accent text-sm font-medium">"+"</span>
             <input
                 type="text"
                 node_ref=input_ref
                 placeholder="Add a task..."
                 on:keydown=on_keydown
                 class="flex-1 text-sm bg-transparent outline-none \
-                       placeholder:text-sage-400 text-teal-950"
+                       placeholder:text-text-secondary text-text-primary"
             />
         </div>
     }

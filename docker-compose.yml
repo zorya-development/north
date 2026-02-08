@@ -3,8 +3,11 @@ services:
     build:
       context: .
       dockerfile: docker/dev/Dockerfile
+    dns:
+      - 8.8.8.8
     ports:
-      - "3000:3000"
+      - "5000:5000"
+      - "5001:5001"
     volumes:
       - .:/app
       - cargo-registry:/usr/local/cargo/registry

@@ -9,15 +9,15 @@ pub fn TaskCard(task: TaskWithMeta) -> impl IntoView {
     let tags = task.tags.clone();
 
     view! {
-        <div class="bg-peach-100 rounded-lg p-3 border border-peach-200 \
-                    hover:border-teal-500 hover:shadow-sm transition-colors">
+        <div class="border-b border-border px-3 py-2 hover:bg-bg-tertiary transition-colors">
             <div class="flex items-center gap-2">
                 <button
-                    class="w-4 h-4 rounded-full border-2 border-teal-500 \
-                           hover:bg-teal-500 transition-colors flex-shrink-0"
+                    class="w-4 h-4 rounded-full border-2 border-text-secondary \
+                           hover:border-accent hover:bg-accent transition-colors \
+                           flex-shrink-0"
                     aria-label="Complete task"
                 />
-                <span class="text-sm font-medium text-teal-950">{title}</span>
+                <span class="text-sm text-text-primary">{title}</span>
             </div>
 
             {(!project_title.is_none() || due_date.is_some() || !tags.is_empty())
@@ -25,11 +25,12 @@ pub fn TaskCard(task: TaskWithMeta) -> impl IntoView {
                     let project_title = project_title.clone();
                     let tags = tags.clone();
                     view! {
-                        <div class="mt-1 ml-6 flex items-center gap-2 text-xs text-sage-400">
+                        <div class="mt-0.5 ml-6 flex items-center gap-2 text-xs \
+                                    text-text-tertiary">
                             {project_title
                                 .map(|p| {
                                     view! {
-                                        <span class="text-teal-700">{p}</span>
+                                        <span class="text-text-secondary">{p}</span>
                                     }
                                 })}
                             {due_date
@@ -42,8 +43,8 @@ pub fn TaskCard(task: TaskWithMeta) -> impl IntoView {
                                 .into_iter()
                                 .map(|tag| {
                                     view! {
-                                        <span class="bg-peach-200 text-teal-700 text-xs \
-                                                     px-2 py-0.5 rounded-full">
+                                        <span class="bg-bg-tertiary text-text-secondary \
+                                                     text-xs px-2 py-0.5 rounded-full">
                                             {tag}
                                         </span>
                                     }
