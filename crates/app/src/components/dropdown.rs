@@ -1,5 +1,6 @@
 use leptos::ev::MouseEvent;
 use leptos::prelude::*;
+use leptos::wasm_bindgen::JsCast;
 
 #[component]
 pub fn DropdownMenu(
@@ -12,11 +13,11 @@ pub fn DropdownMenu(
 
     Effect::new(move |_| {
         if open.get() {
-            let handle = leptos::window_event_listener(leptos::ev::click, move |ev| {
+            let handle = window_event_listener(leptos::ev::click, move |ev: leptos::ev::MouseEvent| {
                 if let Some(menu) = menu_ref.get() {
                     let target = ev.target();
                     let is_inside = target
-                        .and_then(|t| t.dyn_into::<web_sys::Node>().ok())
+                        .and_then(|t| t.dyn_into::<leptos::web_sys::Node>().ok())
                         .map(|node| menu.contains(Some(&node)))
                         .unwrap_or(false);
                     if !is_inside {
@@ -28,16 +29,21 @@ pub fn DropdownMenu(
         }
     });
 
+    let menu_children = children();
+
     view! {
         <div node_ref=menu_ref class="relative">
             {trigger()}
-            <Show when=move || open.get()>
-                <div class="absolute right-0 top-full mt-1 z-50 min-w-[140px] \
-                            bg-bg-secondary border border-border rounded-lg \
-                            shadow-lg py-1">
-                    {children()}
-                </div>
-            </Show>
+            <div
+                class="absolute right-0 top-full mt-1 z-50 min-w-[140px] \
+                        bg-bg-secondary border border-border rounded-lg \
+                        shadow-lg py-1"
+                style:display=move || {
+                    if open.get() { "block" } else { "none" }
+                }
+            >
+                {menu_children}
+            </div>
         </div>
     }
 }

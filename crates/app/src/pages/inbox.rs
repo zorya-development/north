@@ -191,6 +191,28 @@ pub async fn update_inbox_task(
     Ok(())
 }
 
+#[server(CompleteInboxTask, "/api")]
+pub async fn complete_inbox_task(id: i64) -> Result<(), ServerFnError> {
+    let pool = expect_context::<sqlx::PgPool>();
+    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
+
+    let result = sqlx::query(
+        "UPDATE tasks SET completed_at = now() \
+         WHERE id = $1 AND user_id = $2 AND completed_at IS NULL",
+    )
+    .bind(id)
+    .bind(user_id)
+    .execute(&pool)
+    .await
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    if result.rows_affected() == 0 {
+        return Err(ServerFnError::new("Task not found".to_string()));
+    }
+
+    Ok(())
+}
+
 #[server(DeleteInboxTask, "/api")]
 pub async fn delete_inbox_task(id: i64) -> Result<(), ServerFnError> {
     let pool = expect_context::<sqlx::PgPool>();
@@ -228,6 +250,11 @@ pub fn InboxPage() -> impl IntoView {
             update_inbox_task(id, title, body)
         });
 
+    let complete_action = Action::new(|id: &i64| {
+        let id = *id;
+        complete_inbox_task(id)
+    });
+
     let delete_action = Action::new(|id: &i64| {
         let id = *id;
         delete_inbox_task(id)
@@ -246,6 +273,12 @@ pub fn InboxPage() -> impl IntoView {
     });
 
     Effect::new(move || {
+        if let Some(Ok(_)) = complete_action.value().get() {
+            inbox_tasks.refetch();
+        }
+    });
+
+    Effect::new(move || {
         if let Some(Ok(_)) = delete_action.value().get() {
             inbox_tasks.refetch();
         }
@@ -253,6 +286,10 @@ pub fn InboxPage() -> impl IntoView {
 
     let on_create = move |title: String, body: Option<String>| {
         create_action.dispatch((title, body));
+    };
+
+    let on_complete = move |id: i64| {
+        complete_action.dispatch(id);
     };
 
     let on_delete = move |id: i64| {
@@ -278,6 +315,7 @@ pub fn InboxPage() -> impl IntoView {
                 }
             }>
                 {move || {
+                    let on_complete = on_complete.clone();
                     let on_delete = on_delete.clone();
                     let on_update = on_update.clone();
                     Suspend::new(async move {
@@ -298,6 +336,8 @@ pub fn InboxPage() -> impl IntoView {
                                             {tasks
                                                 .into_iter()
                                                 .map(|task| {
+                                                    let on_complete =
+                                                        on_complete.clone();
                                                     let on_delete =
                                                         on_delete.clone();
                                                     let on_update =
@@ -305,6 +345,7 @@ pub fn InboxPage() -> impl IntoView {
                                                     view! {
                                                         <TaskCard
                                                             task=task
+                                                            on_complete=on_complete
                                                             on_delete=on_delete
                                                             on_update=on_update
                                                         />

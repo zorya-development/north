@@ -1,5 +1,4 @@
 - Add icons into sidebar
-- Logo + text in the sidebar
 
 
 # Pages to implement

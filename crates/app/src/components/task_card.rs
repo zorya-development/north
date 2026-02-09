@@ -6,12 +6,14 @@ use crate::components::markdown::MarkdownView;
 use crate::components::task_form::EditTaskForm;
 
 #[component]
-pub fn TaskCard<D, U>(
+pub fn TaskCard<C, D, U>(
     task: TaskWithMeta,
+    on_complete: C,
     on_delete: D,
     on_update: U,
 ) -> impl IntoView
 where
+    C: Fn(i64) + Send + Sync + Clone + 'static,
     D: Fn(i64) + Send + Sync + Clone + 'static,
     U: Fn(i64, String, Option<String>) + Send + Sync + Clone + 'static,
 {
@@ -28,27 +30,14 @@ where
     let edit_title = title.clone();
     let edit_body = body.clone();
 
-    let on_edit = {
-        move || {
-            set_menu_open.set(false);
-            set_editing.set(true);
-        }
-    };
-
-    let on_delete_click = {
-        let on_delete = on_delete.clone();
-        move || {
-            set_menu_open.set(false);
-            on_delete(task_id);
-        }
-    };
+    let on_delete = std::sync::Arc::new(on_delete);
 
     let on_save = {
         let on_update = on_update.clone();
-        move |new_title: String, new_body: Option<String>| {
+        std::sync::Arc::new(move |new_title: String, new_body: Option<String>| {
             set_editing.set(false);
             on_update(task_id, new_title, new_body);
-        }
+        })
     };
 
     let on_cancel_edit = move || {
@@ -63,16 +52,24 @@ where
                 let body = body.clone();
                 let project_title = project_title.clone();
                 let tags = tags.clone();
+                let on_complete = on_complete.clone();
+                let on_delete = on_delete.clone();
                 move || {
                     let title = title.clone();
                     let body = body.clone();
                     let project_title = project_title.clone();
                     let tags = tags.clone();
+                    let on_complete = on_complete.clone();
+                    let on_delete = on_delete.clone();
                     view! {
                         <div class="group border-b border-border px-3 py-2 \
-                                    hover:bg-bg-tertiary transition-colors">
+                                    hover:bg-white/10 transition-colors">
                             <div class="flex items-center gap-2">
                                 <button
+                                    on:click={
+                                        let on_complete = on_complete.clone();
+                                        move |_| on_complete(task_id)
+                                    }
                                     class="w-4 h-4 rounded-full border-2 \
                                            border-text-secondary \
                                            hover:border-accent \
@@ -88,7 +85,7 @@ where
                                     <DropdownMenu
                                         open=menu_open
                                         set_open=set_menu_open
-                                        trigger=move || {
+                                        trigger=Box::new(move || {
                                             view! {
                                                 <button
                                                     on:click=move |ev| {
@@ -115,16 +112,25 @@ where
                                                         <circle cx="12" cy="19" r="2"/>
                                                     </svg>
                                                 </button>
-                                            }
-                                        }
+                                            }.into_any()
+                                        })
                                     >
                                         <DropdownItem
                                             label="Edit"
-                                            on_click=on_edit
+                                            on_click=move || {
+                                                set_menu_open.set(false);
+                                                set_editing.set(true);
+                                            }
                                         />
                                         <DropdownItem
                                             label="Delete"
-                                            on_click=on_delete_click
+                                            on_click={
+                                                let on_delete = on_delete.clone();
+                                                move || {
+                                                    set_menu_open.set(false);
+                                                    on_delete(task_id);
+                                                }
+                                            }
                                             danger=true
                                         />
                                     </DropdownMenu>
@@ -184,14 +190,24 @@ where
                 }
             }
         >
-            <div class="px-3 py-2">
-                <EditTaskForm
-                    title=edit_title
-                    body=edit_body
-                    on_save=on_save
-                    on_cancel=on_cancel_edit
-                />
-            </div>
+            {
+                let edit_title = edit_title.clone();
+                let edit_body = edit_body.clone();
+                let on_save = on_save.clone();
+                move || {
+                    let on_save = on_save.clone();
+                    view! {
+                        <div class="px-3 py-2">
+                            <EditTaskForm
+                                title=edit_title.clone()
+                                body=edit_body.clone()
+                                on_save=move |t, b| on_save(t, b)
+                                on_cancel=on_cancel_edit
+                            />
+                        </div>
+                    }
+                }
+            }
         </Show>
     }
 }
