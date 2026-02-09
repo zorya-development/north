@@ -48,6 +48,16 @@ pub fn App() -> impl IntoView {
                         }
                     }
                 />
+                <Route
+                    path=path!("/tasks")
+                    view=|| {
+                        view! {
+                            <components::layout::AppLayout>
+                                <pages::all_tasks::AllTasksPage/>
+                            </components::layout::AppLayout>
+                        }
+                    }
+                />
             </Routes>
         </Router>
     }

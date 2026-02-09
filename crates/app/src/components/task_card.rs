@@ -22,6 +22,8 @@ where
     let body = task.task.body.clone();
     let project_title = task.project_title.clone();
     let due_date = task.task.due_date;
+    let completed_at = task.task.completed_at;
+    let is_completed = completed_at.is_some();
     let tags = task.tags.clone();
 
     let (editing, set_editing) = signal(false);
@@ -65,19 +67,55 @@ where
                         <div class="group border-b border-border px-3 py-2 \
                                     hover:bg-white/10 transition-colors">
                             <div class="flex items-center gap-2">
-                                <button
-                                    on:click={
-                                        let on_complete = on_complete.clone();
-                                        move |_| on_complete(task_id)
-                                    }
-                                    class="w-4 h-4 rounded-full border-2 \
-                                           border-text-secondary \
-                                           hover:border-accent \
-                                           hover:bg-accent \
-                                           transition-colors flex-shrink-0"
-                                    aria-label="Complete task"
-                                />
-                                <span class="flex-1 text-sm text-text-primary">
+                                {if is_completed {
+                                    view! {
+                                        <div class="w-4 h-4 rounded-full \
+                                                    bg-text-tertiary \
+                                                    flex-shrink-0 flex \
+                                                    items-center \
+                                                    justify-center">
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                width="10"
+                                                height="10"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="3"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                class="text-bg-primary"
+                                            >
+                                                <polyline
+                                                    points="20 6 9 17 4 12"
+                                                />
+                                            </svg>
+                                        </div>
+                                    }.into_any()
+                                } else {
+                                    let on_complete = on_complete.clone();
+                                    view! {
+                                        <button
+                                            on:click=move |_| {
+                                                on_complete(task_id)
+                                            }
+                                            class="w-4 h-4 rounded-full \
+                                                   border-2 \
+                                                   border-text-secondary \
+                                                   hover:border-accent \
+                                                   hover:bg-accent \
+                                                   transition-colors \
+                                                   flex-shrink-0"
+                                            aria-label="Complete task"
+                                        />
+                                    }.into_any()
+                                }}
+                                <span class={if is_completed {
+                                    "flex-1 text-sm text-text-tertiary \
+                                     line-through"
+                                } else {
+                                    "flex-1 text-sm text-text-primary"
+                                }}>
                                     {title}
                                 </span>
                                 <div class="opacity-0 group-hover:opacity-100 \
@@ -148,6 +186,7 @@ where
 
                             {(!project_title.is_none()
                                 || due_date.is_some()
+                                || completed_at.is_some()
                                 || !tags.is_empty())
                             .then(move || {
                                 let project_title = project_title.clone();
@@ -167,6 +206,17 @@ where
                                             .map(|d| {
                                                 view! {
                                                     <span>{format!("Due {d}")}</span>
+                                                }
+                                            })}
+                                        {completed_at
+                                            .map(|d| {
+                                                view! {
+                                                    <span>
+                                                        {format!(
+                                                            "Completed {}",
+                                                            d.format("%Y-%m-%d"),
+                                                        )}
+                                                    </span>
                                                 }
                                             })}
                                         {tags
