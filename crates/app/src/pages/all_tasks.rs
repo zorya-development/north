@@ -3,8 +3,10 @@ use north_domain::TaskWithMeta;
 
 use crate::components::task_card::TaskCard;
 use crate::pages::inbox::{
-    complete_inbox_task, delete_inbox_task, update_inbox_task,
+    complete_inbox_task, delete_inbox_task, uncomplete_task,
+    update_inbox_task,
 };
+use crate::pages::today::{clear_task_start_at, set_task_start_at};
 
 #[server(GetAllTasks, "/api")]
 pub async fn get_all_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
@@ -22,7 +24,7 @@ pub async fn get_all_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
         body: Option<String>,
         position: i32,
         sequential_limit: i16,
-        start_date: Option<chrono::NaiveDate>,
+        start_at: Option<chrono::DateTime<chrono::Utc>>,
         due_date: Option<chrono::NaiveDate>,
         completed_at: Option<chrono::DateTime<chrono::Utc>>,
         reviewed_at: Option<chrono::DateTime<chrono::Utc>>,
@@ -37,7 +39,7 @@ pub async fn get_all_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
     let rows = sqlx::query_as::<_, TaskRow>(
         "SELECT t.id, t.project_id, t.parent_id, t.column_id, t.user_id, \
          t.title, t.body, t.position, t.sequential_limit, \
-         t.start_date, t.due_date, t.completed_at, t.reviewed_at, \
+         t.start_at, t.due_date, t.completed_at, t.reviewed_at, \
          t.created_at, t.updated_at, \
          p.title as project_title, \
          pc.name as column_name, \
@@ -80,7 +82,7 @@ pub async fn get_all_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
                     body: row.body,
                     position: row.position,
                     sequential_limit: row.sequential_limit,
-                    start_date: row.start_date,
+                    start_at: row.start_at,
                     due_date: row.due_date,
                     completed_at: row.completed_at,
                     reviewed_at: row.reviewed_at,
@@ -114,19 +116,29 @@ pub fn AllTasksPage() -> impl IntoView {
         complete_inbox_task(id)
     });
 
+    let uncomplete_action = Action::new(|id: &i64| {
+        let id = *id;
+        uncomplete_task(id)
+    });
+
     let delete_action = Action::new(|id: &i64| {
         let id = *id;
         delete_inbox_task(id)
     });
 
-    Effect::new(move || {
-        if let Some(Ok(_)) = update_action.value().get() {
-            all_tasks.refetch();
-        }
+    let set_start_at_action =
+        Action::new(|input: &(i64, String)| {
+            let (id, start_at) = input.clone();
+            set_task_start_at(id, start_at)
+        });
+
+    let clear_start_at_action = Action::new(|id: &i64| {
+        let id = *id;
+        clear_task_start_at(id)
     });
 
     Effect::new(move || {
-        if let Some(Ok(_)) = complete_action.value().get() {
+        if let Some(Ok(_)) = update_action.value().get() {
             all_tasks.refetch();
         }
     });
@@ -137,8 +149,24 @@ pub fn AllTasksPage() -> impl IntoView {
         }
     });
 
-    let on_complete = move |id: i64| {
-        complete_action.dispatch(id);
+    Effect::new(move || {
+        if let Some(Ok(_)) = set_start_at_action.value().get() {
+            all_tasks.refetch();
+        }
+    });
+
+    Effect::new(move || {
+        if let Some(Ok(_)) = clear_start_at_action.value().get() {
+            all_tasks.refetch();
+        }
+    });
+
+    let on_toggle_complete = move |id: i64, was_completed: bool| {
+        if was_completed {
+            uncomplete_action.dispatch(id);
+        } else {
+            complete_action.dispatch(id);
+        }
     };
 
     let on_delete = move |id: i64| {
@@ -149,6 +177,15 @@ pub fn AllTasksPage() -> impl IntoView {
         move |id: i64, title: String, body: Option<String>| {
             update_action.dispatch((id, title, body));
         };
+
+    let on_set_start_at =
+        Callback::new(move |(id, start_at): (i64, String)| {
+            set_start_at_action.dispatch((id, start_at));
+        });
+
+    let on_clear_start_at = Callback::new(move |id: i64| {
+        clear_start_at_action.dispatch(id);
+    });
 
     view! {
         <div class="space-y-4">
@@ -164,7 +201,7 @@ pub fn AllTasksPage() -> impl IntoView {
                 }
             }>
                 {move || {
-                    let on_complete = on_complete.clone();
+                    let on_toggle_complete = on_toggle_complete.clone();
                     let on_delete = on_delete.clone();
                     let on_update = on_update.clone();
                     Suspend::new(async move {
@@ -184,8 +221,9 @@ pub fn AllTasksPage() -> impl IntoView {
                                             {tasks
                                                 .into_iter()
                                                 .map(|task| {
-                                                    let on_complete =
-                                                        on_complete.clone();
+                                                    let on_toggle_complete =
+                                                        on_toggle_complete
+                                                            .clone();
                                                     let on_delete =
                                                         on_delete.clone();
                                                     let on_update =
@@ -193,9 +231,11 @@ pub fn AllTasksPage() -> impl IntoView {
                                                     view! {
                                                         <TaskCard
                                                             task=task
-                                                            on_complete=on_complete
+                                                            on_toggle_complete=on_toggle_complete
                                                             on_delete=on_delete
                                                             on_update=on_update
+                                                            on_set_start_at=on_set_start_at
+                                                            on_clear_start_at=on_clear_start_at
                                                         />
                                                     }
                                                 })

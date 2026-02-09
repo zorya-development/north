@@ -12,7 +12,7 @@ pub struct Task {
     pub body: Option<String>,
     pub position: i32,
     pub sequential_limit: i16,
-    pub start_date: Option<NaiveDate>,
+    pub start_at: Option<DateTime<Utc>>,
     pub due_date: Option<NaiveDate>,
     pub completed_at: Option<DateTime<Utc>>,
     pub reviewed_at: Option<DateTime<Utc>>,
@@ -38,7 +38,7 @@ pub struct CreateTask {
     pub project_id: Option<i64>,
     pub parent_id: Option<i64>,
     pub column_id: Option<i64>,
-    pub start_date: Option<NaiveDate>,
+    pub start_at: Option<DateTime<Utc>>,
     pub due_date: Option<NaiveDate>,
 }
 
@@ -51,7 +51,7 @@ pub struct UpdateTask {
     pub column_id: Option<i64>,
     pub position: Option<i32>,
     pub sequential_limit: Option<i16>,
-    pub start_date: Option<NaiveDate>,
+    pub start_at: Option<DateTime<Utc>>,
     pub due_date: Option<NaiveDate>,
 }
 

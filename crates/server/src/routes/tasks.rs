@@ -20,7 +20,7 @@ struct TaskRow {
     body: Option<String>,
     position: i32,
     sequential_limit: i16,
-    start_date: Option<chrono::NaiveDate>,
+    start_at: Option<chrono::DateTime<chrono::Utc>>,
     due_date: Option<chrono::NaiveDate>,
     completed_at: Option<chrono::DateTime<chrono::Utc>>,
     reviewed_at: Option<chrono::DateTime<chrono::Utc>>,
@@ -39,7 +39,7 @@ struct TaskWithMetaRow {
     body: Option<String>,
     position: i32,
     sequential_limit: i16,
-    start_date: Option<chrono::NaiveDate>,
+    start_at: Option<chrono::DateTime<chrono::Utc>>,
     due_date: Option<chrono::NaiveDate>,
     completed_at: Option<chrono::DateTime<chrono::Utc>>,
     reviewed_at: Option<chrono::DateTime<chrono::Utc>>,
@@ -64,7 +64,7 @@ impl From<TaskRow> for Task {
             body: r.body,
             position: r.position,
             sequential_limit: r.sequential_limit,
-            start_date: r.start_date,
+            start_at: r.start_at,
             due_date: r.due_date,
             completed_at: r.completed_at,
             reviewed_at: r.reviewed_at,
@@ -96,7 +96,7 @@ impl From<TaskWithMetaRow> for TaskWithMeta {
                 body: r.body,
                 position: r.position,
                 sequential_limit: r.sequential_limit,
-                start_date: r.start_date,
+                start_at: r.start_at,
                 due_date: r.due_date,
                 completed_at: r.completed_at,
                 reviewed_at: r.reviewed_at,
@@ -219,7 +219,7 @@ pub async fn list_tasks(
         "SELECT \
             t.id, t.project_id, t.parent_id, t.column_id, t.user_id, \
             t.title, t.body, t.position, t.sequential_limit, \
-            t.start_date, t.due_date, t.completed_at, t.reviewed_at, \
+            t.start_at, t.due_date, t.completed_at, t.reviewed_at, \
             t.created_at, t.updated_at, \
             p.title as project_title, \
             pc.name as column_name, \
@@ -229,8 +229,8 @@ pub async fn list_tasks(
             (SELECT COUNT(*) FROM tasks sub WHERE sub.parent_id = t.id) \
             as subtask_count, \
             CASE WHEN t.completed_at IS NOT NULL THEN false \
-                 WHEN t.start_date IS NOT NULL \
-                      AND t.start_date > CURRENT_DATE THEN false \
+                 WHEN t.start_at IS NOT NULL \
+                      AND t.start_at::date > CURRENT_DATE THEN false \
                  WHEN t.parent_id IS NULL THEN true \
                  ELSE ( \
                     ROW_NUMBER() OVER ( \
@@ -312,10 +312,10 @@ pub async fn create_task(
     let row = sqlx::query_as::<_, TaskRow>(
         "INSERT INTO tasks \
          (project_id, parent_id, column_id, user_id, title, body, \
-          position, start_date, due_date) \
+          position, start_at, due_date) \
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) \
          RETURNING id, project_id, parent_id, column_id, user_id, \
-         title, body, position, sequential_limit, start_date, due_date, \
+         title, body, position, sequential_limit, start_at, due_date, \
          completed_at, reviewed_at, created_at, updated_at",
     )
     .bind(body.project_id)
@@ -325,7 +325,7 @@ pub async fn create_task(
     .bind(&body.title)
     .bind(&body.body)
     .bind(position)
-    .bind(body.start_date)
+    .bind(body.start_at)
     .bind(body.due_date)
     .fetch_one(&state.pool)
     .await?;
@@ -342,7 +342,7 @@ pub async fn get_task(
         "SELECT \
             t.id, t.project_id, t.parent_id, t.column_id, t.user_id, \
             t.title, t.body, t.position, t.sequential_limit, \
-            t.start_date, t.due_date, t.completed_at, t.reviewed_at, \
+            t.start_at, t.due_date, t.completed_at, t.reviewed_at, \
             t.created_at, t.updated_at, \
             p.title as project_title, \
             pc.name as column_name, \
@@ -352,8 +352,8 @@ pub async fn get_task(
             (SELECT COUNT(*) FROM tasks sub WHERE sub.parent_id = t.id) \
             as subtask_count, \
             CASE WHEN t.completed_at IS NOT NULL THEN false \
-                 WHEN t.start_date IS NOT NULL \
-                      AND t.start_date > CURRENT_DATE THEN false \
+                 WHEN t.start_at IS NOT NULL \
+                      AND t.start_at::date > CURRENT_DATE THEN false \
                  WHEN t.parent_id IS NULL THEN true \
                  ELSE ( \
                     (SELECT COUNT(*) FROM tasks sib \
@@ -387,7 +387,7 @@ pub async fn update_task(
 ) -> Result<Json<Task>, AppError> {
     let existing = sqlx::query_as::<_, TaskRow>(
         "SELECT id, project_id, parent_id, column_id, user_id, \
-         title, body, position, sequential_limit, start_date, due_date, \
+         title, body, position, sequential_limit, start_at, due_date, \
          completed_at, reviewed_at, created_at, updated_at \
          FROM tasks WHERE id = $1 AND user_id = $2",
     )
@@ -405,7 +405,7 @@ pub async fn update_task(
     let position = body.position.unwrap_or(existing.position);
     let sequential_limit =
         body.sequential_limit.unwrap_or(existing.sequential_limit);
-    let start_date = body.start_date.or(existing.start_date);
+    let start_at = body.start_at.or(existing.start_at);
     let due_date = body.due_date.or(existing.due_date);
 
     // Handle completed_at based on column change
@@ -435,10 +435,10 @@ pub async fn update_task(
         "UPDATE tasks SET \
          title = $1, body = $2, project_id = $3, parent_id = $4, \
          column_id = $5, position = $6, sequential_limit = $7, \
-         start_date = $8, due_date = $9, completed_at = $10 \
+         start_at = $8, due_date = $9, completed_at = $10 \
          WHERE id = $11 AND user_id = $12 \
          RETURNING id, project_id, parent_id, column_id, user_id, \
-         title, body, position, sequential_limit, start_date, due_date, \
+         title, body, position, sequential_limit, start_at, due_date, \
          completed_at, reviewed_at, created_at, updated_at",
     )
     .bind(title)
@@ -448,7 +448,7 @@ pub async fn update_task(
     .bind(new_column_id)
     .bind(position)
     .bind(sequential_limit)
-    .bind(start_date)
+    .bind(start_at)
     .bind(due_date)
     .bind(completed_at)
     .bind(id)
@@ -487,7 +487,7 @@ pub async fn move_task(
 ) -> Result<Json<Task>, AppError> {
     let existing = sqlx::query_as::<_, TaskRow>(
         "SELECT id, project_id, parent_id, column_id, user_id, \
-         title, body, position, sequential_limit, start_date, due_date, \
+         title, body, position, sequential_limit, start_at, due_date, \
          completed_at, reviewed_at, created_at, updated_at \
          FROM tasks WHERE id = $1 AND user_id = $2",
     )
@@ -530,7 +530,7 @@ pub async fn move_task(
          column_id = $1, position = $2, parent_id = $3, completed_at = $4 \
          WHERE id = $5 AND user_id = $6 \
          RETURNING id, project_id, parent_id, column_id, user_id, \
-         title, body, position, sequential_limit, start_date, due_date, \
+         title, body, position, sequential_limit, start_at, due_date, \
          completed_at, reviewed_at, created_at, updated_at",
     )
     .bind(new_column_id)
@@ -554,7 +554,7 @@ pub async fn review_task(
         "UPDATE tasks SET reviewed_at = now() \
          WHERE id = $1 AND user_id = $2 \
          RETURNING id, project_id, parent_id, column_id, user_id, \
-         title, body, position, sequential_limit, start_date, due_date, \
+         title, body, position, sequential_limit, start_at, due_date, \
          completed_at, reviewed_at, created_at, updated_at",
     )
     .bind(id)

@@ -8,12 +8,14 @@ use crate::components::task_form::EditTaskForm;
 #[component]
 pub fn TaskCard<C, D, U>(
     task: TaskWithMeta,
-    on_complete: C,
+    on_toggle_complete: C,
     on_delete: D,
     on_update: U,
+    #[prop(optional)] on_set_start_at: Option<Callback<(i64, String)>>,
+    #[prop(optional)] on_clear_start_at: Option<Callback<i64>>,
 ) -> impl IntoView
 where
-    C: Fn(i64) + Send + Sync + Clone + 'static,
+    C: Fn(i64, bool) + Send + Sync + Clone + 'static,
     D: Fn(i64) + Send + Sync + Clone + 'static,
     U: Fn(i64, String, Option<String>) + Send + Sync + Clone + 'static,
 {
@@ -22,24 +24,53 @@ where
     let body = task.task.body.clone();
     let project_title = task.project_title.clone();
     let due_date = task.task.due_date;
-    let completed_at = task.task.completed_at;
-    let is_completed = completed_at.is_some();
+    let start_at = task.task.start_at;
+    let initial_completed = task.task.completed_at.is_some();
     let tags = task.tags.clone();
 
+    let start_at_display = start_at.map(|dt| {
+        dt.format("%b %-d, %-I:%M %p").to_string()
+    });
+
+    let has_start_at = start_at.is_some();
+
+    let (is_completed, set_is_completed) = signal(initial_completed);
     let (editing, set_editing) = signal(false);
     let (menu_open, set_menu_open) = signal(false);
+    let (popover_open, set_popover_open) = signal(false);
+
+    let picked_date = RwSignal::new(String::new());
+    let picked_time = RwSignal::new("09:00".to_string());
+
+    let initial_date = start_at
+        .map(|dt| dt.format("%Y-%m-%d").to_string())
+        .unwrap_or_default();
+    let initial_time = start_at
+        .map(|dt| dt.format("%H:%M").to_string())
+        .unwrap_or_else(|| "09:00".to_string());
 
     let edit_title = title.clone();
     let edit_body = body.clone();
 
     let on_delete = std::sync::Arc::new(on_delete);
 
+    let on_toggle = {
+        let on_toggle_complete = on_toggle_complete.clone();
+        std::sync::Arc::new(move || {
+            let was_completed = is_completed.get_untracked();
+            set_is_completed.set(!was_completed);
+            on_toggle_complete(task_id, was_completed);
+        })
+    };
+
     let on_save = {
         let on_update = on_update.clone();
-        std::sync::Arc::new(move |new_title: String, new_body: Option<String>| {
-            set_editing.set(false);
-            on_update(task_id, new_title, new_body);
-        })
+        std::sync::Arc::new(
+            move |new_title: String, new_body: Option<String>| {
+                set_editing.set(false);
+                on_update(task_id, new_title, new_body);
+            },
+        )
     };
 
     let on_cancel_edit = move || {
@@ -54,26 +85,59 @@ where
                 let body = body.clone();
                 let project_title = project_title.clone();
                 let tags = tags.clone();
-                let on_complete = on_complete.clone();
+                let on_toggle = on_toggle.clone();
                 let on_delete = on_delete.clone();
+                let start_at_display = start_at_display.clone();
+                let initial_date = initial_date.clone();
+                let initial_time = initial_time.clone();
                 move || {
                     let title = title.clone();
                     let body = body.clone();
                     let project_title = project_title.clone();
                     let tags = tags.clone();
-                    let on_complete = on_complete.clone();
+                    let on_toggle = on_toggle.clone();
                     let on_delete = on_delete.clone();
+                    let start_at_display = start_at_display.clone();
+                    let initial_date = initial_date.clone();
+                    let initial_time = initial_time.clone();
                     view! {
                         <div class="group border-b border-border px-3 py-2 \
                                     hover:bg-white/10 transition-colors">
                             <div class="flex items-center gap-2">
-                                {if is_completed {
-                                    view! {
+                                <button
+                                    on:click={
+                                        let on_toggle = on_toggle.clone();
+                                        move |_| on_toggle()
+                                    }
+                                    class="flex-shrink-0"
+                                    aria-label=move || {
+                                        if is_completed.get() {
+                                            "Mark task incomplete"
+                                        } else {
+                                            "Complete task"
+                                        }
+                                    }
+                                >
+                                    <Show
+                                        when=move || is_completed.get()
+                                        fallback=move || {
+                                            view! {
+                                                <div class="w-4 h-4 \
+                                                            rounded-full \
+                                                            border-2 \
+                                                            border-text-secondary \
+                                                            hover:border-accent \
+                                                            hover:bg-accent \
+                                                            transition-colors" />
+                                            }
+                                        }
+                                    >
                                         <div class="w-4 h-4 rounded-full \
                                                     bg-text-tertiary \
-                                                    flex-shrink-0 flex \
-                                                    items-center \
-                                                    justify-center">
+                                                    hover:bg-text-secondary \
+                                                    flex items-center \
+                                                    justify-center \
+                                                    transition-colors">
                                             <svg
                                                 xmlns="http://www.w3.org/2000/svg"
                                                 width="10"
@@ -91,31 +155,16 @@ where
                                                 />
                                             </svg>
                                         </div>
-                                    }.into_any()
-                                } else {
-                                    let on_complete = on_complete.clone();
-                                    view! {
-                                        <button
-                                            on:click=move |_| {
-                                                on_complete(task_id)
-                                            }
-                                            class="w-4 h-4 rounded-full \
-                                                   border-2 \
-                                                   border-text-secondary \
-                                                   hover:border-accent \
-                                                   hover:bg-accent \
-                                                   transition-colors \
-                                                   flex-shrink-0"
-                                            aria-label="Complete task"
-                                        />
-                                    }.into_any()
-                                }}
-                                <span class={if is_completed {
-                                    "flex-1 text-sm text-text-tertiary \
-                                     line-through"
-                                } else {
-                                    "flex-1 text-sm text-text-primary"
-                                }}>
+                                    </Show>
+                                </button>
+                                <span class=move || {
+                                    if is_completed.get() {
+                                        "flex-1 text-sm text-text-tertiary \
+                                         line-through"
+                                    } else {
+                                        "flex-1 text-sm text-text-primary"
+                                    }
+                                }>
                                     {title}
                                 </span>
                                 <div class="opacity-0 group-hover:opacity-100 \
@@ -184,57 +233,344 @@ where
                                     }
                                 })}
 
-                            {(!project_title.is_none()
-                                || due_date.is_some()
-                                || completed_at.is_some()
-                                || !tags.is_empty())
-                            .then(move || {
-                                let project_title = project_title.clone();
-                                let tags = tags.clone();
-                                view! {
-                                    <div class="mt-0.5 ml-6 flex items-center \
-                                                gap-2 text-xs text-text-tertiary">
-                                        {project_title
-                                            .map(|p| {
-                                                view! {
-                                                    <span class="text-text-secondary">
-                                                        {p}
-                                                    </span>
+                            // Meta row
+                            <div class="mt-0.5 ml-6 flex items-center \
+                                        gap-2 text-xs text-text-tertiary">
+                                // Date picker
+                                <div class="relative inline-flex">
+                                    {if has_start_at {
+                                        let display =
+                                            start_at_display.clone()
+                                                .unwrap_or_default();
+                                        view! {
+                                            <button
+                                                class="inline-flex \
+                                                       items-center \
+                                                       gap-1 text-accent \
+                                                       hover:bg-bg-tertiary \
+                                                       px-1.5 py-0.5 \
+                                                       rounded \
+                                                       transition-colors"
+                                                on:click={
+                                                    let id =
+                                                        initial_date.clone();
+                                                    let it =
+                                                        initial_time.clone();
+                                                    move |_| {
+                                                        picked_date.set(
+                                                            id.clone(),
+                                                        );
+                                                        picked_time.set(
+                                                            it.clone(),
+                                                        );
+                                                        set_popover_open
+                                                            .update(
+                                                                |o| *o = !*o,
+                                                            );
+                                                    }
                                                 }
-                                            })}
-                                        {due_date
-                                            .map(|d| {
-                                                view! {
-                                                    <span>{format!("Due {d}")}</span>
+                                            >
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    width="12" height="12"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                >
+                                                    <rect
+                                                        x="3" y="4"
+                                                        width="18"
+                                                        height="18"
+                                                        rx="2" ry="2"
+                                                    />
+                                                    <line
+                                                        x1="16" y1="2"
+                                                        x2="16" y2="6"
+                                                    />
+                                                    <line
+                                                        x1="8" y1="2"
+                                                        x2="8" y2="6"
+                                                    />
+                                                    <line
+                                                        x1="3" y1="10"
+                                                        x2="21" y2="10"
+                                                    />
+                                                </svg>
+                                                {display}
+                                                <span
+                                                    class="hover:text-text-primary \
+                                                           ml-0.5 \
+                                                           cursor-pointer"
+                                                    on:click=move |ev| {
+                                                        ev.stop_propagation();
+                                                        if let Some(cb) =
+                                                            on_clear_start_at
+                                                        {
+                                                            cb.run(task_id);
+                                                        }
+                                                    }
+                                                >
+                                                    "\u{00d7}"
+                                                </span>
+                                            </button>
+                                        }.into_any()
+                                    } else {
+                                        view! {
+                                            <button
+                                                class="inline-flex \
+                                                       items-center \
+                                                       gap-1 \
+                                                       text-text-tertiary \
+                                                       hover:text-text-secondary \
+                                                       hover:bg-bg-tertiary \
+                                                       px-1.5 py-0.5 \
+                                                       rounded \
+                                                       transition-colors \
+                                                       opacity-0 \
+                                                       group-hover:opacity-100"
+                                                on:click=move |_| {
+                                                    picked_date.set(
+                                                        String::new(),
+                                                    );
+                                                    picked_time.set(
+                                                        "09:00".to_string(),
+                                                    );
+                                                    set_popover_open
+                                                        .update(
+                                                            |o| *o = !*o,
+                                                        );
                                                 }
-                                            })}
-                                        {completed_at
-                                            .map(|d| {
-                                                view! {
-                                                    <span>
-                                                        {format!(
-                                                            "Completed {}",
-                                                            d.format("%Y-%m-%d"),
-                                                        )}
-                                                    </span>
-                                                }
-                                            })}
-                                        {tags
-                                            .into_iter()
-                                            .map(|tag| {
-                                                view! {
-                                                    <span class="bg-bg-tertiary \
-                                                                 text-text-secondary \
-                                                                 text-xs px-2 py-0.5 \
-                                                                 rounded-full">
-                                                        {tag}
-                                                    </span>
-                                                }
-                                            })
-                                            .collect::<Vec<_>>()}
-                                    </div>
-                                }
-                            })}
+                                            >
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    width="12" height="12"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                >
+                                                    <rect
+                                                        x="3" y="4"
+                                                        width="18"
+                                                        height="18"
+                                                        rx="2" ry="2"
+                                                    />
+                                                    <line
+                                                        x1="16" y1="2"
+                                                        x2="16" y2="6"
+                                                    />
+                                                    <line
+                                                        x1="8" y1="2"
+                                                        x2="8" y2="6"
+                                                    />
+                                                    <line
+                                                        x1="3" y1="10"
+                                                        x2="21" y2="10"
+                                                    />
+                                                </svg>
+                                                "Date"
+                                            </button>
+                                        }.into_any()
+                                    }}
+                                    // Date/time popover
+                                    <Show when=move || popover_open.get()>
+                                        <div
+                                            class="fixed inset-0 z-40"
+                                            on:click=move |_| {
+                                                set_popover_open
+                                                    .set(false);
+                                            }
+                                        />
+                                        <div class="absolute top-full \
+                                                    left-0 mt-1 z-50 \
+                                                    bg-bg-secondary \
+                                                    border border-border \
+                                                    rounded-lg shadow-lg \
+                                                    p-3 w-[220px]">
+                                            <div class="flex flex-col \
+                                                        gap-2">
+                                                <label class="text-xs \
+                                                    text-text-secondary">
+                                                    "Date"
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    class="bg-bg-input \
+                                                           border \
+                                                           border-border \
+                                                           rounded px-2 \
+                                                           py-1.5 text-sm \
+                                                           text-text-primary \
+                                                           w-full \
+                                                           focus:outline-none \
+                                                           focus:border-accent"
+                                                    bind:value=picked_date
+                                                    on:change:target=move |ev| {
+                                                        picked_date.set(
+                                                            ev.target().value(),
+                                                        );
+                                                    }
+                                                />
+                                                <label class="text-xs \
+                                                    text-text-secondary">
+                                                    "Time"
+                                                </label>
+                                                <input
+                                                    type="time"
+                                                    class="bg-bg-input \
+                                                           border \
+                                                           border-border \
+                                                           rounded px-2 \
+                                                           py-1.5 text-sm \
+                                                           text-text-primary \
+                                                           w-full \
+                                                           focus:outline-none \
+                                                           focus:border-accent"
+                                                    bind:value=picked_time
+                                                    on:change:target=move |ev| {
+                                                        picked_time.set(
+                                                            ev.target().value(),
+                                                        );
+                                                    }
+                                                />
+                                                <div class="flex \
+                                                            items-center \
+                                                            gap-2 mt-1 \
+                                                            pt-2 border-t \
+                                                            border-border">
+                                                    {has_start_at
+                                                        .then(|| {
+                                                        view! {
+                                                            <button
+                                                                class="\
+                                                                    text-xs \
+                                                                    text-text-tertiary \
+                                                                    hover:text-accent \
+                                                                    transition-colors"
+                                                                on:click=move |_| {
+                                                                    set_popover_open
+                                                                        .set(
+                                                                            false,
+                                                                        );
+                                                                    if let Some(
+                                                                        cb,
+                                                                    ) =
+                                                                        on_clear_start_at
+                                                                    {
+                                                                        cb.run(
+                                                                            task_id,
+                                                                        );
+                                                                    }
+                                                                }
+                                                            >
+                                                                "Remove"
+                                                            </button>
+                                                        }
+                                                    })}
+                                                    <div class="flex-1" />
+                                                    <button
+                                                        class="text-xs \
+                                                            text-text-secondary \
+                                                            hover:text-text-primary \
+                                                            px-2 py-1 \
+                                                            rounded \
+                                                            transition-colors"
+                                                        on:click=move |_| {
+                                                            set_popover_open
+                                                                .set(false);
+                                                        }
+                                                    >
+                                                        "Cancel"
+                                                    </button>
+                                                    <button
+                                                        class="text-xs \
+                                                            bg-accent \
+                                                            hover:bg-accent-hover \
+                                                            text-white \
+                                                            px-3 py-1 \
+                                                            rounded \
+                                                            transition-colors"
+                                                        on:click=move |_| {
+                                                            let d =
+                                                                picked_date
+                                                                .get_untracked();
+                                                            let t =
+                                                                picked_time
+                                                                .get_untracked();
+                                                            if !d.is_empty() {
+                                                                let time =
+                                                                    if t
+                                                                        .is_empty()
+                                                                    {
+                                                                        "09:00"
+                                                                        .to_string()
+                                                                    } else {
+                                                                        t
+                                                                    };
+                                                                let val =
+                                                                    format!(
+                                                                    "{d}T{time}",
+                                                                );
+                                                                set_popover_open
+                                                                    .set(
+                                                                        false,
+                                                                    );
+                                                                if let Some(
+                                                                    cb,
+                                                                ) =
+                                                                    on_set_start_at
+                                                                {
+                                                                    cb.run((
+                                                                        task_id,
+                                                                        val,
+                                                                    ));
+                                                                }
+                                                            }
+                                                        }
+                                                    >
+                                                        "Save"
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Show>
+                                </div>
+
+                                {project_title.clone().map(|p| {
+                                    view! {
+                                        <span class="text-text-secondary">
+                                            {p}
+                                        </span>
+                                    }
+                                })}
+                                {due_date.map(|d| {
+                                    view! {
+                                        <span>{format!("Due {d}")}</span>
+                                    }
+                                })}
+                                <Show when=move || is_completed.get()>
+                                    <span>"Completed"</span>
+                                </Show>
+                                {tags.clone()
+                                    .into_iter()
+                                    .map(|tag| {
+                                        view! {
+                                            <span class="bg-bg-tertiary \
+                                                         text-text-secondary \
+                                                         text-xs px-2 \
+                                                         py-0.5 \
+                                                         rounded-full">
+                                                {tag}
+                                            </span>
+                                        }
+                                    })
+                                    .collect::<Vec<_>>()}
+                            </div>
                         </div>
                     }
                 }

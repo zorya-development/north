@@ -11,7 +11,7 @@ use crate::pages;
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
         <!DOCTYPE html>
-        <html lang="en">
+        <html lang="en" style="color-scheme: dark">
             <head>
                 <meta charset="utf-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -44,6 +44,16 @@ pub fn App() -> impl IntoView {
                         view! {
                             <components::layout::AppLayout>
                                 <pages::inbox::InboxPage/>
+                            </components::layout::AppLayout>
+                        }
+                    }
+                />
+                <Route
+                    path=path!("/today")
+                    view=|| {
+                        view! {
+                            <components::layout::AppLayout>
+                                <pages::today::TodayPage/>
                             </components::layout::AppLayout>
                         }
                     }

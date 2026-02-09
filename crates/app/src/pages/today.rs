@@ -1,12 +1,14 @@
 use leptos::prelude::*;
-use north_domain::{Task, TaskWithMeta};
+use north_domain::TaskWithMeta;
 
 use crate::components::task_card::TaskCard;
-use crate::components::task_form::InlineTaskForm;
-use crate::pages::today::{clear_task_start_at, set_task_start_at};
+use crate::pages::inbox::{
+    complete_inbox_task, delete_inbox_task, uncomplete_task,
+    update_inbox_task,
+};
 
-#[server(GetInboxTasks, "/api")]
-pub async fn get_inbox_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
+#[server(GetTodayTasks, "/api")]
+pub async fn get_today_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
     let pool = expect_context::<sqlx::PgPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
 
@@ -27,6 +29,8 @@ pub async fn get_inbox_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
         reviewed_at: Option<chrono::DateTime<chrono::Utc>>,
         created_at: chrono::DateTime<chrono::Utc>,
         updated_at: chrono::DateTime<chrono::Utc>,
+        project_title: Option<String>,
+        column_name: Option<String>,
         subtask_count: Option<i64>,
         tags: Option<serde_json::Value>,
     }
@@ -36,15 +40,21 @@ pub async fn get_inbox_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
          t.title, t.body, t.position, t.sequential_limit, \
          t.start_at, t.due_date, t.completed_at, t.reviewed_at, \
          t.created_at, t.updated_at, \
-         (SELECT count(*) FROM tasks s WHERE s.parent_id = t.id) as subtask_count, \
+         p.title as project_title, \
+         pc.name as column_name, \
+         (SELECT count(*) FROM tasks s WHERE s.parent_id = t.id) \
+             as subtask_count, \
          (SELECT json_agg(tg.name) FROM task_tags tt \
-          JOIN tags tg ON tg.id = tt.tag_id WHERE tt.task_id = t.id) as tags \
+          JOIN tags tg ON tg.id = tt.tag_id \
+          WHERE tt.task_id = t.id) as tags \
          FROM tasks t \
-         WHERE t.project_id IS NULL \
-           AND t.parent_id IS NULL \
-           AND t.user_id = $1 \
+         LEFT JOIN projects p ON p.id = t.project_id \
+         LEFT JOIN project_columns pc ON pc.id = t.column_id \
+         WHERE t.user_id = $1 \
+           AND t.start_at IS NOT NULL \
+           AND t.start_at::date <= CURRENT_DATE \
            AND t.completed_at IS NULL \
-         ORDER BY t.position",
+         ORDER BY t.start_at ASC",
     )
     .bind(user_id)
     .fetch_all(&pool)
@@ -60,7 +70,7 @@ pub async fn get_inbox_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
                 .unwrap_or_default();
 
             TaskWithMeta {
-                task: Task {
+                task: north_domain::Task {
                     id: row.id,
                     project_id: row.project_id,
                     parent_id: row.parent_id,
@@ -77,8 +87,8 @@ pub async fn get_inbox_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
                     created_at: row.created_at,
                     updated_at: row.updated_at,
                 },
-                project_title: None,
-                column_name: None,
+                project_title: row.project_title,
+                column_name: row.column_name,
                 tags,
                 subtask_count: row.subtask_count.unwrap_or(0),
                 actionable: true,
@@ -89,96 +99,33 @@ pub async fn get_inbox_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
     Ok(tasks)
 }
 
-#[server(CreateInboxTask, "/api")]
-pub async fn create_inbox_task(
-    title: String,
-    body: Option<String>,
-) -> Result<Task, ServerFnError> {
-    let pool = expect_context::<sqlx::PgPool>();
-    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
-
-    let max_pos: Option<i32> = sqlx::query_scalar(
-        "SELECT MAX(position) FROM tasks \
-         WHERE user_id = $1 AND project_id IS NULL AND parent_id IS NULL",
-    )
-    .bind(user_id)
-    .fetch_one(&pool)
-    .await
-    .map_err(|e| ServerFnError::new(e.to_string()))?;
-
-    let position = max_pos.unwrap_or(0) + 1;
-    let body = body.filter(|b| !b.trim().is_empty());
-
-    #[derive(sqlx::FromRow)]
-    struct InsertedTask {
-        id: i64,
-        project_id: Option<i64>,
-        parent_id: Option<i64>,
-        column_id: Option<i64>,
-        user_id: i64,
-        title: String,
-        body: Option<String>,
-        position: i32,
-        sequential_limit: i16,
-        start_at: Option<chrono::DateTime<chrono::Utc>>,
-        due_date: Option<chrono::NaiveDate>,
-        completed_at: Option<chrono::DateTime<chrono::Utc>>,
-        reviewed_at: Option<chrono::DateTime<chrono::Utc>>,
-        created_at: chrono::DateTime<chrono::Utc>,
-        updated_at: chrono::DateTime<chrono::Utc>,
-    }
-
-    let row = sqlx::query_as::<_, InsertedTask>(
-        "INSERT INTO tasks (user_id, title, body, position, sequential_limit) \
-         VALUES ($1, $2, $3, $4, 1) \
-         RETURNING id, project_id, parent_id, column_id, user_id, \
-         title, body, position, sequential_limit, \
-         start_at, due_date, completed_at, reviewed_at, \
-         created_at, updated_at",
-    )
-    .bind(user_id)
-    .bind(&title)
-    .bind(&body)
-    .bind(position)
-    .fetch_one(&pool)
-    .await
-    .map_err(|e| ServerFnError::new(e.to_string()))?;
-
-    Ok(Task {
-        id: row.id,
-        project_id: row.project_id,
-        parent_id: row.parent_id,
-        column_id: row.column_id,
-        user_id: row.user_id,
-        title: row.title,
-        body: row.body,
-        position: row.position,
-        sequential_limit: row.sequential_limit,
-        start_at: row.start_at,
-        due_date: row.due_date,
-        completed_at: row.completed_at,
-        reviewed_at: row.reviewed_at,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
-    })
-}
-
-#[server(UpdateInboxTask, "/api")]
-pub async fn update_inbox_task(
+#[server(SetTaskStartAt, "/api")]
+pub async fn set_task_start_at(
     id: i64,
-    title: String,
-    body: Option<String>,
+    start_at: String,
 ) -> Result<(), ServerFnError> {
     let pool = expect_context::<sqlx::PgPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
-    let body = body.filter(|b| !b.trim().is_empty());
+
+    let dt = chrono::NaiveDateTime::parse_from_str(
+        &start_at,
+        "%Y-%m-%dT%H:%M",
+    )
+    .or_else(|_| {
+        chrono::NaiveDateTime::parse_from_str(
+            &start_at,
+            "%Y-%m-%dT%H:%M:%S",
+        )
+    })
+    .map_err(|e| ServerFnError::new(format!("Invalid datetime: {e}")))?;
+
+    let dt_utc = dt.and_utc();
 
     let result = sqlx::query(
-        "UPDATE tasks SET title = $1, body = $2, updated_at = now() \
-         WHERE id = $3 AND user_id = $4",
+        "UPDATE tasks SET start_at = $1 \
+         WHERE id = $2 AND user_id = $3",
     )
-    .bind(&title)
-    .bind(&body)
+    .bind(dt_utc)
     .bind(id)
     .bind(user_id)
     .execute(&pool)
@@ -192,57 +139,14 @@ pub async fn update_inbox_task(
     Ok(())
 }
 
-#[server(CompleteInboxTask, "/api")]
-pub async fn complete_inbox_task(id: i64) -> Result<(), ServerFnError> {
+#[server(ClearTaskStartAt, "/api")]
+pub async fn clear_task_start_at(id: i64) -> Result<(), ServerFnError> {
     let pool = expect_context::<sqlx::PgPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
 
     let result = sqlx::query(
-        "UPDATE tasks SET completed_at = now() \
-         WHERE id = $1 AND user_id = $2 AND completed_at IS NULL",
-    )
-    .bind(id)
-    .bind(user_id)
-    .execute(&pool)
-    .await
-    .map_err(|e| ServerFnError::new(e.to_string()))?;
-
-    if result.rows_affected() == 0 {
-        return Err(ServerFnError::new("Task not found".to_string()));
-    }
-
-    Ok(())
-}
-
-#[server(UncompleteTask, "/api")]
-pub async fn uncomplete_task(id: i64) -> Result<(), ServerFnError> {
-    let pool = expect_context::<sqlx::PgPool>();
-    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
-
-    let result = sqlx::query(
-        "UPDATE tasks SET completed_at = NULL \
-         WHERE id = $1 AND user_id = $2 AND completed_at IS NOT NULL",
-    )
-    .bind(id)
-    .bind(user_id)
-    .execute(&pool)
-    .await
-    .map_err(|e| ServerFnError::new(e.to_string()))?;
-
-    if result.rows_affected() == 0 {
-        return Err(ServerFnError::new("Task not found".to_string()));
-    }
-
-    Ok(())
-}
-
-#[server(DeleteInboxTask, "/api")]
-pub async fn delete_inbox_task(id: i64) -> Result<(), ServerFnError> {
-    let pool = expect_context::<sqlx::PgPool>();
-    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
-
-    let result = sqlx::query(
-        "DELETE FROM tasks WHERE id = $1 AND user_id = $2",
+        "UPDATE tasks SET start_at = NULL \
+         WHERE id = $1 AND user_id = $2",
     )
     .bind(id)
     .bind(user_id)
@@ -258,14 +162,8 @@ pub async fn delete_inbox_task(id: i64) -> Result<(), ServerFnError> {
 }
 
 #[component]
-pub fn InboxPage() -> impl IntoView {
-    let inbox_tasks = Resource::new(|| (), |_| get_inbox_tasks());
-
-    let create_action =
-        Action::new(|input: &(String, Option<String>)| {
-            let (title, body) = input.clone();
-            create_inbox_task(title, body)
-        });
+pub fn TodayPage() -> impl IntoView {
+    let today_tasks = Resource::new(|| (), |_| get_today_tasks());
 
     let update_action =
         Action::new(|input: &(i64, String, Option<String>)| {
@@ -300,38 +198,40 @@ pub fn InboxPage() -> impl IntoView {
     });
 
     Effect::new(move || {
-        if let Some(Ok(_)) = create_action.value().get() {
-            inbox_tasks.refetch();
-        }
-    });
-
-    Effect::new(move || {
         if let Some(Ok(_)) = update_action.value().get() {
-            inbox_tasks.refetch();
+            today_tasks.refetch();
         }
     });
 
     Effect::new(move || {
         if let Some(Ok(_)) = delete_action.value().get() {
-            inbox_tasks.refetch();
+            today_tasks.refetch();
+        }
+    });
+
+    Effect::new(move || {
+        if let Some(Ok(_)) = complete_action.value().get() {
+            today_tasks.refetch();
+        }
+    });
+
+    Effect::new(move || {
+        if let Some(Ok(_)) = uncomplete_action.value().get() {
+            today_tasks.refetch();
         }
     });
 
     Effect::new(move || {
         if let Some(Ok(_)) = set_start_at_action.value().get() {
-            inbox_tasks.refetch();
+            today_tasks.refetch();
         }
     });
 
     Effect::new(move || {
         if let Some(Ok(_)) = clear_start_at_action.value().get() {
-            inbox_tasks.refetch();
+            today_tasks.refetch();
         }
     });
-
-    let on_create = move |title: String, body: Option<String>| {
-        create_action.dispatch((title, body));
-    };
 
     let on_toggle_complete = move |id: i64, was_completed: bool| {
         if was_completed {
@@ -361,9 +261,7 @@ pub fn InboxPage() -> impl IntoView {
 
     view! {
         <div class="space-y-4">
-            <h1 class="text-xl font-semibold text-text-primary">"Inbox"</h1>
-
-            <InlineTaskForm on_submit=on_create/>
+            <h1 class="text-xl font-semibold text-text-primary">"Today"</h1>
 
             <Suspense fallback=move || {
                 view! {
@@ -377,14 +275,13 @@ pub fn InboxPage() -> impl IntoView {
                     let on_delete = on_delete.clone();
                     let on_update = on_update.clone();
                     Suspend::new(async move {
-                        match inbox_tasks.await {
+                        match today_tasks.await {
                             Ok(tasks) => {
                                 if tasks.is_empty() {
                                     view! {
                                         <div class="text-sm text-text-secondary \
                                                     py-8 text-center">
-                                            "No tasks in your inbox. \
-                                             Add one above."
+                                            "No tasks scheduled for today."
                                         </div>
                                     }
                                         .into_any()
