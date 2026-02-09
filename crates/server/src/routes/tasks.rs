@@ -21,7 +21,7 @@ struct TaskRow {
     start_at: Option<chrono::DateTime<chrono::Utc>>,
     due_date: Option<chrono::NaiveDate>,
     completed_at: Option<chrono::DateTime<chrono::Utc>>,
-    reviewed_at: Option<chrono::DateTime<chrono::Utc>>,
+    reviewed_at: Option<chrono::NaiveDate>,
     created_at: chrono::DateTime<chrono::Utc>,
     updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -40,7 +40,7 @@ struct TaskWithMetaRow {
     start_at: Option<chrono::DateTime<chrono::Utc>>,
     due_date: Option<chrono::NaiveDate>,
     completed_at: Option<chrono::DateTime<chrono::Utc>>,
-    reviewed_at: Option<chrono::DateTime<chrono::Utc>>,
+    reviewed_at: Option<chrono::NaiveDate>,
     created_at: chrono::DateTime<chrono::Utc>,
     updated_at: chrono::DateTime<chrono::Utc>,
     project_title: Option<String>,
@@ -172,8 +172,8 @@ pub async fn list_tasks(
 
     if filter.review_due == Some(true) {
         conditions.push(
-            "(t.reviewed_at IS NULL OR t.reviewed_at < \
-             now() - (SELECT (u.settings->>'review_interval_days')::int \
+            "(t.reviewed_at IS NULL OR t.reviewed_at <= \
+             CURRENT_DATE - (SELECT (u.settings->>'review_interval_days')::int \
              FROM users u WHERE u.id = t.user_id) * INTERVAL '1 day')"
                 .to_string(),
         );
@@ -532,7 +532,7 @@ pub async fn review_task(
     Path(id): Path<i64>,
 ) -> Result<Json<Task>, AppError> {
     let row = sqlx::query_as::<_, TaskRow>(
-        "UPDATE tasks SET reviewed_at = now() \
+        "UPDATE tasks SET reviewed_at = CURRENT_DATE \
          WHERE id = $1 AND user_id = $2 \
          RETURNING id, project_id, parent_id, column_id, user_id, \
          title, body, position, sequential_limit, start_at, due_date, \

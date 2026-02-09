@@ -15,7 +15,7 @@ pub struct Task {
     pub start_at: Option<DateTime<Utc>>,
     pub due_date: Option<NaiveDate>,
     pub completed_at: Option<DateTime<Utc>>,
-    pub reviewed_at: Option<DateTime<Utc>>,
+    pub reviewed_at: Option<NaiveDate>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

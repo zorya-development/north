@@ -15,6 +15,8 @@ pub fn TaskCard(
     on_clear_start_at: Callback<i64>,
     on_set_project: Callback<(i64, i64)>,
     on_clear_project: Callback<i64>,
+    on_review: Callback<i64>,
+    #[prop(default = false)] show_review: bool,
 ) -> impl IntoView {
     let task_id = task.task.id;
     let title = task.task.title.clone();
@@ -23,6 +25,7 @@ pub fn TaskCard(
     let project_title = task.project_title.clone();
     let due_date = task.task.due_date;
     let start_at = task.task.start_at;
+    let reviewed_at = task.task.reviewed_at;
     let initial_completed = task.task.completed_at.is_some();
     let tags = task.tags.clone();
 
@@ -54,6 +57,7 @@ pub fn TaskCard(
             project_title=project_title
             due_date=due_date
             start_at=start_at
+            reviewed_at=reviewed_at
             tags=tags
             is_completed=is_completed
             editing=editing
@@ -67,6 +71,8 @@ pub fn TaskCard(
             on_clear_start_at=on_clear_start_at
             on_set_project=on_set_project
             on_clear_project=on_clear_project
+            on_review=on_review
+            show_review=show_review
         />
     }
 }

@@ -13,6 +13,8 @@ pub fn TaskListView(
     on_clear_start_at: Callback<i64>,
     on_set_project: Callback<(i64, i64)>,
     on_clear_project: Callback<i64>,
+    on_review: Callback<i64>,
+    #[prop(default = false)] show_review: bool,
     #[prop(default = "No tasks.")] empty_message: &'static str,
 ) -> impl IntoView {
     view! {
@@ -51,6 +53,8 @@ pub fn TaskListView(
                                                         on_clear_start_at=on_clear_start_at
                                                         on_set_project=on_set_project
                                                         on_clear_project=on_clear_project
+                                                        on_review=on_review
+                                                        show_review=show_review
                                                     />
                                                 }
                                             })

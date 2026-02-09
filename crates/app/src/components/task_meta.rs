@@ -16,6 +16,8 @@ pub fn TaskMeta(
     on_clear_start_at: Callback<i64>,
     on_set_project: Callback<(i64, i64)>,
     on_clear_project: Callback<i64>,
+    #[prop(default = None)] reviewed_at: Option<chrono::NaiveDate>,
+    #[prop(default = false)] show_review: bool,
 ) -> impl IntoView {
     view! {
         <div class="mt-0.5 ml-6 flex items-center gap-2 text-xs \
@@ -52,6 +54,18 @@ pub fn TaskMeta(
                     }
                 })
                 .collect::<Vec<_>>()}
+            {if show_review {
+                Some(view! {
+                    <span class="ml-auto whitespace-nowrap">
+                        {match reviewed_at {
+                            Some(d) => format!("Reviewed {d}"),
+                            None => "Never reviewed".to_string(),
+                        }}
+                    </span>
+                })
+            } else {
+                None
+            }}
         </div>
     }
 }

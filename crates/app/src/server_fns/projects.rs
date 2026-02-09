@@ -264,7 +264,7 @@ pub async fn get_project_tasks(
         start_at: Option<chrono::DateTime<chrono::Utc>>,
         due_date: Option<chrono::NaiveDate>,
         completed_at: Option<chrono::DateTime<chrono::Utc>>,
-        reviewed_at: Option<chrono::DateTime<chrono::Utc>>,
+        reviewed_at: Option<chrono::NaiveDate>,
         created_at: chrono::DateTime<chrono::Utc>,
         updated_at: chrono::DateTime<chrono::Utc>,
         project_title: Option<String>,

@@ -18,6 +18,7 @@ pub fn TaskCardView(
     project_title: Option<String>,
     due_date: Option<chrono::NaiveDate>,
     start_at: Option<chrono::DateTime<chrono::Utc>>,
+    reviewed_at: Option<chrono::NaiveDate>,
     tags: Vec<String>,
     is_completed: ReadSignal<bool>,
     editing: ReadSignal<bool>,
@@ -31,6 +32,8 @@ pub fn TaskCardView(
     on_clear_start_at: Callback<i64>,
     on_set_project: Callback<(i64, i64)>,
     on_clear_project: Callback<i64>,
+    on_review: Callback<i64>,
+    #[prop(default = false)] show_review: bool,
 ) -> impl IntoView {
     let edit_title = title.clone();
     let edit_body = body.clone();
@@ -70,6 +73,26 @@ pub fn TaskCardView(
                                 }>
                                     {title}
                                 </span>
+                                {if show_review {
+                                    Some(view! {
+                                        <button
+                                            on:click=move |ev| {
+                                                ev.stop_propagation();
+                                                on_review.run(task_id);
+                                            }
+                                            class="px-2 py-0.5 text-xs rounded \
+                                                   border border-border \
+                                                   text-text-secondary \
+                                                   hover:bg-bg-tertiary \
+                                                   hover:text-text-primary \
+                                                   transition-colors"
+                                        >
+                                            "Reviewed"
+                                        </button>
+                                    })
+                                } else {
+                                    None
+                                }}
                                 <div class="opacity-0 group-hover:opacity-100 \
                                             transition-opacity">
                                     <DropdownMenu
@@ -142,6 +165,8 @@ pub fn TaskCardView(
                                 on_clear_start_at=on_clear_start_at
                                 on_set_project=on_set_project
                                 on_clear_project=on_clear_project
+                                reviewed_at=reviewed_at
+                                show_review=show_review
                             />
                         </div>
                     }

@@ -13,6 +13,7 @@ pub struct TaskStore {
     pub on_clear_start_at: Callback<i64>,
     pub on_set_project: Callback<(i64, i64)>,
     pub on_clear_project: Callback<i64>,
+    pub on_review: Callback<i64>,
 }
 
 impl TaskStore {
@@ -55,6 +56,11 @@ impl TaskStore {
         let clear_project_action = Action::new(|id: &i64| {
             let id = *id;
             clear_task_project(id)
+        });
+
+        let review_action = Action::new(|id: &i64| {
+            let id = *id;
+            review_task(id)
         });
 
         Effect::new(move || {
@@ -105,6 +111,12 @@ impl TaskStore {
             }
         });
 
+        Effect::new(move || {
+            if let Some(Ok(_)) = review_action.value().get() {
+                resource.refetch();
+            }
+        });
+
         Self {
             on_toggle_complete: Callback::new(move |(id, was_completed): (i64, bool)| {
                 if was_completed {
@@ -130,6 +142,9 @@ impl TaskStore {
             }),
             on_clear_project: Callback::new(move |id: i64| {
                 clear_project_action.dispatch(id);
+            }),
+            on_review: Callback::new(move |id: i64| {
+                review_action.dispatch(id);
             }),
         }
     }

@@ -146,7 +146,7 @@ pub async fn create_task(title: String, body: Option<String>) -> Result<Task, Se
         start_at: Option<chrono::DateTime<chrono::Utc>>,
         due_date: Option<chrono::NaiveDate>,
         completed_at: Option<chrono::DateTime<chrono::Utc>>,
-        reviewed_at: Option<chrono::DateTime<chrono::Utc>>,
+        reviewed_at: Option<chrono::NaiveDate>,
         created_at: chrono::DateTime<chrono::Utc>,
         updated_at: chrono::DateTime<chrono::Utc>,
     }
@@ -329,6 +329,89 @@ pub async fn clear_task_start_at(id: i64) -> Result<(), ServerFnError> {
     Ok(())
 }
 
+// ── Review server functions ─────────────────────────────────────────
+
+#[server(GetReviewTasksFn, "/api")]
+pub async fn get_review_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
+    let pool = expect_context::<sqlx::PgPool>();
+    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
+
+    let rows = sqlx::query_as::<_, FullTaskRow>(
+        "SELECT t.id, t.project_id, t.parent_id, t.column_id, t.user_id, \
+         t.title, t.body, t.position, t.sequential_limit, \
+         t.start_at, t.due_date, t.completed_at, t.reviewed_at, \
+         t.created_at, t.updated_at, \
+         p.title as project_title, \
+         pc.name as column_name, \
+         (SELECT count(*) FROM tasks s WHERE s.parent_id = t.id) \
+             as subtask_count, \
+         (SELECT json_agg(tg.name) FROM task_tags tt \
+          JOIN tags tg ON tg.id = tt.tag_id \
+          WHERE tt.task_id = t.id) as tags \
+         FROM tasks t \
+         LEFT JOIN projects p ON p.id = t.project_id \
+         LEFT JOIN project_columns pc ON pc.id = t.column_id \
+         WHERE t.user_id = $1 \
+           AND t.parent_id IS NULL \
+           AND t.completed_at IS NULL \
+           AND (t.project_id IS NULL OR p.archived = false) \
+           AND (t.reviewed_at IS NULL OR t.reviewed_at <= \
+                CURRENT_DATE - (SELECT (u.settings->>'review_interval_days')::int \
+                FROM users u WHERE u.id = $1) * INTERVAL '1 day') \
+         ORDER BY t.reviewed_at ASC NULLS FIRST, t.position ASC",
+    )
+    .bind(user_id)
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    Ok(rows.into_iter().map(Into::into).collect())
+}
+
+#[server(ReviewTaskFn, "/api")]
+pub async fn review_task(id: i64) -> Result<(), ServerFnError> {
+    let pool = expect_context::<sqlx::PgPool>();
+    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
+
+    let result = sqlx::query(
+        "UPDATE tasks SET reviewed_at = CURRENT_DATE \
+         WHERE id = $1 AND user_id = $2",
+    )
+    .bind(id)
+    .bind(user_id)
+    .execute(&pool)
+    .await
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    if result.rows_affected() == 0 {
+        return Err(ServerFnError::new("Task not found".to_string()));
+    }
+
+    Ok(())
+}
+
+#[server(ReviewAllTasksFn, "/api")]
+pub async fn review_all_tasks() -> Result<(), ServerFnError> {
+    let pool = expect_context::<sqlx::PgPool>();
+    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
+
+    sqlx::query(
+        "UPDATE tasks SET reviewed_at = CURRENT_DATE \
+         WHERE user_id = $1 \
+           AND parent_id IS NULL \
+           AND completed_at IS NULL \
+           AND (reviewed_at IS NULL OR reviewed_at <= \
+                CURRENT_DATE - (SELECT (u.settings->>'review_interval_days')::int \
+                FROM users u WHERE u.id = $1) * INTERVAL '1 day')",
+    )
+    .bind(user_id)
+    .execute(&pool)
+    .await
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    Ok(())
+}
+
 // ── Shared row type ─────────────────────────────────────────────────
 
 #[cfg(feature = "ssr")]
@@ -346,7 +429,7 @@ struct FullTaskRow {
     start_at: Option<chrono::DateTime<chrono::Utc>>,
     due_date: Option<chrono::NaiveDate>,
     completed_at: Option<chrono::DateTime<chrono::Utc>>,
-    reviewed_at: Option<chrono::DateTime<chrono::Utc>>,
+    reviewed_at: Option<chrono::NaiveDate>,
     created_at: chrono::DateTime<chrono::Utc>,
     updated_at: chrono::DateTime<chrono::Utc>,
     project_title: Option<String>,

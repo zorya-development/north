@@ -88,6 +88,26 @@ pub fn App() -> impl IntoView {
                         }
                     }
                 />
+                <Route
+                    path=path!("/review")
+                    view=|| {
+                        view! {
+                            <components::layout::AppLayout>
+                                <pages::review::ReviewPage/>
+                            </components::layout::AppLayout>
+                        }
+                    }
+                />
+                <Route
+                    path=path!("/settings")
+                    view=|| {
+                        view! {
+                            <components::layout::AppLayout>
+                                <pages::settings::SettingsPage/>
+                            </components::layout::AppLayout>
+                        }
+                    }
+                />
             </Routes>
         </Router>
     }
