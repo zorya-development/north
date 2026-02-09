@@ -58,6 +58,7 @@ pub async fn get_today_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
            AND t.start_at IS NOT NULL \
            AND t.start_at::date <= CURRENT_DATE \
            AND t.completed_at IS NULL \
+           AND (t.project_id IS NULL OR p.archived = false) \
          ORDER BY t.start_at ASC",
     )
     .bind(user_id)
@@ -90,6 +91,7 @@ pub async fn get_all_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
          LEFT JOIN project_columns pc ON pc.id = t.column_id \
          WHERE t.parent_id IS NULL \
            AND t.user_id = $1 \
+           AND (t.project_id IS NULL OR p.archived = false) \
          ORDER BY \
            CASE WHEN t.completed_at IS NULL THEN 0 ELSE 1 END, \
            t.position ASC, \

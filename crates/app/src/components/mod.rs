@@ -5,6 +5,7 @@ pub mod icons;
 pub mod layout;
 pub mod markdown;
 pub mod nav;
+pub mod project_picker;
 pub mod task_card;
 pub mod task_form;
 pub mod task_list;

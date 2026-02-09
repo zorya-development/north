@@ -66,7 +66,7 @@ pub fn DateTimePickerView(
                         }
                     >
                         <Icon kind=IconKind::Calendar class="w-3 h-3"/>
-                        "Date"
+                        "Start"
                     </button>
                 }
                 .into_any()

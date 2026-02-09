@@ -1,17 +1,21 @@
 use leptos::prelude::*;
 
 use crate::components::date_picker::DateTimePicker;
+use crate::components::project_picker::ProjectPicker;
 
 #[component]
 pub fn TaskMeta(
     task_id: i64,
     start_at: Option<chrono::DateTime<chrono::Utc>>,
+    project_id: Option<i64>,
     project_title: Option<String>,
     due_date: Option<chrono::NaiveDate>,
     is_completed: ReadSignal<bool>,
     tags: Vec<String>,
     on_set_start_at: Callback<(i64, String)>,
     on_clear_start_at: Callback<i64>,
+    on_set_project: Callback<(i64, i64)>,
+    on_clear_project: Callback<i64>,
 ) -> impl IntoView {
     view! {
         <div class="mt-0.5 ml-6 flex items-center gap-2 text-xs \
@@ -22,11 +26,13 @@ pub fn TaskMeta(
                 on_set_start_at=on_set_start_at
                 on_clear_start_at=on_clear_start_at
             />
-            {project_title.map(|p| {
-                view! {
-                    <span class="text-text-secondary">{p}</span>
-                }
-            })}
+            <ProjectPicker
+                task_id=task_id
+                project_id=project_id
+                project_title=project_title
+                on_set_project=on_set_project
+                on_clear_project=on_clear_project
+            />
             {due_date.map(|d| {
                 view! {
                     <span>{format!("Due {d}")}</span>

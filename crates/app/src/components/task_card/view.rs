@@ -14,6 +14,7 @@ pub fn TaskCardView(
     task_id: i64,
     title: String,
     body: Option<String>,
+    project_id: Option<i64>,
     project_title: Option<String>,
     due_date: Option<chrono::NaiveDate>,
     start_at: Option<chrono::DateTime<chrono::Utc>>,
@@ -28,6 +29,8 @@ pub fn TaskCardView(
     on_save: Arc<dyn Fn(String, Option<String>) + Send + Sync>,
     on_set_start_at: Callback<(i64, String)>,
     on_clear_start_at: Callback<i64>,
+    on_set_project: Callback<(i64, i64)>,
+    on_clear_project: Callback<i64>,
 ) -> impl IntoView {
     let edit_title = title.clone();
     let edit_body = body.clone();
@@ -130,12 +133,15 @@ pub fn TaskCardView(
                             <TaskMeta
                                 task_id=task_id
                                 start_at=start_at
+                                project_id=project_id
                                 project_title=project_title
                                 due_date=due_date
                                 is_completed=is_completed
                                 tags=tags
                                 on_set_start_at=on_set_start_at
                                 on_clear_start_at=on_clear_start_at
+                                on_set_project=on_set_project
+                                on_clear_project=on_clear_project
                             />
                         </div>
                     }

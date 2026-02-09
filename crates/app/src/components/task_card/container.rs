@@ -13,10 +13,13 @@ pub fn TaskCard(
     on_update: Callback<(i64, String, Option<String>)>,
     on_set_start_at: Callback<(i64, String)>,
     on_clear_start_at: Callback<i64>,
+    on_set_project: Callback<(i64, i64)>,
+    on_clear_project: Callback<i64>,
 ) -> impl IntoView {
     let task_id = task.task.id;
     let title = task.task.title.clone();
     let body = task.task.body.clone();
+    let project_id = task.task.project_id;
     let project_title = task.project_title.clone();
     let due_date = task.task.due_date;
     let start_at = task.task.start_at;
@@ -47,6 +50,7 @@ pub fn TaskCard(
             task_id=task_id
             title=title
             body=body
+            project_id=project_id
             project_title=project_title
             due_date=due_date
             start_at=start_at
@@ -61,6 +65,8 @@ pub fn TaskCard(
             on_save=on_save
             on_set_start_at=on_set_start_at
             on_clear_start_at=on_clear_start_at
+            on_set_project=on_set_project
+            on_clear_project=on_clear_project
         />
     }
 }

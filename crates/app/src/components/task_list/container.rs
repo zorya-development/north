@@ -18,6 +18,8 @@ pub fn TaskList(
             on_update=store.on_update
             on_set_start_at=store.on_set_start_at
             on_clear_start_at=store.on_clear_start_at
+            on_set_project=store.on_set_project
+            on_clear_project=store.on_clear_project
             empty_message=empty_message
         />
     }

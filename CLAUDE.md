@@ -70,18 +70,36 @@ north/
     │
     ├── app/                    # Leptos library (SSR + WASM hydration)
     │   └── src/
-    │       ├── lib.rs          # hydrate() entry point
+    │       ├── lib.rs          # hydrate() entry point, recursion_limit = 256
     │       ├── app.rs          # Shell, App component, router setup
     │       ├── pages/
     │       │   ├── login.rs    # LoginPage + login() server function
-    │       │   └── inbox.rs    # InboxPage (main dashboard)
+    │       │   ├── inbox.rs    # InboxPage
+    │       │   ├── today.rs    # TodayPage (tasks with start_at <= now)
+    │       │   └── all_tasks.rs # AllTasksPage
     │       ├── components/
-    │       │   ├── layout.rs   # AppLayout (sidebar + main, auth guard)
-    │       │   ├── nav.rs      # Sidebar navigation
-    │       │   ├── task_card.rs
-    │       │   └── task_form.rs
+    │       │   ├── task_card/          # Container/view pattern
+    │       │   │   ├── container.rs    # Signals, handlers, concrete Callback props
+    │       │   │   └── view.rs         # Pure rendering
+    │       │   ├── task_list/          # Container/view pattern
+    │       │   │   ├── container.rs    # Store → callback extraction
+    │       │   │   └── view.rs         # Suspense + list rendering
+    │       │   ├── date_picker/        # Container/view pattern
+    │       │   │   ├── container.rs    # Popover state signals
+    │       │   │   └── view.rs         # Popover rendering
+    │       │   ├── completion_toggle.rs # Pure view (ReadSignal + Arc handler)
+    │       │   ├── task_meta.rs        # Pure view (date, project, tags display)
+    │       │   ├── task_form.rs        # Self-contained form widget
+    │       │   ├── dropdown.rs         # UI primitive (DropdownMenu, DropdownItem)
+    │       │   ├── icons.rs            # Icon enum → SVG mapping
+    │       │   ├── layout.rs           # AppLayout (sidebar + main, auth guard)
+    │       │   ├── nav.rs              # Sidebar navigation
+    │       │   └── markdown.rs         # Markdown → HTML rendering
+    │       ├── stores/
+    │       │   └── task_store.rs       # TaskStore: actions, effects, Callback fields
     │       └── server_fns/
-    │           └── auth.rs     # check_auth(), get_auth_user_id()
+    │           ├── auth.rs     # check_auth(), get_auth_user_id()
+    │           └── tasks.rs    # CRUD server functions for tasks
     │
     └── server/                 # Axum binary
         └── src/
@@ -150,6 +168,8 @@ Triggers: `update_updated_at()` on users, projects, tasks.
 - **Sequential tasks:** `tasks.sequential_limit` controls how many subtasks are actionable. Computed at query time, not stored.
 - **Custom columns:** Each project has its own columns (statuses). Created from user's `default_columns` setting.
 - **Data access:** Runtime `sqlx::query_as::<_, RowType>()` with custom `FromRow` structs and `From<Row>` conversions to domain types.
+- **Container/view pattern:** Components with state management are split into directories: `container.rs` (signals, handlers, callback wiring) and `view.rs` (pure rendering). Pure presentational components stay as single files. Containers use concrete `Callback<T>` types, not generic type params.
+- **TaskStore:** Centralized controller (`stores/task_store.rs`) that owns actions and effects for task mutations (complete, delete, update, set/clear start_at). Pages create a `TaskStore` from a `Resource` and pass it to `TaskList`.
 
 ## Code Conventions
 
@@ -174,9 +194,19 @@ Triggers: `update_updated_at()` on users, projects, tasks.
 ### Add New Page
 1. Create page component in `crates/app/src/pages/`
 2. Export in `crates/app/src/pages/mod.rs`
-3. Add server functions for data fetching
+3. Add server functions in `crates/app/src/server_fns/`
 4. Register route in `crates/app/src/app.rs`
 5. Add nav item in `crates/app/src/components/nav.rs`
+6. For task-based pages: create `Resource`, `TaskStore`, pass to `TaskList`
+
+### Add New Component (with state)
+1. Create directory `crates/app/src/components/<name>/`
+2. `container.rs` — signals, handlers, concrete `Callback` props (no generics)
+3. `view.rs` — pure rendering, receives data + handlers as props
+4. `mod.rs` — `pub use container::ComponentName;`
+5. Export in `crates/app/src/components/mod.rs`
+
+Pure presentational components (no internal state management) stay as single files.
 
 ### Add New REST Endpoint
 1. Add handler in `crates/server/src/routes/`

@@ -14,6 +14,9 @@ pub enum IconKind {
     Check,
     KebabMenu,
     Calendar,
+    Folder,
+    Plus,
+    Archive,
 }
 
 #[component]
@@ -126,6 +129,34 @@ pub fn Icon(kind: IconKind, #[prop(default = "w-4 h-4")] class: &'static str) ->
                 <line x1="16" y1="2" x2="16" y2="6"/>
                 <line x1="8" y1="2" x2="8" y2="6"/>
                 <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+        }
+        .into_any(),
+        IconKind::Folder => view! {
+            <svg xmlns="http://www.w3.org/2000/svg" class=class viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 \
+                         1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+        }
+        .into_any(),
+        IconKind::Plus => view! {
+            <svg xmlns="http://www.w3.org/2000/svg" class=class viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+        }
+        .into_any(),
+        IconKind::Archive => view! {
+            <svg xmlns="http://www.w3.org/2000/svg" class=class viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="21 8 21 21 3 21 3 8"/>
+                <rect x="1" y="3" width="22" height="5"/>
+                <line x1="10" y1="12" x2="14" y2="12"/>
             </svg>
         }
         .into_any(),

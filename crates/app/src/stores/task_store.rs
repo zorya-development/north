@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 use north_domain::TaskWithMeta;
 
+use crate::server_fns::projects::{clear_task_project, set_task_project};
 use crate::server_fns::tasks::*;
 
 #[derive(Clone)]
@@ -10,6 +11,8 @@ pub struct TaskStore {
     pub on_update: Callback<(i64, String, Option<String>)>,
     pub on_set_start_at: Callback<(i64, String)>,
     pub on_clear_start_at: Callback<i64>,
+    pub on_set_project: Callback<(i64, i64)>,
+    pub on_clear_project: Callback<i64>,
 }
 
 impl TaskStore {
@@ -42,6 +45,16 @@ impl TaskStore {
         let clear_start_at_action = Action::new(|id: &i64| {
             let id = *id;
             clear_task_start_at(id)
+        });
+
+        let set_project_action = Action::new(|input: &(i64, i64)| {
+            let (task_id, project_id) = *input;
+            set_task_project(task_id, project_id)
+        });
+
+        let clear_project_action = Action::new(|id: &i64| {
+            let id = *id;
+            clear_task_project(id)
         });
 
         Effect::new(move || {
@@ -80,6 +93,18 @@ impl TaskStore {
             }
         });
 
+        Effect::new(move || {
+            if let Some(Ok(_)) = set_project_action.value().get() {
+                resource.refetch();
+            }
+        });
+
+        Effect::new(move || {
+            if let Some(Ok(_)) = clear_project_action.value().get() {
+                resource.refetch();
+            }
+        });
+
         Self {
             on_toggle_complete: Callback::new(move |(id, was_completed): (i64, bool)| {
                 if was_completed {
@@ -99,6 +124,12 @@ impl TaskStore {
             }),
             on_clear_start_at: Callback::new(move |id: i64| {
                 clear_start_at_action.dispatch(id);
+            }),
+            on_set_project: Callback::new(move |(task_id, project_id): (i64, i64)| {
+                set_project_action.dispatch((task_id, project_id));
+            }),
+            on_clear_project: Callback::new(move |id: i64| {
+                clear_project_action.dispatch(id);
             }),
         }
     }

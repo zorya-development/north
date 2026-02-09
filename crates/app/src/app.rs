@@ -68,6 +68,26 @@ pub fn App() -> impl IntoView {
                         }
                     }
                 />
+                <Route
+                    path=path!("/projects/:id")
+                    view=|| {
+                        view! {
+                            <components::layout::AppLayout>
+                                <pages::project::ProjectPage/>
+                            </components::layout::AppLayout>
+                        }
+                    }
+                />
+                <Route
+                    path=path!("/archive")
+                    view=|| {
+                        view! {
+                            <components::layout::AppLayout>
+                                <pages::archive::ArchivePage/>
+                            </components::layout::AppLayout>
+                        }
+                    }
+                />
             </Routes>
         </Router>
     }
