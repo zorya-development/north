@@ -76,7 +76,9 @@ north/
     │       │   ├── login.rs    # LoginPage + login() server function
     │       │   ├── inbox.rs    # InboxPage
     │       │   ├── today.rs    # TodayPage (tasks with start_at <= now)
-    │       │   └── all_tasks.rs # AllTasksPage
+    │       │   ├── all_tasks.rs # AllTasksPage
+    │       │   ├── project.rs  # ProjectPage (tasks for a single project, :id param)
+    │       │   └── archive.rs  # ArchivePage (archived projects, unarchive/delete)
     │       ├── components/
     │       │   ├── task_card/          # Container/view pattern
     │       │   │   ├── container.rs    # Signals, handlers, concrete Callback props
@@ -87,19 +89,23 @@ north/
     │       │   ├── date_picker/        # Container/view pattern
     │       │   │   ├── container.rs    # Popover state signals
     │       │   │   └── view.rs         # Popover rendering
+    │       │   ├── project_picker/       # Container/view pattern
+    │       │   │   ├── container.rs    # Project selection state
+    │       │   │   └── view.rs         # Project picker dropdown
     │       │   ├── completion_toggle.rs # Pure view (ReadSignal + Arc handler)
     │       │   ├── task_meta.rs        # Pure view (date, project, tags display)
     │       │   ├── task_form.rs        # Self-contained form widget
     │       │   ├── dropdown.rs         # UI primitive (DropdownMenu, DropdownItem)
     │       │   ├── icons.rs            # Icon enum → SVG mapping
     │       │   ├── layout.rs           # AppLayout (sidebar + main, auth guard)
-    │       │   ├── nav.rs              # Sidebar navigation
+    │       │   ├── nav.rs              # Sidebar navigation (project links, archive)
     │       │   └── markdown.rs         # Markdown → HTML rendering
     │       ├── stores/
     │       │   └── task_store.rs       # TaskStore: actions, effects, Callback fields
     │       └── server_fns/
     │           ├── auth.rs     # check_auth(), get_auth_user_id()
-    │           └── tasks.rs    # CRUD server functions for tasks
+    │           ├── tasks.rs    # CRUD server functions for tasks
+    │           └── projects.rs # Project CRUD, archive/unarchive/delete, project tasks
     │
     └── server/                 # Axum binary
         └── src/

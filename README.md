@@ -69,8 +69,10 @@ north/
 
 - **Inbox** — capture tasks, process later
 - **Today** — actionable tasks (start_date <= today)
+- **All Tasks** — overview of every task across projects
 - **Sequential tasks** — subtasks with configurable N-next visibility
-- **Projects** — list or kanban view, custom columns per project
+- **Projects** — list or kanban view, custom columns per project, dedicated project pages
+- **Archive** — archive/unarchive/delete projects; archived project tasks hidden from Today and All Tasks
 - **Reviews** — GTD-style, per-task reviewed_at tracking
 - **Filter DSL** — JQL-like query language (`actionable = true & tags in ["work:*"]`)
 - **Statistics** — open/closed today, week, total
