@@ -1,7 +1,5 @@
 use chrono::{Duration, Utc};
-use jsonwebtoken::{
-    decode, encode, DecodingKey, EncodingKey, Header, Validation,
-};
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use north_domain::UserRole;
 use serde::{Deserialize, Serialize};
 
@@ -14,11 +12,7 @@ pub struct Claims {
     pub exp: usize,
 }
 
-pub fn create_token(
-    user_id: i64,
-    role: &UserRole,
-    secret: &str,
-) -> Result<String, AppError> {
+pub fn create_token(user_id: i64, role: &UserRole, secret: &str) -> Result<String, AppError> {
     let role_str = match role {
         UserRole::Admin => "admin",
         UserRole::User => "user",
@@ -39,10 +33,7 @@ pub fn create_token(
     .map_err(|e| AppError::Internal(format!("Failed to create token: {e}")))
 }
 
-pub fn validate_token(
-    token: &str,
-    secret: &str,
-) -> Result<Claims, AppError> {
+pub fn validate_token(token: &str, secret: &str) -> Result<Claims, AppError> {
     decode::<Claims>(
         token,
         &DecodingKey::from_secret(secret.as_bytes()),

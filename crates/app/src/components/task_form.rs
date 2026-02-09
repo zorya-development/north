@@ -45,8 +45,7 @@ where
                 let t = title.get_untracked().trim().to_string();
                 if !t.is_empty() {
                     let b = body.get_untracked().trim().to_string();
-                    let body_opt =
-                        if b.is_empty() { None } else { Some(b) };
+                    let body_opt = if b.is_empty() { None } else { Some(b) };
                     on_submit(t, body_opt);
                     set_expanded.set(false);
                     set_title.set(String::new());
@@ -223,8 +222,7 @@ where
                 let t = title_sig.get_untracked().trim().to_string();
                 if !t.is_empty() {
                     let b = body_sig.get_untracked().trim().to_string();
-                    let body_opt =
-                        if b.is_empty() { None } else { Some(b) };
+                    let body_opt = if b.is_empty() { None } else { Some(b) };
                     on_save(t, body_opt);
                 }
             } else if ev.key() == "Escape" {

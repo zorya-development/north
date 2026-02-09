@@ -38,10 +38,7 @@ pub fn protected_api_router(state: AppState) -> Router<AppState> {
                 .patch(projects::update_project)
                 .delete(projects::archive_project),
         )
-        .route(
-            "/projects/:id/columns",
-            post(projects::create_column),
-        )
+        .route("/projects/:id/columns", post(projects::create_column))
         .route(
             "/columns/:id",
             patch(projects::update_column).delete(projects::delete_column),

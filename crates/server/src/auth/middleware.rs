@@ -16,17 +16,14 @@ pub async fn auth_middleware(
     mut request: Request,
     next: Next,
 ) -> Response {
-    let token = jar
-        .get("token")
-        .map(|c| c.value().to_string())
-        .or_else(|| {
-            request
-                .headers()
-                .get("Authorization")
-                .and_then(|v| v.to_str().ok())
-                .and_then(|v| v.strip_prefix("Bearer "))
-                .map(|t| t.to_string())
-        });
+    let token = jar.get("token").map(|c| c.value().to_string()).or_else(|| {
+        request
+            .headers()
+            .get("Authorization")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.strip_prefix("Bearer "))
+            .map(|t| t.to_string())
+    });
 
     let token = match token {
         Some(t) => t,

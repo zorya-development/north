@@ -2,10 +2,7 @@ use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 
 #[server(Login, "/api")]
-pub async fn login(
-    email: String,
-    password: String,
-) -> Result<(), ServerFnError> {
+pub async fn login(email: String, password: String) -> Result<(), ServerFnError> {
     use argon2::{Argon2, PasswordHash, PasswordVerifier};
     use chrono::{Duration, Utc};
     use jsonwebtoken::{encode, EncodingKey, Header};
@@ -36,21 +33,17 @@ pub async fn login(
     .await
     .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-    let row = row.ok_or_else(|| {
-        ServerFnError::new("Invalid credentials".to_string())
-    })?;
+    let row = row.ok_or_else(|| ServerFnError::new("Invalid credentials".to_string()))?;
 
-    let parsed_hash = PasswordHash::new(&row.password_hash)
-        .map_err(|e| ServerFnError::new(e.to_string()))?;
+    let parsed_hash =
+        PasswordHash::new(&row.password_hash).map_err(|e| ServerFnError::new(e.to_string()))?;
 
     Argon2::default()
         .verify_password(password.as_bytes(), &parsed_hash)
-        .map_err(|_| {
-            ServerFnError::new("Invalid credentials".to_string())
-        })?;
+        .map_err(|_| ServerFnError::new("Invalid credentials".to_string()))?;
 
-    let jwt_secret = std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "dev-secret-change-me".to_string());
+    let jwt_secret =
+        std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret-change-me".to_string());
 
     let role_str = match row.role.as_str() {
         "admin" => "admin",
@@ -71,8 +64,7 @@ pub async fn login(
     )
     .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-    let response_options =
-        expect_context::<leptos_axum::ResponseOptions>();
+    let response_options = expect_context::<leptos_axum::ResponseOptions>();
     response_options.insert_header(
         http::header::SET_COOKIE,
         http::HeaderValue::from_str(&format!(

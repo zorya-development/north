@@ -13,18 +13,19 @@ pub fn DropdownMenu(
 
     Effect::new(move |_| {
         if open.get() {
-            let handle = window_event_listener(leptos::ev::click, move |ev: leptos::ev::MouseEvent| {
-                if let Some(menu) = menu_ref.get() {
-                    let target = ev.target();
-                    let is_inside = target
-                        .and_then(|t| t.dyn_into::<leptos::web_sys::Node>().ok())
-                        .map(|node| menu.contains(Some(&node)))
-                        .unwrap_or(false);
-                    if !is_inside {
-                        set_open.set(false);
+            let handle =
+                window_event_listener(leptos::ev::click, move |ev: leptos::ev::MouseEvent| {
+                    if let Some(menu) = menu_ref.get() {
+                        let target = ev.target();
+                        let is_inside = target
+                            .and_then(|t| t.dyn_into::<leptos::web_sys::Node>().ok())
+                            .map(|node| menu.contains(Some(&node)))
+                            .unwrap_or(false);
+                        if !is_inside {
+                            set_open.set(false);
+                        }
                     }
-                }
-            });
+                });
             on_cleanup(move || drop(handle));
         }
     });

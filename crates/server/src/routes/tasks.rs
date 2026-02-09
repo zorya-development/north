@@ -1,9 +1,7 @@
 use axum::extract::{Path, Query, State};
 use axum::Json;
 use chrono::Utc;
-use north_domain::{
-    CreateTask, MoveTask, Task, TaskFilter, TaskWithMeta, UpdateTask,
-};
+use north_domain::{CreateTask, MoveTask, Task, TaskFilter, TaskWithMeta, UpdateTask};
 
 use crate::auth::AuthUser;
 use crate::error::AppError;
@@ -124,22 +122,19 @@ pub async fn list_tasks(
     let mut bind_values: Vec<BindValue> = vec![];
 
     if let Some(project_id) = filter.project {
-        conditions
-            .push(format!("t.project_id = ${param_idx}"));
+        conditions.push(format!("t.project_id = ${param_idx}"));
         bind_values.push(BindValue::BigInt(project_id));
         param_idx += 1;
     }
 
     if let Some(parent_id) = filter.parent {
-        conditions
-            .push(format!("t.parent_id = ${param_idx}"));
+        conditions.push(format!("t.parent_id = ${param_idx}"));
         bind_values.push(BindValue::BigInt(parent_id));
         param_idx += 1;
     }
 
     if let Some(column_id) = filter.column {
-        conditions
-            .push(format!("t.column_id = ${param_idx}"));
+        conditions.push(format!("t.column_id = ${param_idx}"));
         bind_values.push(BindValue::BigInt(column_id));
         param_idx += 1;
     }
@@ -198,11 +193,7 @@ pub async fn list_tasks(
         bind_values.push(BindValue::BigInt(limit));
         let offset_part = if let Some(offset) = filter.offset {
             bind_values.push(BindValue::BigInt(offset));
-            format!(
-                " LIMIT ${} OFFSET ${}",
-                param_idx,
-                param_idx + 1
-            )
+            format!(" LIMIT ${} OFFSET ${}", param_idx, param_idx + 1)
         } else {
             let s = format!(" LIMIT ${param_idx}");
             s
@@ -249,8 +240,7 @@ pub async fn list_tasks(
         {limit_clause}"
     );
 
-    let mut query = sqlx::query_as::<_, TaskWithMetaRow>(&sql)
-        .bind(auth_user.id);
+    let mut query = sqlx::query_as::<_, TaskWithMetaRow>(&sql).bind(auth_user.id);
 
     for val in &bind_values {
         match val {
@@ -262,8 +252,7 @@ pub async fn list_tasks(
 
     let rows = query.fetch_all(&state.pool).await?;
 
-    let mut results: Vec<TaskWithMeta> =
-        rows.into_iter().map(TaskWithMeta::from).collect();
+    let mut results: Vec<TaskWithMeta> = rows.into_iter().map(TaskWithMeta::from).collect();
 
     // Post-filter actionable if requested
     if filter.actionable == Some(true) {
@@ -403,33 +392,30 @@ pub async fn update_task(
     let parent_id = body.parent_id.or(existing.parent_id);
     let new_column_id = body.column_id.or(existing.column_id);
     let position = body.position.unwrap_or(existing.position);
-    let sequential_limit =
-        body.sequential_limit.unwrap_or(existing.sequential_limit);
+    let sequential_limit = body.sequential_limit.unwrap_or(existing.sequential_limit);
     let start_at = body.start_at.or(existing.start_at);
     let due_date = body.due_date.or(existing.due_date);
 
     // Handle completed_at based on column change
-    let completed_at =
-        if body.column_id.is_some() && body.column_id != existing.column_id {
-            if let Some(col_id) = new_column_id {
-                let is_done: Option<bool> = sqlx::query_scalar(
-                    "SELECT is_done FROM project_columns WHERE id = $1",
-                )
-                .bind(col_id)
-                .fetch_optional(&state.pool)
-                .await?;
+    let completed_at = if body.column_id.is_some() && body.column_id != existing.column_id {
+        if let Some(col_id) = new_column_id {
+            let is_done: Option<bool> =
+                sqlx::query_scalar("SELECT is_done FROM project_columns WHERE id = $1")
+                    .bind(col_id)
+                    .fetch_optional(&state.pool)
+                    .await?;
 
-                if is_done == Some(true) {
-                    Some(Utc::now())
-                } else {
-                    None
-                }
+            if is_done == Some(true) {
+                Some(Utc::now())
             } else {
-                existing.completed_at
+                None
             }
         } else {
             existing.completed_at
-        };
+        }
+    } else {
+        existing.completed_at
+    };
 
     let row = sqlx::query_as::<_, TaskRow>(
         "UPDATE tasks SET \
@@ -464,13 +450,11 @@ pub async fn delete_task(
     State(state): State<AppState>,
     Path(id): Path<i64>,
 ) -> Result<axum::http::StatusCode, AppError> {
-    let result = sqlx::query(
-        "DELETE FROM tasks WHERE id = $1 AND user_id = $2",
-    )
-    .bind(id)
-    .bind(auth_user.id)
-    .execute(&state.pool)
-    .await?;
+    let result = sqlx::query("DELETE FROM tasks WHERE id = $1 AND user_id = $2")
+        .bind(id)
+        .bind(auth_user.id)
+        .execute(&state.pool)
+        .await?;
 
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound("Task not found".to_string()));
@@ -502,16 +486,13 @@ pub async fn move_task(
     let new_parent_id = body.parent_id.or(existing.parent_id);
 
     // Handle completed_at based on column change
-    let completed_at = if body.column_id.is_some()
-        && body.column_id != existing.column_id
-    {
+    let completed_at = if body.column_id.is_some() && body.column_id != existing.column_id {
         if let Some(col_id) = new_column_id {
-            let is_done: Option<bool> = sqlx::query_scalar(
-                "SELECT is_done FROM project_columns WHERE id = $1",
-            )
-            .bind(col_id)
-            .fetch_optional(&state.pool)
-            .await?;
+            let is_done: Option<bool> =
+                sqlx::query_scalar("SELECT is_done FROM project_columns WHERE id = $1")
+                    .bind(col_id)
+                    .fetch_optional(&state.pool)
+                    .await?;
 
             if is_done == Some(true) {
                 Some(Utc::now())

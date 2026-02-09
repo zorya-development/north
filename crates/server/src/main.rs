@@ -1,3 +1,5 @@
+#![recursion_limit = "512"]
+
 mod auth;
 mod error;
 mod routes;
@@ -39,19 +41,16 @@ impl FromRef<AppState> for LeptosOptions {
 async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info")),
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
         )
         .init();
 
     dotenvy::dotenv().ok();
 
-    let database_url = std::env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set");
-    let jwt_secret = std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "dev-secret-change-me".to_string());
-    let upload_dir = std::env::var("UPLOAD_DIR")
-        .unwrap_or_else(|_| "./uploads".to_string());
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let jwt_secret =
+        std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret-change-me".to_string());
+    let upload_dir = std::env::var("UPLOAD_DIR").unwrap_or_else(|_| "./uploads".to_string());
 
     let pool = PgPoolOptions::new()
         .max_connections(20)
@@ -67,9 +66,7 @@ async fn main() {
     // Handle --seed flag
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--seed") {
-        seed::seed_admin(&pool)
-            .await
-            .expect("Failed to seed admin");
+        seed::seed_admin(&pool).await.expect("Failed to seed admin");
         return;
     }
 

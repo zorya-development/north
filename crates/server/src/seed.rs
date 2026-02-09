@@ -5,11 +5,10 @@ use north_domain::UserSettings;
 use sqlx::PgPool;
 
 pub async fn seed_admin(pool: &PgPool) -> Result<(), Box<dyn std::error::Error>> {
-    let exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM users WHERE role = 'admin')",
-    )
-    .fetch_one(pool)
-    .await?;
+    let exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE role = 'admin')")
+            .fetch_one(pool)
+            .await?;
 
     if exists {
         tracing::info!("Admin user already exists, skipping seed");

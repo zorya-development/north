@@ -22,27 +22,19 @@ pub async fn login(
     .bind(&body.email)
     .fetch_optional(&state.pool)
     .await?
-    .ok_or_else(|| {
-        AppError::Unauthorized("Invalid email or password".to_string())
-    })?;
+    .ok_or_else(|| AppError::Unauthorized("Invalid email or password".to_string()))?;
 
-    let parsed_hash =
-        PasswordHash::new(&row.password_hash).map_err(|e| {
-            AppError::Internal(format!("Invalid password hash: {e}"))
-        })?;
+    let parsed_hash = PasswordHash::new(&row.password_hash)
+        .map_err(|e| AppError::Internal(format!("Invalid password hash: {e}")))?;
 
     Argon2::default()
         .verify_password(body.password.as_bytes(), &parsed_hash)
-        .map_err(|_| {
-            AppError::Unauthorized("Invalid email or password".to_string())
-        })?;
+        .map_err(|_| AppError::Unauthorized("Invalid email or password".to_string()))?;
 
     let role = parse_role(&row.role);
-    let token =
-        crate::auth::jwt::create_token(row.id, &role, &state.jwt_secret)?;
+    let token = crate::auth::jwt::create_token(row.id, &role, &state.jwt_secret)?;
 
-    let settings: UserSettings =
-        serde_json::from_value(row.settings).unwrap_or_default();
+    let settings: UserSettings = serde_json::from_value(row.settings).unwrap_or_default();
 
     let user = User {
         id: row.id,

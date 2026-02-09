@@ -33,21 +33,17 @@ pub async fn get_auth_user_id() -> Result<i64, ServerFnError> {
     let token = jar
         .get("token")
         .map(|c| c.value().to_string())
-        .ok_or_else(|| {
-            ServerFnError::new("Authentication required".to_string())
-        })?;
+        .ok_or_else(|| ServerFnError::new("Authentication required".to_string()))?;
 
-    let jwt_secret = std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "dev-secret-change-me".to_string());
+    let jwt_secret =
+        std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret-change-me".to_string());
 
     let token_data = decode::<Claims>(
         &token,
         &DecodingKey::from_secret(jwt_secret.as_bytes()),
         &Validation::default(),
     )
-    .map_err(|e| {
-        ServerFnError::new(format!("Invalid or expired token: {e}"))
-    })?;
+    .map_err(|e| ServerFnError::new(format!("Invalid or expired token: {e}")))?;
 
     Ok(token_data.claims.sub)
 }

@@ -1,8 +1,8 @@
 use axum::extract::{Path, State};
 use axum::Json;
 use north_domain::{
-    Column, CreateColumn, CreateProject, Project, ProjectViewType,
-    ProjectWithColumns, UpdateColumn, UpdateProject, UserSettings,
+    Column, CreateColumn, CreateProject, Project, ProjectViewType, ProjectWithColumns,
+    UpdateColumn, UpdateProject, UserSettings,
 };
 
 use crate::auth::AuthUser;
@@ -122,12 +122,11 @@ pub async fn create_project(
     let view_type = body.view_type.as_ref().unwrap_or(&ProjectViewType::List);
     let vt_str = view_type_to_str(view_type);
 
-    let max_pos: Option<i32> = sqlx::query_scalar(
-        "SELECT MAX(position) FROM projects WHERE user_id = $1",
-    )
-    .bind(auth_user.id)
-    .fetch_one(&state.pool)
-    .await?;
+    let max_pos: Option<i32> =
+        sqlx::query_scalar("SELECT MAX(position) FROM projects WHERE user_id = $1")
+            .bind(auth_user.id)
+            .fetch_one(&state.pool)
+            .await?;
     let position = max_pos.unwrap_or(-1) + 1;
 
     let proj_row = sqlx::query_as::<_, ProjectRow>(
@@ -146,14 +145,12 @@ pub async fn create_project(
     .await?;
 
     // Fetch user settings for default columns
-    let settings_val: serde_json::Value = sqlx::query_scalar(
-        "SELECT settings FROM users WHERE id = $1",
-    )
-    .bind(auth_user.id)
-    .fetch_one(&state.pool)
-    .await?;
-    let settings: UserSettings =
-        serde_json::from_value(settings_val).unwrap_or_default();
+    let settings_val: serde_json::Value =
+        sqlx::query_scalar("SELECT settings FROM users WHERE id = $1")
+            .bind(auth_user.id)
+            .fetch_one(&state.pool)
+            .await?;
+    let settings: UserSettings = serde_json::from_value(settings_val).unwrap_or_default();
 
     let mut columns = Vec::new();
     for (i, default_col) in settings.default_columns.iter().enumerate() {
@@ -234,10 +231,7 @@ pub async fn update_project(
     .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
     let title = body.title.as_deref().unwrap_or(&existing.title);
-    let description = body
-        .description
-        .as_ref()
-        .or(existing.description.as_ref());
+    let description = body.description.as_ref().or(existing.description.as_ref());
     let view_type = body
         .view_type
         .as_ref()
@@ -402,12 +396,10 @@ pub async fn delete_column(
     .ok_or_else(|| AppError::NotFound("Column not found".to_string()))?;
 
     // Check if tasks use this column, reassign to first column if so
-    let task_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM tasks WHERE column_id = $1",
-    )
-    .bind(column_id)
-    .fetch_one(&state.pool)
-    .await?;
+    let task_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM tasks WHERE column_id = $1")
+        .bind(column_id)
+        .fetch_one(&state.pool)
+        .await?;
 
     if task_count > 0 {
         let first_column: Option<i64> = sqlx::query_scalar(
