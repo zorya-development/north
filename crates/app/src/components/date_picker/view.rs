@@ -15,6 +15,7 @@ pub fn DateTimePickerView(
     picked_time: RwSignal<String>,
     on_set_start_at: Callback<(i64, String)>,
     on_clear_start_at: Callback<i64>,
+    #[prop(default = false)] icon_only: bool,
 ) -> impl IntoView {
     let date_text_class = if is_overdue {
         "text-red-500"
@@ -31,6 +32,41 @@ pub fn DateTimePickerView(
                 let initial_date = initial_date.clone();
                 let initial_time = initial_time.clone();
                 move || {
+                    if icon_only {
+                        let initial_date = initial_date.clone();
+                        let initial_time = initial_time.clone();
+                        return view! {
+                            <button
+                                class="p-1 rounded hover:bg-bg-input \
+                                       text-text-tertiary \
+                                       hover:text-text-secondary \
+                                       transition-colors"
+                                on:click={
+                                    let id = initial_date.clone();
+                                    let it = initial_time.clone();
+                                    move |_| {
+                                        if has_start_at {
+                                            picked_date.set(id.clone());
+                                            picked_time.set(it.clone());
+                                        } else {
+                                            picked_date.set(String::new());
+                                            picked_time
+                                                .set("09:00".to_string());
+                                        }
+                                        set_popover_open
+                                            .update(|o| *o = !*o);
+                                    }
+                                }
+                                aria-label="Set date"
+                            >
+                                <Icon
+                                    kind=IconKind::Calendar
+                                    class="w-4 h-4"
+                                />
+                            </button>
+                        }
+                        .into_any();
+                    }
                     if has_start_at {
                         let display = start_at_display.clone().unwrap_or_default();
                         let initial_date = initial_date.clone();

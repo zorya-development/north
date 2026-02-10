@@ -1813,6 +1813,7 @@ dependencies = [
  "ammonia",
  "leptos",
  "pulldown-cmark",
+ "web-sys",
 ]
 
 [[package]]

@@ -18,6 +18,7 @@ pub fn TaskCard(
     on_set_tags: Callback<(i64, Vec<String>)>,
     on_review: Callback<i64>,
     #[prop(default = false)] show_review: bool,
+    #[prop(default = true)] show_project: bool,
 ) -> impl IntoView {
     let task_id = task.task.id;
     let title = task.task.title.clone();
@@ -75,6 +76,7 @@ pub fn TaskCard(
             on_set_tags=on_set_tags
             on_review=on_review
             show_review=show_review
+            show_project=show_project
         />
     }
 }

@@ -16,6 +16,7 @@ pub fn TaskListView(
     on_set_tags: Callback<(i64, Vec<String>)>,
     on_review: Callback<i64>,
     #[prop(default = false)] show_review: bool,
+    #[prop(default = true)] show_project: bool,
     #[prop(default = "No tasks.")] empty_message: &'static str,
     #[prop(optional)] completed_resource: Option<
         Resource<Result<Vec<TaskWithMeta>, ServerFnError>>,
@@ -62,6 +63,7 @@ pub fn TaskListView(
                                                         on_set_tags=on_set_tags
                                                         on_review=on_review
                                                         show_review=show_review
+                                                        show_project=show_project
                                                     />
                                                 }
                                             })
@@ -100,6 +102,7 @@ pub fn TaskListView(
                         on_clear_project=on_clear_project
                         on_set_tags=on_set_tags
                         on_review=on_review
+                        show_project=show_project
                     />
                 }
             })
@@ -121,6 +124,7 @@ fn CompletedSection(
     on_clear_project: Callback<i64>,
     on_set_tags: Callback<(i64, Vec<String>)>,
     on_review: Callback<i64>,
+    #[prop(default = true)] show_project: bool,
 ) -> impl IntoView {
     view! {
         <Suspense fallback=|| ()>
@@ -165,6 +169,7 @@ fn CompletedSection(
                                                             on_clear_project=on_clear_project
                                                             on_set_tags=on_set_tags
                                                             on_review=on_review
+                                                            show_project=show_project
                                                         />
                                                     }
                                                 })

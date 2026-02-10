@@ -9,6 +9,7 @@ pub fn TaskList(
     resource: Resource<Result<Vec<TaskWithMeta>, ServerFnError>>,
     store: TaskStore,
     #[prop(default = false)] show_review: bool,
+    #[prop(default = true)] show_project: bool,
     #[prop(default = "No tasks.")] empty_message: &'static str,
     #[prop(optional)] completed_resource: Option<
         Resource<Result<Vec<TaskWithMeta>, ServerFnError>>,
@@ -28,6 +29,7 @@ pub fn TaskList(
                 on_set_tags=store.on_set_tags
                 on_review=store.on_review
                 show_review=show_review
+                show_project=show_project
                 empty_message=empty_message
                 completed_resource=cr
             />
@@ -46,6 +48,7 @@ pub fn TaskList(
                 on_set_tags=store.on_set_tags
                 on_review=store.on_review
                 show_review=show_review
+                show_project=show_project
                 empty_message=empty_message
             />
         }

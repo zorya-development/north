@@ -7,3 +7,10 @@ edition = "2021"
 leptos = "0.7"
 pulldown-cmark = "0.12"
 ammonia = "4"
+web-sys = { version = "0.3", features = [
+    "DomRect",
+    "Element",
+    "HtmlElement",
+    "CssStyleDeclaration",
+    "Window",
+] }

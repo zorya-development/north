@@ -56,6 +56,7 @@ pub fn ProjectPage() -> impl IntoView {
             <TaskList
                 resource=project_tasks
                 store=store
+                show_project=false
                 empty_message="No tasks in this project."
                 completed_resource=completed
             />

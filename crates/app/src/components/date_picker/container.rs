@@ -9,6 +9,7 @@ pub fn DateTimePicker(
     start_at: Option<chrono::DateTime<chrono::Utc>>,
     on_set_start_at: Callback<(i64, String)>,
     on_clear_start_at: Callback<i64>,
+    #[prop(default = false)] icon_only: bool,
 ) -> impl IntoView {
     let has_start_at = start_at.is_some();
     let is_overdue = start_at
@@ -42,6 +43,7 @@ pub fn DateTimePicker(
             picked_time=picked_time
             on_set_start_at=on_set_start_at
             on_clear_start_at=on_clear_start_at
+            icon_only=icon_only
         />
     }
 }

@@ -3,6 +3,9 @@ use std::sync::Arc;
 use leptos::prelude::*;
 use north_domain::TagInfo;
 
+use crate::components::date_picker::DateTimePicker;
+use crate::components::project_picker::ProjectPicker;
+use crate::components::tag_picker::TagPicker;
 use crate::components::task_form::EditTaskForm;
 use crate::components::task_meta::TaskMeta;
 use north_ui::{Checkbox, DropdownItem, DropdownMenu, Icon, IconKind, MarkdownView};
@@ -33,6 +36,7 @@ pub fn TaskCardView(
     on_set_tags: Callback<(i64, Vec<String>)>,
     on_review: Callback<i64>,
     #[prop(default = false)] show_review: bool,
+    #[prop(default = true)] show_project: bool,
 ) -> impl IntoView {
     let edit_title = title.clone();
     let edit_body = body.clone();
@@ -50,7 +54,7 @@ pub fn TaskCardView(
                     let title = title.clone();
                     let body = body.clone();
                     let project_title = project_title.clone();
-                    let tags = tags.clone();
+                    let meta_tags = tags.clone();
                     let on_delete = on_delete.clone();
                     view! {
                         <div class="group border-b border-border px-3 py-2 \
@@ -93,7 +97,46 @@ pub fn TaskCardView(
                                     None
                                 }}
                                 <div class="opacity-0 group-hover:opacity-100 \
-                                            transition-opacity">
+                                            transition-opacity flex \
+                                            items-center">
+                                    <button
+                                        on:click=move |ev| {
+                                            ev.stop_propagation();
+                                            set_editing.set(true);
+                                        }
+                                        class="p-1 rounded \
+                                               hover:bg-bg-input \
+                                               text-text-tertiary \
+                                               hover:text-text-secondary \
+                                               transition-colors"
+                                        aria-label="Edit task"
+                                    >
+                                        <Icon
+                                            kind=IconKind::Edit
+                                            class="w-4 h-4"
+                                        />
+                                    </button>
+                                    <DateTimePicker
+                                        task_id=task_id
+                                        start_at=start_at
+                                        on_set_start_at=on_set_start_at
+                                        on_clear_start_at=on_clear_start_at
+                                        icon_only=true
+                                    />
+                                    <ProjectPicker
+                                        task_id=task_id
+                                        project_id=project_id
+                                        project_title=project_title.clone()
+                                        on_set_project=on_set_project
+                                        on_clear_project=on_clear_project
+                                        icon_only=true
+                                    />
+                                    <TagPicker
+                                        task_id=task_id
+                                        tags=meta_tags.clone()
+                                        on_set_tags=on_set_tags
+                                        icon_only=true
+                                    />
                                     <DropdownMenu
                                         open=menu_open
                                         set_open=set_menu_open
@@ -103,7 +146,9 @@ pub fn TaskCardView(
                                                     on:click=move |ev| {
                                                         ev.stop_propagation();
                                                         set_menu_open
-                                                            .update(|o| *o = !*o);
+                                                            .update(|o| {
+                                                                *o = !*o
+                                                            });
                                                     }
                                                     class="p-1 rounded \
                                                            hover:bg-bg-input \
@@ -153,17 +198,11 @@ pub fn TaskCardView(
                             })}
 
                             <TaskMeta
-                                task_id=task_id
                                 start_at=start_at
-                                project_id=project_id
+                                show_project=show_project
                                 project_title=project_title
                                 due_date=due_date
-                                tags=tags
-                                on_set_start_at=on_set_start_at
-                                on_clear_start_at=on_clear_start_at
-                                on_set_project=on_set_project
-                                on_clear_project=on_clear_project
-                                on_set_tags=on_set_tags
+                                tags=meta_tags
                                 reviewed_at=reviewed_at
                                 show_review=show_review
                             />

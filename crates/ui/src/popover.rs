@@ -1,4 +1,5 @@
 use leptos::prelude::*;
+use leptos::wasm_bindgen::JsCast;
 
 #[component]
 pub fn Popover(
@@ -7,10 +8,78 @@ pub fn Popover(
     trigger: Children,
     children: Children,
 ) -> impl IntoView {
+    let trigger_ref = NodeRef::<leptos::html::Div>::new();
+    let panel_ref = NodeRef::<leptos::html::Div>::new();
     let panel = children();
 
+    Effect::new(move |_| {
+        if !open.get() {
+            if let Some(el) = panel_ref.get() {
+                // Access web_sys::HtmlElement::style() via Node → JsCast
+                let node: &web_sys::Node = &el;
+                let html: &web_sys::HtmlElement = node.unchecked_ref();
+                let _ = html.style().set_property("opacity", "0");
+            }
+            return;
+        }
+        let Some(trigger_el) = trigger_ref.get() else {
+            return;
+        };
+        let Some(panel_el) = panel_ref.get() else {
+            return;
+        };
+
+        let Some(win) = web_sys::window() else {
+            return;
+        };
+        let vw = win
+            .inner_width()
+            .ok()
+            .and_then(|v| v.as_f64())
+            .unwrap_or(1024.0);
+        let vh = win
+            .inner_height()
+            .ok()
+            .and_then(|v| v.as_f64())
+            .unwrap_or(768.0);
+
+        // Access web_sys methods via Node → JsCast
+        let trigger_node: &web_sys::Node = &trigger_el;
+        let trigger_ws: &web_sys::Element = trigger_node.unchecked_ref();
+        let panel_node: &web_sys::Node = &panel_el;
+        let panel_ws: &web_sys::HtmlElement = panel_node.unchecked_ref();
+
+        let tr = trigger_ws.get_bounding_client_rect();
+        let pw = panel_ws.offset_width() as f64;
+        let ph = panel_ws.offset_height() as f64;
+
+        let gap = 4.0;
+        let margin = 8.0;
+
+        // Vertical: prefer below trigger, flip above if needed
+        let top = if tr.bottom() + gap + ph <= vh - margin {
+            tr.bottom() + gap
+        } else if tr.top() - gap - ph >= margin {
+            tr.top() - gap - ph
+        } else {
+            (vh - ph - margin).max(margin)
+        };
+
+        // Horizontal: prefer left-aligned, shift left if overflows
+        let left = if tr.left() + pw <= vw - margin {
+            tr.left()
+        } else {
+            (tr.right() - pw).max(margin)
+        };
+
+        let style = panel_ws.style();
+        let _ = style.set_property("top", &format!("{top}px"));
+        let _ = style.set_property("left", &format!("{left}px"));
+        let _ = style.set_property("opacity", "1");
+    });
+
     view! {
-        <div class="relative inline-flex">
+        <div node_ref=trigger_ref class="relative inline-flex">
             {trigger()}
             <div
                 class="fixed inset-0 z-40"
@@ -20,9 +89,10 @@ pub fn Popover(
                 on:click=move |_| set_open.set(false)
             />
             <div
-                class="absolute top-full left-0 mt-1 z-50 \
-                        bg-bg-secondary border border-border \
+                node_ref=panel_ref
+                class="fixed z-50 bg-bg-secondary border border-border \
                         rounded-lg shadow-lg"
+                style="opacity: 0"
                 style:display=move || {
                     if open.get() { "block" } else { "none" }
                 }

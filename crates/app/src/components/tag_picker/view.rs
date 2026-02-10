@@ -13,6 +13,7 @@ pub fn TagPickerView(
     current_tags: ReadSignal<Vec<String>>,
     set_current_tags: WriteSignal<Vec<String>>,
     on_set_tags: Callback<(i64, Vec<String>)>,
+    #[prop(default = false)] icon_only: bool,
 ) -> impl IntoView {
     let (new_tag_input, set_new_tag_input) = signal(String::new());
 
@@ -53,6 +54,27 @@ pub fn TagPickerView(
             open=popover_open
             set_open=set_popover_open
             trigger=Box::new(move || {
+                if icon_only {
+                    return view! {
+                        <button
+                            class="p-1 rounded hover:bg-bg-input \
+                                   text-text-tertiary \
+                                   hover:text-text-secondary \
+                                   transition-colors"
+                            on:click=move |_| {
+                                set_popover_open
+                                    .update(|o| *o = !*o);
+                            }
+                            aria-label="Set tags"
+                        >
+                            <Icon
+                                kind=IconKind::Tag
+                                class="w-4 h-4"
+                            />
+                        </button>
+                    }
+                    .into_any();
+                }
                 view! {
                     {move || {
                         let tags = display_tags.get();

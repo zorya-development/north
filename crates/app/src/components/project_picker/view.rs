@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 use north_domain::Project;
-use north_ui::Popover;
+use north_ui::{Icon, IconKind, Popover};
 
 #[component]
 pub fn ProjectPickerView(
@@ -12,6 +12,7 @@ pub fn ProjectPickerView(
     projects: Resource<Result<Vec<Project>, ServerFnError>>,
     on_set_project: Callback<(i64, i64)>,
     on_clear_project: Callback<i64>,
+    #[prop(default = false)] icon_only: bool,
 ) -> impl IntoView {
     view! {
         <Popover
@@ -20,6 +21,27 @@ pub fn ProjectPickerView(
             trigger=Box::new({
                 let project_title = project_title.clone();
                 move || {
+                    if icon_only {
+                        return view! {
+                            <button
+                                class="p-1 rounded hover:bg-bg-input \
+                                       text-text-tertiary \
+                                       hover:text-text-secondary \
+                                       transition-colors"
+                                on:click=move |_| {
+                                    set_popover_open
+                                        .update(|o| *o = !*o);
+                                }
+                                aria-label="Set project"
+                            >
+                                <Icon
+                                    kind=IconKind::Folder
+                                    class="w-4 h-4"
+                                />
+                            </button>
+                        }
+                        .into_any();
+                    }
                     if has_project {
                         let display = project_title.clone().unwrap_or_default();
                         view! {
