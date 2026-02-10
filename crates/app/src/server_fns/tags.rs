@@ -11,10 +11,7 @@ pub async fn get_tags() -> Result<Vec<Tag>, ServerFnError> {
 }
 
 #[server(SetTaskTagsFn, "/api")]
-pub async fn set_task_tags(
-    task_id: i64,
-    tag_names: Vec<String>,
-) -> Result<(), ServerFnError> {
+pub async fn set_task_tags(task_id: i64, tag_names: Vec<String>) -> Result<(), ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
     north_services::TagService::sync_task_tags_pooled(&pool, user_id, task_id, &tag_names)

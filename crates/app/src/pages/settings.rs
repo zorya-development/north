@@ -9,11 +9,10 @@ pub fn SettingsPage() -> impl IntoView {
     let (interval, set_interval) = signal(String::new());
     let (saved, set_saved) = signal(false);
 
-    let save_action =
-        Action::new(|days: &i16| {
-            let days = *days;
-            update_review_interval(days)
-        });
+    let save_action = Action::new(|days: &i16| {
+        let days = *days;
+        update_review_interval(days)
+    });
 
     Effect::new(move || {
         if let Some(Ok(_)) = save_action.value().get() {

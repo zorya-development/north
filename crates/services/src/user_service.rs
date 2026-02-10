@@ -55,8 +55,8 @@ impl UserService {
     ) -> ServiceResult<()> {
         let mut settings = Self::get_settings(pool, user_id).await?;
         settings.review_interval_days = days;
-        let val = serde_json::to_value(&settings)
-            .map_err(|e| ServiceError::BadRequest(e.to_string()))?;
+        let val =
+            serde_json::to_value(&settings).map_err(|e| ServiceError::BadRequest(e.to_string()))?;
         Self::update_settings(pool, user_id, val).await
     }
 

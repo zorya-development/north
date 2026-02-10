@@ -1,5 +1,5 @@
-use diesel::prelude::*;
 use diesel::dsl::max;
+use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use north_db::models::{ColumnRow, NewColumn, NewProject, ProjectChangeset, ProjectRow};
 use north_db::schema::{project_columns, projects, users};
@@ -39,11 +39,7 @@ impl ProjectService {
         Ok(rows.into_iter().map(Project::from).collect())
     }
 
-    pub async fn get_by_id(
-        pool: &DbPool,
-        user_id: i64,
-        id: i64,
-    ) -> ServiceResult<Project> {
+    pub async fn get_by_id(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<Project> {
         let mut conn = pool.get().await?;
         let row = projects::table
             .filter(projects::id.eq(id))
@@ -143,10 +139,7 @@ impl ProjectService {
             .await?;
         let position = max_pos.unwrap_or(-1) + 1;
 
-        let vt = input
-            .view_type
-            .as_ref()
-            .unwrap_or(&ProjectViewType::List);
+        let vt = input.view_type.as_ref().unwrap_or(&ProjectViewType::List);
 
         let proj_row = diesel::insert_into(projects::table)
             .values(&NewProject {
@@ -211,9 +204,10 @@ impl ProjectService {
         let changeset = ProjectChangeset {
             title: input.title.as_deref(),
             description: input.description.as_ref().map(|d| Some(d.as_str())),
-            view_type: input.view_type.as_ref().map(|vt| {
-                ProjectViewTypeMapping::from(vt.clone())
-            }),
+            view_type: input
+                .view_type
+                .as_ref()
+                .map(|vt| ProjectViewTypeMapping::from(vt.clone())),
             position: input.position,
             color: input.color.as_deref(),
             archived: input.archived,
@@ -321,7 +315,11 @@ impl ProjectService {
         let id: Option<i64> = projects::table
             .filter(projects::user_id.eq(user_id))
             .filter(projects::archived.eq(false))
-            .filter(sql::<diesel::sql_types::Bool>("lower(title) = lower(").bind::<Text, _>(title).sql(")"))
+            .filter(
+                sql::<diesel::sql_types::Bool>("lower(title) = lower(")
+                    .bind::<Text, _>(title)
+                    .sql(")"),
+            )
             .select(projects::id)
             .first(&mut conn)
             .await

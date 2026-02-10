@@ -1,8 +1,6 @@
 use leptos::prelude::*;
 
-use crate::server_fns::projects::{
-    delete_project, get_archived_projects, unarchive_project,
-};
+use crate::server_fns::projects::{delete_project, get_archived_projects, unarchive_project};
 
 #[component]
 pub fn ArchivePage() -> impl IntoView {

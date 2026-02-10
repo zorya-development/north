@@ -21,8 +21,7 @@ pub async fn seed_admin(pool: &DbPool) -> Result<(), Box<dyn std::error::Error>>
 
     let settings = serde_json::to_value(UserSettings::default())?;
 
-    UserService::create_admin(pool, "admin@north.local", &password_hash, "Admin", settings)
-        .await?;
+    UserService::create_admin(pool, "admin@north.local", &password_hash, "Admin", settings).await?;
 
     tracing::info!("Seeded admin user: admin@north.local / admin");
     Ok(())

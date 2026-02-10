@@ -1,5 +1,5 @@
-use diesel::prelude::*;
 use diesel::dsl::max;
+use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use north_db::models::{ColumnChangeset, ColumnRow, NewColumn};
 use north_db::schema::{project_columns, projects, tasks};
@@ -11,10 +11,7 @@ use crate::{ServiceError, ServiceResult};
 pub struct ColumnService;
 
 impl ColumnService {
-    pub async fn get_for_project(
-        pool: &DbPool,
-        project_id: i64,
-    ) -> ServiceResult<Vec<Column>> {
+    pub async fn get_for_project(pool: &DbPool, project_id: i64) -> ServiceResult<Vec<Column>> {
         let mut conn = pool.get().await?;
         let rows = project_columns::table
             .filter(project_columns::project_id.eq(project_id))
@@ -147,8 +144,7 @@ impl ColumnService {
                 }
                 None => {
                     return Err(ServiceError::BadRequest(
-                        "Cannot delete the only column while tasks are assigned to it"
-                            .into(),
+                        "Cannot delete the only column while tasks are assigned to it".into(),
                     ));
                 }
             }

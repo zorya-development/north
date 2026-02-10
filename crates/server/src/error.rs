@@ -35,23 +35,19 @@ impl IntoResponse for AppError {
                 tracing::error!("Internal error: {msg}");
                 (StatusCode::INTERNAL_SERVER_ERROR, msg.clone())
             }
-            AppError::Service(err) => {
-                match err {
-                    north_services::ServiceError::NotFound(msg) => {
-                        (StatusCode::NOT_FOUND, msg.clone())
-                    }
-                    north_services::ServiceError::BadRequest(msg) => {
-                        (StatusCode::BAD_REQUEST, msg.clone())
-                    }
-                    _ => {
-                        tracing::error!("Service error: {err}");
-                        (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            "Internal server error".to_string(),
-                        )
-                    }
+            AppError::Service(err) => match err {
+                north_services::ServiceError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
+                north_services::ServiceError::BadRequest(msg) => {
+                    (StatusCode::BAD_REQUEST, msg.clone())
                 }
-            }
+                _ => {
+                    tracing::error!("Service error: {err}");
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Internal server error".to_string(),
+                    )
+                }
+            },
         };
 
         let body = axum::Json(json!({ "error": message }));

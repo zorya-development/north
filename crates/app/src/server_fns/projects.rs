@@ -71,9 +71,7 @@ pub async fn get_project(project_id: i64) -> Result<Project, ServerFnError> {
 }
 
 #[server(GetProjectTasksFn, "/api")]
-pub async fn get_project_tasks(
-    project_id: i64,
-) -> Result<Vec<TaskWithMeta>, ServerFnError> {
+pub async fn get_project_tasks(project_id: i64) -> Result<Vec<TaskWithMeta>, ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
     north_services::TaskService::get_for_project(&pool, user_id, project_id)
