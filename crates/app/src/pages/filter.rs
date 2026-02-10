@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 use leptos_router::hooks::{use_navigate, use_params_map};
-use north_ui::{Icon, IconKind};
+use north_ui::{Icon, IconKind, Modal};
 
 use crate::components::filter_autocomplete::FilterAutocompleteTextarea;
 use crate::components::task_list::TaskList;
@@ -25,6 +25,9 @@ pub fn FilterPage() -> impl IntoView {
     let (original_title, set_original_title) = signal(String::new());
     let (original_query, set_original_query) = signal(String::new());
     let (is_editing_title, set_is_editing_title) = signal(false);
+    let (show_save_modal, set_show_save_modal) = signal(false);
+    let (modal_title, set_modal_title) = signal(String::new());
+    let modal_input_ref = NodeRef::<leptos::html::Input>::new();
 
     let is_dirty = Memo::new(move |_| {
         title_text.get() != original_title.get()
@@ -73,6 +76,15 @@ pub fn FilterPage() -> impl IntoView {
         }
     });
 
+    // Auto-focus modal input when opened
+    Effect::new(move || {
+        if show_save_modal.get() {
+            if let Some(input) = modal_input_ref.get() {
+                let _ = input.focus();
+            }
+        }
+    });
+
     // Execute filter results
     let filter_results = Resource::new(
         move || query_text.get(),
@@ -102,6 +114,7 @@ pub fn FilterPage() -> impl IntoView {
     let navigate_save = navigate.clone();
     Effect::new(move || {
         if let Some(Ok(filter)) = save_action.value().get() {
+            set_title_text.set(filter.title.clone());
             set_original_title.set(filter.title.clone());
             set_original_query.set(filter.query.clone());
             set_is_editing_title.set(false);
@@ -128,15 +141,29 @@ pub fn FilterPage() -> impl IntoView {
     });
 
     let on_save = move |_| {
-        let title = title_text.get_untracked();
         let query = query_text.get_untracked();
-        if query.trim().is_empty() {
+        if query.trim().is_empty() || parse_error.get_untracked().is_some() {
             return;
         }
-        if parse_error.get_untracked().is_some() {
+        if filter_id.get_untracked().is_none() {
+            // New filter: open modal to enter title
+            set_modal_title.set(String::new());
+            set_show_save_modal.set(true);
+        } else {
+            // Existing filter: save directly
+            let title = title_text.get_untracked();
+            save_action.dispatch((filter_id.get_untracked(), title, query));
+        }
+    };
+
+    let on_modal_save = move || {
+        let title = modal_title.get_untracked();
+        if title.trim().is_empty() {
             return;
         }
-        save_action.dispatch((filter_id.get_untracked(), title, query));
+        let query = query_text.get_untracked();
+        set_show_save_modal.set(false);
+        save_action.dispatch((None, title, query));
     };
 
     let on_delete = move |_| {
@@ -145,11 +172,6 @@ pub fn FilterPage() -> impl IntoView {
         }
     };
 
-    // Title shows as input when: new filter, or editing title
-    let show_title_input = Memo::new(move |_| {
-        filter_id.get().is_none() || is_editing_title.get()
-    });
-
     view! {
         <div class="space-y-4">
             // Header
@@ -157,53 +179,65 @@ pub fn FilterPage() -> impl IntoView {
                 // Left side: title
                 <div class="flex items-center gap-2 flex-1 min-w-0">
                     <Show
-                        when=move || show_title_input.get()
-                        fallback=move || {
-                            view! {
-                                <span class="text-xl font-semibold text-text-primary \
-                                             truncate">
+                        when=move || filter_id.get().is_some()
+                        fallback=|| view! {
+                            <span class="text-xl font-semibold text-text-primary">
+                                "New Filter"
+                            </span>
+                        }
+                    >
+                        <Show
+                            when=move || is_editing_title.get()
+                            fallback=move || view! {
+                                <span class="text-xl font-semibold \
+                                             text-text-primary truncate">
                                     {move || title_text.get()}
                                 </span>
                                 <button
-                                    class="p-1 text-text-tertiary hover:text-text-primary \
+                                    class="p-1 text-text-tertiary \
+                                           hover:text-text-primary \
                                            transition-colors flex-shrink-0"
                                     title="Rename filter"
-                                    on:click=move |_| set_is_editing_title.set(true)
+                                    on:click=move |_| {
+                                        set_is_editing_title.set(true)
+                                    }
                                 >
                                     <Icon kind=IconKind::Edit class="w-4 h-4"/>
                                 </button>
                             }
-                        }
-                    >
-                        <input
-                            type="text"
-                            class="text-xl font-semibold text-text-primary \
-                                   bg-transparent border-none outline-none \
-                                   placeholder:text-text-tertiary w-full"
-                            placeholder="Untitled Filter"
-                            prop:value=move || title_text.get()
-                            on:input=move |ev| {
-                                set_title_text.set(event_target_value(&ev));
-                            }
-                            on:keydown=move |ev| {
-                                match ev.key().as_str() {
-                                    "Enter" => {
-                                        ev.prevent_default();
-                                        set_is_editing_title.set(false);
-                                    }
-                                    "Escape" => {
-                                        set_title_text.set(
-                                            original_title.get_untracked(),
-                                        );
-                                        set_is_editing_title.set(false);
-                                    }
-                                    _ => {}
+                        >
+                            <input
+                                type="text"
+                                class="text-xl font-semibold text-text-primary \
+                                       bg-transparent border-none outline-none \
+                                       placeholder:text-text-tertiary w-full"
+                                placeholder="Filter title"
+                                prop:value=move || title_text.get()
+                                on:input=move |ev| {
+                                    set_title_text
+                                        .set(event_target_value(&ev));
                                 }
-                            }
-                            on:blur=move |_| {
-                                set_is_editing_title.set(false);
-                            }
-                        />
+                                on:keydown=move |ev| {
+                                    match ev.key().as_str() {
+                                        "Enter" => {
+                                            ev.prevent_default();
+                                            set_is_editing_title.set(false);
+                                        }
+                                        "Escape" => {
+                                            set_title_text.set(
+                                                original_title
+                                                    .get_untracked(),
+                                            );
+                                            set_is_editing_title.set(false);
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                                on:blur=move |_| {
+                                    set_is_editing_title.set(false);
+                                }
+                            />
+                        </Show>
                     </Show>
                 </div>
 
@@ -232,7 +266,9 @@ pub fn FilterPage() -> impl IntoView {
                             }
                         }
                         title=move || {
-                            if is_dirty.get() {
+                            if filter_id.get().is_none() {
+                                "Save filter"
+                            } else if is_dirty.get() {
                                 "Save changes"
                             } else {
                                 "No changes to save"
@@ -298,6 +334,64 @@ pub fn FilterPage() -> impl IntoView {
                 store=store
                 empty_message="No matching tasks. Try adjusting your query."
             />
+
+            // Save filter modal (new filters only)
+            <Modal open=show_save_modal set_open=set_show_save_modal>
+                <div class="p-4 space-y-4">
+                    <h3 class="text-lg font-semibold text-text-primary">
+                        "Save Filter"
+                    </h3>
+                    <input
+                        type="text"
+                        node_ref=modal_input_ref
+                        class="w-full bg-bg-input border border-border \
+                               rounded px-3 py-2 text-sm text-text-primary \
+                               placeholder:text-text-tertiary \
+                               focus:outline-none focus:border-accent"
+                        placeholder="Filter title"
+                        prop:value=move || modal_title.get()
+                        on:input=move |ev| {
+                            set_modal_title.set(event_target_value(&ev));
+                        }
+                        on:keydown=move |ev| {
+                            match ev.key().as_str() {
+                                "Enter" => {
+                                    ev.prevent_default();
+                                    on_modal_save();
+                                }
+                                "Escape" => {
+                                    set_show_save_modal.set(false);
+                                }
+                                _ => {}
+                            }
+                        }
+                    />
+                    <div class="flex justify-end gap-2">
+                        <button
+                            class="px-3 py-1.5 text-sm text-text-secondary \
+                                   hover:text-text-primary transition-colors"
+                            on:click=move |_| {
+                                set_show_save_modal.set(false)
+                            }
+                        >
+                            "Cancel"
+                        </button>
+                        <button
+                            class="px-3 py-1.5 text-sm bg-accent \
+                                   hover:bg-accent-hover text-white \
+                                   rounded transition-colors \
+                                   disabled:opacity-50 \
+                                   disabled:cursor-not-allowed"
+                            disabled=move || {
+                                modal_title.get().trim().is_empty()
+                            }
+                            on:click=move |_| on_modal_save()
+                        >
+                            "Save"
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     }
 }
