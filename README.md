@@ -5,10 +5,10 @@ GTD-inspired task management system built with Rust. Sequential subtask workflow
 ## Stack
 
 - **Backend + Frontend:** Rust — [Axum](https://github.com/tokio-rs/axum) + [Leptos](https://github.com/leptos-rs/leptos) (SSR + WASM hydration)
-- **Database:** PostgreSQL 17
+- **Database:** PostgreSQL 17, [Diesel](https://diesel.rs/) ORM with [diesel-async](https://github.com/weiznich/diesel_async)
 - **Sessions:** Redis 7
 - **Styling:** TailwindCSS 4
-- **Migrations:** sqlx-cli
+- **Migrations:** Diesel CLI (reversible up/down migrations)
 
 ## Prerequisites
 
@@ -41,6 +41,8 @@ just lint             # Clippy
 just check            # fmt + lint + test
 just migrate          # Apply migrations
 just migration name   # Create new migration
+just migrate-revert   # Revert last migration
+just migrate-redo     # Revert + reapply (test reversibility)
 just build            # Release build
 ```
 
@@ -56,9 +58,11 @@ docker compose exec app just test
 north/
 ├── crates/
 │   ├── domain/     # Shared types (Task, Project, User, etc.) — no IO
+│   ├── db/         # Diesel schema, models, connection pool
+│   ├── services/   # Business logic (TaskService, ProjectService, etc.)
 │   ├── app/        # Leptos components, pages, server functions
 │   └── server/     # Axum binary, REST API, auth, middleware
-├── migrations/     # SQL migrations (sqlx)
+├── migrations/     # Diesel reversible migrations (up.sql + down.sql)
 ├── style/          # TailwindCSS entry point
 ├── public/         # Static assets
 ├── docker/         # Dockerfiles
@@ -68,12 +72,15 @@ north/
 ## Features
 
 - **Inbox** — capture tasks, process later
-- **Today** — actionable tasks (start_date <= today)
+- **Today** — actionable tasks (start_at <= today)
 - **All Tasks** — overview of every task across projects
 - **Sequential tasks** — subtasks with configurable N-next visibility
 - **Projects** — list or kanban view, custom columns per project, dedicated project pages
 - **Archive** — archive/unarchive/delete projects; archived project tasks hidden from Today and All Tasks
-- **Reviews** — GTD-style, per-task reviewed_at tracking
+- **Reviews** — GTD-style, per-task reviewed_at tracking with configurable interval
+- **Tags** — per-user tags with inline `#tag` parsing in task titles
+- **Project references** — inline `@project` parsing to assign tasks to projects
+- **Settings** — configurable review interval, default columns, sequential limits
 - **Filter DSL** — JQL-like query language (`actionable = true & tags in ["work:*"]`)
 - **Statistics** — open/closed today, week, total
 - **Markdown & images** — full CommonMark with image upload

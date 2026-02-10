@@ -121,7 +121,9 @@ north/
     │       │   ├── today.rs    # TodayPage (tasks with start_at <= now)
     │       │   ├── all_tasks.rs # AllTasksPage
     │       │   ├── project.rs  # ProjectPage (tasks for a single project, :id param)
-    │       │   └── archive.rs  # ArchivePage (archived projects, unarchive/delete)
+    │       │   ├── archive.rs  # ArchivePage (archived projects, unarchive/delete)
+    │       │   ├── review.rs   # ReviewPage (GTD-style task review)
+    │       │   └── settings.rs # SettingsPage (user preferences)
     │       ├── components/
     │       │   ├── task_card/          # Container/view pattern
     │       │   │   ├── container.rs    # Signals, handlers, concrete Callback props
@@ -135,6 +137,12 @@ north/
     │       │   ├── project_picker/     # Container/view pattern
     │       │   │   ├── container.rs    # Project selection state
     │       │   │   └── view.rs         # Project picker dropdown
+    │       │   ├── tag_picker/         # Container/view pattern
+    │       │   │   ├── container.rs    # Tag selection + creation state
+    │       │   │   └── view.rs         # Tag picker dropdown
+    │       │   ├── autocomplete/       # Container/view pattern
+    │       │   │   ├── container.rs    # Autocomplete state, keyboard nav
+    │       │   │   └── view.rs         # Autocomplete dropdown rendering
     │       │   ├── completion_toggle.rs # Pure view (ReadSignal + Arc handler)
     │       │   ├── task_meta.rs        # Pure view (date, project, tags display)
     │       │   ├── task_form.rs        # Self-contained form widget
@@ -144,7 +152,8 @@ north/
     │       │   ├── nav.rs              # Sidebar navigation (project links, archive)
     │       │   └── markdown.rs         # Markdown → HTML rendering
     │       ├── stores/
-    │       │   └── task_store.rs       # TaskStore: actions, effects, Callback fields
+    │       │   ├── task_store.rs       # TaskStore: actions, effects, Callback fields
+    │       │   └── lookup_store.rs     # LookupStore: cached projects + tags for pickers
     │       └── server_fns/
     │           ├── auth.rs     # check_auth(), get_auth_user_id()
     │           ├── tasks.rs    # Task CRUD → calls north_services::TaskService
@@ -179,24 +188,24 @@ north/
 ### REST API Routes
 
 ```
-POST   /api/auth/login       (public)
-POST   /api/auth/logout       (public)
-GET    /api/tasks             (protected)
-POST   /api/tasks             (protected)
-GET    /api/tasks/:id         (protected)
-PATCH  /api/tasks/:id         (protected)
-DELETE /api/tasks/:id         (protected)
-PATCH  /api/tasks/:id/move    (protected)
-PATCH  /api/tasks/:id/review  (protected)
-GET    /api/projects          (protected)
-POST   /api/projects          (protected)
-GET    /api/projects/:id      (protected)
-PATCH  /api/projects/:id      (protected)
-DELETE /api/projects/:id      (protected)
+POST   /api/auth/login        (public)
+POST   /api/auth/logout        (public)
+GET    /api/tasks              (protected, supports TaskFilter query params)
+POST   /api/tasks              (protected)
+GET    /api/tasks/:id          (protected)
+PATCH  /api/tasks/:id          (protected)
+DELETE /api/tasks/:id          (protected)
+PATCH  /api/tasks/:id/move     (protected)
+PATCH  /api/tasks/:id/review   (protected)
+GET    /api/projects           (protected)
+POST   /api/projects           (protected)
+GET    /api/projects/:id       (protected)
+PATCH  /api/projects/:id       (protected)
+DELETE /api/projects/:id       (protected, archives the project)
 POST   /api/projects/:id/columns (protected)
-PATCH  /columns/:id           (protected)
-DELETE /columns/:id           (protected)
-GET    /api/stats             (protected)
+PATCH  /columns/:id            (protected)
+DELETE /columns/:id            (protected)
+GET    /api/stats              (protected)
 ```
 
 ## Data Models
@@ -223,6 +232,7 @@ Triggers: `update_updated_at()` on users, projects, tasks.
 - **Data access:** Diesel ORM with `diesel-async` for async PostgreSQL. Service layer uses Diesel query builder directly (no repository abstraction). Batch metadata loading via `enrich()` to avoid N+1 queries.
 - **Container/view pattern:** Components with state management are split into directories: `container.rs` (signals, handlers, callback wiring) and `view.rs` (pure rendering). Pure presentational components stay as single files. Containers use concrete `Callback<T>` types, not generic type params.
 - **TaskStore:** Centralized controller (`stores/task_store.rs`) that owns actions and effects for task mutations (complete, delete, update, set/clear start_at). Pages create a `TaskStore` from a `Resource` and pass it to `TaskList`.
+- **LookupStore:** Cached projects and tags loaded once and shared across pickers (`stores/lookup_store.rs`).
 - **Token parsing:** `parse_tokens()` in domain crate extracts `#tags` and `@project` references from task title/body text. Services resolve these to DB records.
 
 ## Code Conventions
