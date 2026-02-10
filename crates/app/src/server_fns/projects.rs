@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::{Project, TaskWithMeta};
+use north_domain::{Column, Project, TaskWithMeta};
 
 #[server(GetProjectsFn, "/api")]
 pub async fn get_projects() -> Result<Vec<Project>, ServerFnError> {
@@ -106,6 +106,15 @@ pub async fn get_archived_projects() -> Result<Vec<Project>, ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
     north_services::ProjectService::get_archived(&pool, user_id)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
+#[server(GetAllColumnsFn, "/api")]
+pub async fn get_all_columns() -> Result<Vec<Column>, ServerFnError> {
+    let pool = expect_context::<north_services::DbPool>();
+    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
+    north_services::ColumnService::get_all_for_user(&pool, user_id)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))
 }

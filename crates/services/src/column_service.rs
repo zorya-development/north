@@ -157,6 +157,19 @@ impl ColumnService {
         Ok(())
     }
 
+    pub async fn get_all_for_user(pool: &DbPool, user_id: i64) -> ServiceResult<Vec<Column>> {
+        let mut conn = pool.get().await?;
+        let rows = project_columns::table
+            .inner_join(projects::table.on(projects::id.eq(project_columns::project_id)))
+            .filter(projects::user_id.eq(user_id))
+            .filter(projects::archived.eq(false))
+            .order(project_columns::position.asc())
+            .select(ColumnRow::as_select())
+            .load(&mut conn)
+            .await?;
+        Ok(rows.into_iter().map(Column::from).collect())
+    }
+
     /// Check if a column is marked as done
     pub async fn is_done(pool: &DbPool, column_id: i64) -> ServiceResult<Option<bool>> {
         let mut conn = pool.get().await?;

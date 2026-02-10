@@ -1,6 +1,8 @@
 use leptos::prelude::*;
 use leptos_router::hooks::{use_navigate, use_params_map};
+use north_ui::{Icon, IconKind};
 
+use crate::components::filter_autocomplete::FilterAutocompleteTextarea;
 use crate::components::task_list::TaskList;
 use crate::server_fns::filters::*;
 use crate::stores::task_store::TaskStore;
@@ -20,7 +22,14 @@ pub fn FilterPage() -> impl IntoView {
     let (query_text, set_query_text) = signal(String::new());
     let (title_text, set_title_text) = signal("Untitled Filter".to_string());
     let (parse_error, set_parse_error) = signal(Option::<String>::None);
-    let (is_dirty, set_is_dirty) = signal(false);
+    let (original_title, set_original_title) = signal(String::new());
+    let (original_query, set_original_query) = signal(String::new());
+    let (is_editing_title, set_is_editing_title) = signal(false);
+
+    let is_dirty = Memo::new(move |_| {
+        title_text.get() != original_title.get()
+            || query_text.get() != original_query.get()
+    });
 
     // Load existing filter if editing
     let saved_filter = Resource::new(
@@ -38,7 +47,9 @@ pub fn FilterPage() -> impl IntoView {
         if let Some(Some(f)) = saved_filter.get() {
             set_title_text.set(f.title.clone());
             set_query_text.set(f.query.clone());
-            set_is_dirty.set(false);
+            set_original_title.set(f.title);
+            set_original_query.set(f.query);
+            set_is_editing_title.set(false);
         }
     });
 
@@ -91,7 +102,9 @@ pub fn FilterPage() -> impl IntoView {
     let navigate_save = navigate.clone();
     Effect::new(move || {
         if let Some(Ok(filter)) = save_action.value().get() {
-            set_is_dirty.set(false);
+            set_original_title.set(filter.title.clone());
+            set_original_query.set(filter.query.clone());
+            set_is_editing_title.set(false);
             if filter_id.get_untracked().is_none() {
                 navigate_save(
                     &format!("/filters/{}", filter.id),
@@ -132,87 +145,149 @@ pub fn FilterPage() -> impl IntoView {
         }
     };
 
+    // Title shows as input when: new filter, or editing title
+    let show_title_input = Memo::new(move |_| {
+        filter_id.get().is_none() || is_editing_title.get()
+    });
+
     view! {
         <div class="space-y-4">
-            <div class="flex items-center justify-between">
-                <input
-                    type="text"
-                    class="text-xl font-semibold text-text-primary \
-                           bg-transparent border-none outline-none \
-                           placeholder:text-text-tertiary w-full"
-                    placeholder="Untitled Filter"
-                    prop:value=move || title_text.get()
-                    on:input=move |ev| {
-                        set_title_text.set(event_target_value(&ev));
-                        set_is_dirty.set(true);
-                    }
-                />
-                <a
-                    href="/filters/help"
-                    target="_blank"
-                    class="ml-2 px-2 py-1 text-xs text-text-secondary \
-                           hover:text-text-primary bg-bg-tertiary \
-                           rounded transition-colors flex-shrink-0"
-                    title="Query syntax reference"
-                >
-                    "?"
-                </a>
+            // Header
+            <div class="flex items-center justify-between gap-2">
+                // Left side: title
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <Show
+                        when=move || show_title_input.get()
+                        fallback=move || {
+                            view! {
+                                <span class="text-xl font-semibold text-text-primary \
+                                             truncate">
+                                    {move || title_text.get()}
+                                </span>
+                                <button
+                                    class="p-1 text-text-tertiary hover:text-text-primary \
+                                           transition-colors flex-shrink-0"
+                                    title="Rename filter"
+                                    on:click=move |_| set_is_editing_title.set(true)
+                                >
+                                    <Icon kind=IconKind::Edit class="w-4 h-4"/>
+                                </button>
+                            }
+                        }
+                    >
+                        <input
+                            type="text"
+                            class="text-xl font-semibold text-text-primary \
+                                   bg-transparent border-none outline-none \
+                                   placeholder:text-text-tertiary w-full"
+                            placeholder="Untitled Filter"
+                            prop:value=move || title_text.get()
+                            on:input=move |ev| {
+                                set_title_text.set(event_target_value(&ev));
+                            }
+                            on:keydown=move |ev| {
+                                match ev.key().as_str() {
+                                    "Enter" => {
+                                        ev.prevent_default();
+                                        set_is_editing_title.set(false);
+                                    }
+                                    "Escape" => {
+                                        set_title_text.set(
+                                            original_title.get_untracked(),
+                                        );
+                                        set_is_editing_title.set(false);
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            on:blur=move |_| {
+                                set_is_editing_title.set(false);
+                            }
+                        />
+                    </Show>
+                </div>
+
+                // Right side: action icons
+                <div class="flex items-center gap-1 flex-shrink-0">
+                    // Save icon
+                    <button
+                        class=move || {
+                            let base = "p-1.5 rounded transition-colors";
+                            let disabled = parse_error.get().is_some()
+                                || query_text.get().trim().is_empty();
+                            if disabled {
+                                format!(
+                                    "{base} text-text-tertiary opacity-50 \
+                                     cursor-not-allowed"
+                                )
+                            } else if is_dirty.get() {
+                                format!(
+                                    "{base} text-accent hover:text-accent-hover"
+                                )
+                            } else {
+                                format!(
+                                    "{base} text-text-tertiary \
+                                     hover:text-text-secondary"
+                                )
+                            }
+                        }
+                        title=move || {
+                            if is_dirty.get() {
+                                "Save changes"
+                            } else {
+                                "No changes to save"
+                            }
+                        }
+                        on:click=on_save
+                        disabled=move || {
+                            parse_error.get().is_some()
+                                || query_text.get().trim().is_empty()
+                        }
+                    >
+                        <Icon kind=IconKind::Save class="w-5 h-5"/>
+                    </button>
+
+                    // Help icon
+                    <a
+                        href="/filters/help"
+                        target="_blank"
+                        class="p-1.5 text-text-tertiary hover:text-text-primary \
+                               rounded transition-colors"
+                        title="Query syntax reference"
+                    >
+                        <Icon kind=IconKind::QuestionMark class="w-5 h-5"/>
+                    </a>
+
+                    // Delete button (saved filters only)
+                    <Show when=move || filter_id.get().is_some()>
+                        <button
+                            class="px-2 py-1 text-sm text-red-400 \
+                                   hover:text-red-300 transition-colors"
+                            on:click=on_delete
+                        >
+                            "Delete"
+                        </button>
+                    </Show>
+                </div>
             </div>
 
+            // Query textarea with autocomplete
             <div>
-                <textarea
+                <FilterAutocompleteTextarea
+                    value=query_text
+                    set_value=set_query_text
+                    placeholder="e.g. status = 'ACTIVE' AND tags =~ 'work:*'"
+                    rows=3
                     class="w-full bg-bg-input border border-border rounded \
                            px-3 py-2 text-sm text-text-primary \
                            font-mono placeholder:text-text-tertiary \
                            focus:outline-none focus:border-accent \
                            resize-y min-h-20"
-                    placeholder="e.g. status = 'ACTIVE' AND tags =~ 'work:*'"
-                    rows="3"
-                    prop:value=move || query_text.get()
-                    on:input=move |ev| {
-                        set_query_text.set(event_target_value(&ev));
-                        set_is_dirty.set(true);
-                    }
                 />
                 <Show when=move || parse_error.get().is_some()>
                     <p class="text-xs text-red-400 mt-1">
                         {move || parse_error.get().unwrap_or_default()}
                     </p>
-                </Show>
-            </div>
-
-            <div class="flex gap-2">
-                <button
-                    class="px-3 py-1.5 text-sm bg-accent text-white \
-                           rounded hover:bg-accent-hover transition-colors \
-                           disabled:opacity-50 disabled:cursor-not-allowed"
-                    on:click=on_save
-                    disabled=move || {
-                        parse_error.get().is_some()
-                            || query_text.get().trim().is_empty()
-                    }
-                >
-                    {move || {
-                        if filter_id.get().is_some() {
-                            "Update"
-                        } else {
-                            "Save"
-                        }
-                    }}
-                </button>
-                <Show when=move || filter_id.get().is_some()>
-                    <button
-                        class="px-3 py-1.5 text-sm text-red-400 \
-                               hover:text-red-300 transition-colors"
-                        on:click=on_delete
-                    >
-                        "Delete"
-                    </button>
-                </Show>
-                <Show when=move || is_dirty.get()>
-                    <span class="text-xs text-text-tertiary self-center">
-                        "Unsaved changes"
-                    </span>
                 </Show>
             </div>
 

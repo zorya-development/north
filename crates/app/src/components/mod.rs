@@ -1,5 +1,6 @@
 pub mod autocomplete;
 pub mod date_picker;
+pub mod filter_autocomplete;
 pub mod layout;
 pub mod nav;
 pub mod project_picker;

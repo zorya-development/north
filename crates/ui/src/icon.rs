@@ -17,6 +17,8 @@ pub enum IconKind {
     Archive,
     Tag,
     Edit,
+    Save,
+    QuestionMark,
 }
 
 #[component]
@@ -178,6 +180,27 @@ pub fn Icon(kind: IconKind, #[prop(default = "w-4 h-4")] class: &'static str) ->
                          0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 \
                          9.5-9.5z"/>
+            </svg>
+        }
+        .into_any(),
+        IconKind::Save => view! {
+            <svg xmlns="http://www.w3.org/2000/svg" class=class viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 \
+                         2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+            </svg>
+        }
+        .into_any(),
+        IconKind::QuestionMark => view! {
+            <svg xmlns="http://www.w3.org/2000/svg" class=class viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
         }
         .into_any(),
