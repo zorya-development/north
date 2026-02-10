@@ -20,6 +20,7 @@ pub fn FilterPage() -> impl IntoView {
     });
 
     let (query_text, set_query_text) = signal(String::new());
+    let (committed_query, set_committed_query) = signal(String::new());
     let (title_text, set_title_text) = signal("Untitled Filter".to_string());
     let (parse_error, set_parse_error) = signal(Option::<String>::None);
     let (original_title, set_original_title) = signal(String::new());
@@ -50,6 +51,7 @@ pub fn FilterPage() -> impl IntoView {
         if let Some(Some(f)) = saved_filter.get() {
             set_title_text.set(f.title.clone());
             set_query_text.set(f.query.clone());
+            set_committed_query.set(f.query.clone());
             set_original_title.set(f.title);
             set_original_query.set(f.query);
             set_is_editing_title.set(false);
@@ -85,9 +87,9 @@ pub fn FilterPage() -> impl IntoView {
         }
     });
 
-    // Execute filter results
+    // Execute filter results (only on explicit run)
     let filter_results = Resource::new(
-        move || query_text.get(),
+        move || committed_query.get(),
         |q| async move {
             if q.trim().is_empty() {
                 return Ok(vec![]);
@@ -139,6 +141,13 @@ pub fn FilterPage() -> impl IntoView {
             navigate_delete("/filters/new", Default::default());
         }
     });
+
+    let run_query = move || {
+        let q = query_text.get_untracked();
+        if !q.trim().is_empty() && parse_error.get_untracked().is_none() {
+            set_committed_query.set(q);
+        }
+    };
 
     let on_save = move |_| {
         let query = query_text.get_untracked();
@@ -307,19 +316,40 @@ pub fn FilterPage() -> impl IntoView {
                 </div>
             </div>
 
-            // Query textarea with autocomplete
+            // Search bar
             <div>
-                <FilterAutocompleteTextarea
-                    value=query_text
-                    set_value=set_query_text
-                    placeholder="e.g. status = 'ACTIVE' AND tags =~ 'work:*'"
-                    rows=3
-                    class="w-full bg-bg-input border border-border rounded \
-                           px-3 py-2 text-sm text-text-primary \
-                           font-mono placeholder:text-text-tertiary \
-                           focus:outline-none focus:border-accent \
-                           resize-y min-h-20"
-                />
+                <div class="flex w-full gap-2">
+                    <div class="flex-1 min-w-0">
+                        <FilterAutocompleteTextarea
+                            value=query_text
+                            set_value=set_query_text
+                            placeholder="e.g. status = 'ACTIVE' AND tags =~ 'work:*'"
+                            rows=1
+                            class="w-full bg-bg-input border border-border \
+                                   rounded px-3 py-2 text-sm \
+                                   text-text-primary font-mono \
+                                   placeholder:text-text-tertiary \
+                                   focus:outline-none \
+                                   focus:border-accent resize-none"
+                            on_submit=Callback::new(move |()| run_query())
+                        />
+                    </div>
+                    <button
+                        class="w-24 py-0 text-sm bg-accent \
+                               hover:bg-accent-hover text-white \
+                               rounded transition-colors \
+                               disabled:opacity-50 \
+                               disabled:cursor-not-allowed flex-shrink-0"
+                        title="Run query (Enter)"
+                        on:click=move |_| run_query()
+                        disabled=move || {
+                            parse_error.get().is_some()
+                                || query_text.get().trim().is_empty()
+                        }
+                    >
+                        "Search"
+                    </button>
+                </div>
                 <Show when=move || parse_error.get().is_some()>
                     <p class="text-xs text-red-400 mt-1">
                         {move || parse_error.get().unwrap_or_default()}

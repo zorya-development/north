@@ -161,6 +161,7 @@ pub fn FilterAutocompleteTextarea(
     #[prop(optional)] placeholder: &'static str,
     #[prop(optional)] class: &'static str,
     #[prop(optional, default = 3)] rows: u32,
+    #[prop(optional)] on_submit: Option<Callback<()>>,
 ) -> impl IntoView {
     let lookup = use_context::<LookupStore>();
     let (highlighted, set_highlighted) = signal(0_usize);
@@ -214,7 +215,7 @@ pub fn FilterAutocompleteTextarea(
     });
 
     view! {
-        <div class="relative">
+        <div class="relative flex flex-col">
             <textarea
                 node_ref=textarea_ref
                 placeholder=placeholder
@@ -276,6 +277,11 @@ pub fn FilterAutocompleteTextarea(
                                 return;
                             }
                             _ => {}
+                        }
+                    } else if ev.key() == "Enter" && !ev.shift_key() {
+                        if let Some(cb) = on_submit {
+                            ev.prevent_default();
+                            cb.run(());
                         }
                     }
                 }
