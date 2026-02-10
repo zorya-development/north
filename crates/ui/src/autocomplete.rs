@@ -17,9 +17,9 @@ pub fn AutocompleteDropdown(
     }
 
     view! {
-        <div class="absolute z-50 mt-1 bg-bg-secondary border border-border \
-                    rounded-lg shadow-lg p-1 w-[200px] max-h-[200px] \
-                    overflow-y-auto">
+        <div class="absolute top-full z-50 mt-1 bg-bg-secondary border \
+                    border-border rounded-lg shadow-lg p-1 w-[200px] \
+                    max-h-[200px] overflow-y-auto">
             {items
                 .into_iter()
                 .enumerate()
