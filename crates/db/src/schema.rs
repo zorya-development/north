@@ -103,6 +103,18 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    saved_filters (id) {
+        id -> Int8,
+        user_id -> Int8,
+        title -> Text,
+        query -> Text,
+        position -> Int4,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
 diesel::joinable!(projects -> users (user_id));
 diesel::joinable!(project_columns -> projects (project_id));
 diesel::joinable!(tasks -> users (user_id));
@@ -113,6 +125,7 @@ diesel::joinable!(task_tags -> tasks (task_id));
 diesel::joinable!(task_tags -> tags (tag_id));
 diesel::joinable!(images -> users (user_id));
 diesel::joinable!(images -> tasks (task_id));
+diesel::joinable!(saved_filters -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     users,
@@ -122,4 +135,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     tags,
     task_tags,
     images,
+    saved_filters,
 );

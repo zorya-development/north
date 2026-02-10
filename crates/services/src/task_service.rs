@@ -846,6 +846,109 @@ impl TaskService {
         Ok(())
     }
 
+    pub async fn execute_dsl_filter(
+        pool: &DbPool,
+        user_id: i64,
+        query_str: &str,
+    ) -> ServiceResult<Vec<TaskWithMeta>> {
+        let parsed = north_domain::parse_filter(query_str).map_err(|errs| {
+            ServiceError::BadRequest(
+                errs.into_iter().map(|e| e.to_string()).collect::<Vec<_>>().join("; "),
+            )
+        })?;
+
+        let mut conn = pool.get().await?;
+
+        // Evaluate expression to get matching task IDs
+        let matching_ids: Vec<i64> = if let Some(ref expr) = parsed.expression {
+            let ids = crate::filter_translator::eval_expr(pool, user_id, expr).await?;
+            ids.into_iter().collect()
+        } else {
+            // No expression — return all top-level tasks
+            tasks::table
+                .filter(tasks::user_id.eq(user_id))
+                .filter(tasks::parent_id.is_null())
+                .select(tasks::id)
+                .load(&mut conn)
+                .await?
+        };
+
+        if matching_ids.is_empty() {
+            return Ok(vec![]);
+        }
+
+        // Load task rows by IDs
+        let rows: Vec<north_db::models::TaskRow> = tasks::table
+            .filter(tasks::id.eq_any(&matching_ids))
+            .select(north_db::models::TaskRow::as_select())
+            .load(&mut conn)
+            .await?;
+
+        let mut results = Self::enrich(pool, rows).await?;
+        Self::compute_actionable_batch(pool, &mut results).await?;
+
+        // Apply ORDER BY from parsed query
+        if let Some(ref order_by) = parsed.order_by {
+            use north_domain::SortDirection;
+            results.sort_by(|a, b| {
+                let cmp = match order_by.field {
+                    north_domain::FilterField::Title => {
+                        a.task.title.to_lowercase().cmp(&b.task.title.to_lowercase())
+                    }
+                    north_domain::FilterField::DueDate => {
+                        a.task.due_date.cmp(&b.task.due_date)
+                    }
+                    north_domain::FilterField::StartAt => {
+                        a.task.start_at.cmp(&b.task.start_at)
+                    }
+                    north_domain::FilterField::Created => {
+                        a.task.created_at.cmp(&b.task.created_at)
+                    }
+                    north_domain::FilterField::Updated => {
+                        a.task.updated_at.cmp(&b.task.updated_at)
+                    }
+                    _ => a.task.position.cmp(&b.task.position),
+                };
+                match order_by.direction {
+                    SortDirection::Asc => cmp,
+                    SortDirection::Desc => cmp.reverse(),
+                }
+            });
+        }
+
+        Ok(results)
+    }
+
+    pub async fn get_completed(
+        pool: &DbPool,
+        user_id: i64,
+        project_id: Option<i64>,
+        inbox_only: bool,
+    ) -> ServiceResult<Vec<TaskWithMeta>> {
+        let mut conn = pool.get().await?;
+
+        let mut query = tasks::table
+            .filter(tasks::user_id.eq(user_id))
+            .filter(tasks::parent_id.is_null())
+            .filter(tasks::completed_at.is_not_null())
+            .into_boxed();
+
+        if let Some(pid) = project_id {
+            query = query.filter(tasks::project_id.eq(pid));
+        } else if inbox_only {
+            query = query.filter(tasks::project_id.is_null());
+        }
+
+        let rows = query
+            .order(tasks::completed_at.desc())
+            .limit(50)
+            .select(TaskRow::as_select())
+            .load(&mut conn)
+            .await?;
+
+        Self::enrich(pool, rows).await
+    }
+
     // ── Internal helpers ───────────────────────────────────────────
 
     async fn enrich(pool: &DbPool, task_rows: Vec<TaskRow>) -> ServiceResult<Vec<TaskWithMeta>> {

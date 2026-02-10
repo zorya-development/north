@@ -1,12 +1,18 @@
 pub mod column;
+pub mod filter_dsl;
+pub mod filter_parser;
 pub mod project;
+pub mod saved_filter;
 pub mod tag;
 pub mod task;
 pub mod text_parser;
 pub mod user;
 
 pub use column::*;
+pub use filter_dsl::*;
+pub use filter_parser::*;
 pub use project::*;
+pub use saved_filter::*;
 pub use tag::*;
 pub use task::*;
 pub use text_parser::*;

@@ -108,6 +108,36 @@ pub fn App() -> impl IntoView {
                         }
                     }
                 />
+                <Route
+                    path=path!("/filters/new")
+                    view=|| {
+                        view! {
+                            <components::layout::AppLayout>
+                                <pages::filter::FilterPage/>
+                            </components::layout::AppLayout>
+                        }
+                    }
+                />
+                <Route
+                    path=path!("/filters/help")
+                    view=|| {
+                        view! {
+                            <components::layout::AppLayout>
+                                <pages::filter_help::FilterHelpPage/>
+                            </components::layout::AppLayout>
+                        }
+                    }
+                />
+                <Route
+                    path=path!("/filters/:id")
+                    view=|| {
+                        view! {
+                            <components::layout::AppLayout>
+                                <pages::filter::FilterPage/>
+                            </components::layout::AppLayout>
+                        }
+                    }
+                />
             </Routes>
         </Router>
     }

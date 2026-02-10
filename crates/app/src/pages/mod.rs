@@ -1,5 +1,7 @@
 pub mod all_tasks;
 pub mod archive;
+pub mod filter;
+pub mod filter_help;
 pub mod inbox;
 pub mod login;
 pub mod project;

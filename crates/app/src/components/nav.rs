@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 use leptos_router::hooks::use_location;
 
+use crate::server_fns::filters::get_saved_filters;
 use crate::server_fns::projects::{
     archive_project, create_project, get_projects, update_project_details,
 };
@@ -14,6 +15,7 @@ const PRESET_COLORS: &[&str] = &[
 #[component]
 pub fn Sidebar() -> impl IntoView {
     let projects = Resource::new(|| (), |_| get_projects());
+    let filters = Resource::new(|| (), |_| get_saved_filters());
     let (creating, set_creating) = signal(false);
     let (new_title, set_new_title) = signal(String::new());
 
@@ -54,9 +56,14 @@ pub fn Sidebar() -> impl IntoView {
 
     view! {
         <aside class="w-56 bg-bg-secondary flex flex-col h-full">
-            <div class="py-4 px-2 flex items-center gap-2">
-                <img src="/public/logo.png" alt="North" class="w-10 h-10"/>
-                <span class="text-lg font-semibold text-text-primary">"North"</span>
+            <div class="px-5 pt-2 pb-2 flex justify-center" style="height: 140px;">
+                <div
+                    class="w-full"
+                    style="width: 100%; height: 160px; \
+                           background-image: url('/public/logo-big.png'); \
+                           background-size: cover; \
+                           background-position: center;"
+                />
             </div>
 
             <nav class="flex-1 px-2 space-y-1">
@@ -158,8 +165,54 @@ pub fn Sidebar() -> impl IntoView {
                 </div>
 
                 <div class="pt-4">
+                    <div class="flex items-center justify-between px-3">
+                        <span class="text-xs font-medium text-text-secondary \
+                                     uppercase tracking-wide">
+                            "Filters"
+                        </span>
+                        <a
+                            href="/filters/new"
+                            class="p-0.5 rounded text-text-tertiary \
+                                   hover:text-text-secondary \
+                                   hover:bg-bg-tertiary transition-colors"
+                        >
+                            <Icon kind=IconKind::Plus class="w-3.5 h-3.5"/>
+                        </a>
+                    </div>
+
+                    <Suspense fallback=|| ()>
+                        {move || {
+                            Suspend::new(async move {
+                                match filters.await {
+                                    Ok(list) => {
+                                        view! {
+                                            <div class="mt-1 space-y-0.5">
+                                                {list
+                                                    .into_iter()
+                                                    .map(|f| {
+                                                        let href =
+                                                            format!("/filters/{}", f.id);
+                                                        view! {
+                                                            <FilterNavItem
+                                                                href=href
+                                                                title=f.title
+                                                            />
+                                                        }
+                                                    })
+                                                    .collect::<Vec<_>>()}
+                                            </div>
+                                        }
+                                        .into_any()
+                                    }
+                                    Err(_) => view! { <div/> }.into_any(),
+                                }
+                            })
+                        }}
+                    </Suspense>
+                </div>
+
+                <div class="pt-4">
                     <NavItem href="/review" label="Review" icon=IconKind::Review/>
-                    <NavItem href="/filter" label="Filters" icon=IconKind::Filter/>
                     <NavItem href="/stats" label="Stats" icon=IconKind::Stats/>
                 </div>
             </nav>
@@ -369,6 +422,30 @@ fn ProjectItem(
                 }
             }
         </Show>
+    }
+}
+
+#[component]
+fn FilterNavItem(href: String, title: String) -> impl IntoView {
+    let location = use_location();
+    let href_cmp = href.clone();
+
+    let class = Memo::new(move |_| {
+        let base = "flex items-center gap-2 px-3 py-1.5 rounded-md \
+                    text-sm text-text-primary hover:bg-bg-tertiary \
+                    transition-colors";
+        if location.pathname.get() == href_cmp {
+            format!("{base} bg-bg-tertiary font-medium")
+        } else {
+            base.to_string()
+        }
+    });
+
+    view! {
+        <a href=href class=class>
+            <Icon kind=IconKind::Filter class="w-3.5 h-3.5 text-text-tertiary"/>
+            <span class="truncate">{title}</span>
+        </a>
     }
 }
 

@@ -82,7 +82,8 @@ north/
 - **Tags** — per-user tags with inline `#tag` parsing in task titles
 - **Project references** — inline `@project` parsing to assign tasks to projects
 - **Settings** — configurable review interval, default columns, sequential limits
-- **Filter DSL** — JQL-like query language (`actionable = true & tags in ["work:*"]`)
+- **Filter DSL** — JQL-like query language for saved filters (`status = 'ACTIVE' AND tags =~ 'work:*' ORDER BY due_date ASC`), with live results and client-side validation
+- **Completed tasks toggle** — show/hide completed tasks on any task list page
 - **Statistics** — open/closed today, week, total
 - **Markdown & images** — full CommonMark with image upload
 

@@ -137,3 +137,15 @@ pub async fn review_all_tasks() -> Result<(), ServerFnError> {
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))
 }
+
+#[server(GetCompletedTasksFn, "/api")]
+pub async fn get_completed_tasks(
+    project_id: Option<i64>,
+    inbox_only: bool,
+) -> Result<Vec<TaskWithMeta>, ServerFnError> {
+    let pool = expect_context::<north_services::DbPool>();
+    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
+    north_services::TaskService::get_completed(&pool, user_id, project_id, inbox_only)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
