@@ -3,12 +3,9 @@ use std::sync::Arc;
 use leptos::prelude::*;
 use north_domain::TagInfo;
 
-use crate::components::completion_toggle::CompletionToggle;
-use crate::components::dropdown::{DropdownItem, DropdownMenu};
-use crate::components::icons::{Icon, IconKind};
-use crate::components::markdown::MarkdownView;
 use crate::components::task_form::EditTaskForm;
 use crate::components::task_meta::TaskMeta;
+use north_ui::{Checkbox, DropdownItem, DropdownMenu, Icon, IconKind, MarkdownView};
 
 #[component]
 pub fn TaskCardView(
@@ -26,7 +23,7 @@ pub fn TaskCardView(
     set_editing: WriteSignal<bool>,
     menu_open: ReadSignal<bool>,
     set_menu_open: WriteSignal<bool>,
-    on_toggle: Arc<dyn Fn() + Send + Sync>,
+    on_toggle: Callback<()>,
     on_delete: Arc<dyn Fn() + Send + Sync>,
     on_save: Arc<dyn Fn(String, Option<String>) + Send + Sync>,
     on_set_start_at: Callback<(i64, String)>,
@@ -48,22 +45,22 @@ pub fn TaskCardView(
                 let body = body.clone();
                 let project_title = project_title.clone();
                 let tags = tags.clone();
-                let on_toggle = on_toggle.clone();
                 let on_delete = on_delete.clone();
                 move || {
                     let title = title.clone();
                     let body = body.clone();
                     let project_title = project_title.clone();
                     let tags = tags.clone();
-                    let on_toggle = on_toggle.clone();
                     let on_delete = on_delete.clone();
                     view! {
                         <div class="group border-b border-border px-3 py-2 \
                                     hover:bg-white/10 transition-colors">
                             <div class="flex items-center gap-2">
-                                <CompletionToggle
-                                    is_completed=is_completed
-                                    on_toggle=on_toggle.clone()
+                                <Checkbox
+                                    checked=is_completed
+                                    on_toggle=on_toggle
+                                    checked_label="Mark task incomplete"
+                                    unchecked_label="Complete task"
                                 />
                                 <span class=move || {
                                     if is_completed.get() {

@@ -21,6 +21,7 @@ ssr = [
 
 [dependencies]
 north-domain = { workspace = true }
+north-ui = { workspace = true }
 north-services = { path = "../services", optional = true }
 
 leptos = "0.7"
@@ -41,5 +42,3 @@ tokio = { version = "1", optional = true, features = ["full"] }
 http = { version = "1", optional = true }
 axum-extra = { version = "0.9", optional = true, features = ["cookie"] }
 wasm-bindgen = { version = "0.2", optional = true }
-pulldown-cmark = "0.12"
-ammonia = "4"

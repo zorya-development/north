@@ -34,7 +34,7 @@ pub fn TaskCard(
     let (editing, set_editing) = signal(false);
     let (menu_open, set_menu_open) = signal(false);
 
-    let on_toggle = Arc::new(move || {
+    let on_toggle = Callback::new(move |()| {
         let was_completed = is_completed.get_untracked();
         set_is_completed.set(!was_completed);
         on_toggle_complete.run((task_id, was_completed));

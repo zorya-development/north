@@ -18,7 +18,10 @@ fn find_trigger(value: &str, cursor: usize) -> Option<TriggerState> {
         if let Some(pos) = before.rfind(trigger) {
             if pos == 0 || before.as_bytes()[pos - 1] == b' ' {
                 let query = &before[pos + 1..];
-                if query.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+                if query
+                    .chars()
+                    .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+                {
                     return Some(TriggerState {
                         trigger,
                         start: pos,
@@ -31,24 +34,13 @@ fn find_trigger(value: &str, cursor: usize) -> Option<TriggerState> {
     None
 }
 
-fn get_suggestions(
-    lookup: &LookupStore,
-    trigger: char,
-    query: &str,
-) -> Vec<SuggestionItem> {
+fn get_suggestions(lookup: &LookupStore, trigger: char, query: &str) -> Vec<SuggestionItem> {
     let query_lower = query.to_lowercase();
     match trigger {
         '#' => {
-            let tags = lookup
-                .tags
-                .get()
-                .and_then(|r| r.ok())
-                .unwrap_or_default();
+            let tags = lookup.tags.get().and_then(|r| r.ok()).unwrap_or_default();
             tags.into_iter()
-                .filter(|t| {
-                    query_lower.is_empty()
-                        || t.name.to_lowercase().contains(&query_lower)
-                })
+                .filter(|t| query_lower.is_empty() || t.name.to_lowercase().contains(&query_lower))
                 .map(|t| SuggestionItem {
                     name: t.name,
                     color: t.color,
@@ -65,8 +57,7 @@ fn get_suggestions(
                 .into_iter()
                 .filter(|p| {
                     !p.archived
-                        && (query_lower.is_empty()
-                            || p.title.to_lowercase().contains(&query_lower))
+                        && (query_lower.is_empty() || p.title.to_lowercase().contains(&query_lower))
                 })
                 .map(|p| SuggestionItem {
                     name: p.title,

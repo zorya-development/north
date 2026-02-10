@@ -1,29 +1,28 @@
 use leptos::prelude::*;
 
-use crate::components::icons::{Icon, IconKind};
+use crate::icon::{Icon, IconKind};
 
 #[component]
-pub fn CompletionToggle(
-    is_completed: ReadSignal<bool>,
-    on_toggle: std::sync::Arc<dyn Fn() + Send + Sync>,
+pub fn Checkbox(
+    checked: ReadSignal<bool>,
+    on_toggle: Callback<()>,
+    #[prop(optional, default = "Uncheck")] checked_label: &'static str,
+    #[prop(optional, default = "Check")] unchecked_label: &'static str,
 ) -> impl IntoView {
     view! {
         <button
-            on:click={
-                let on_toggle = on_toggle.clone();
-                move |_| on_toggle()
-            }
+            on:click=move |_| on_toggle.run(())
             class="flex-shrink-0"
             aria-label=move || {
-                if is_completed.get() {
-                    "Mark task incomplete"
+                if checked.get() {
+                    checked_label
                 } else {
-                    "Complete task"
+                    unchecked_label
                 }
             }
         >
             <Show
-                when=move || is_completed.get()
+                when=move || checked.get()
                 fallback=move || {
                     view! {
                         <div class="w-4 h-4 rounded-full border-2 \

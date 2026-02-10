@@ -1,14 +1,14 @@
 use leptos::prelude::*;
 use leptos_router::hooks::use_location;
 
-use crate::components::icons::{Icon, IconKind};
 use crate::server_fns::projects::{
     archive_project, create_project, get_projects, update_project_details,
 };
+use north_ui::{Icon, IconKind};
 
 const PRESET_COLORS: &[&str] = &[
-    "#6b7280", "#ef4444", "#f97316", "#eab308", "#22c55e",
-    "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899",
+    "#6b7280", "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6",
+    "#ec4899",
 ];
 
 #[component]
@@ -27,11 +27,10 @@ pub fn Sidebar() -> impl IntoView {
         archive_project(id)
     });
 
-    let edit_action =
-        Action::new(move |input: &(i64, String, String)| {
-            let (id, title, color) = input.clone();
-            update_project_details(id, title, color)
-        });
+    let edit_action = Action::new(move |input: &(i64, String, String)| {
+        let (id, title, color) = input.clone();
+        update_project_details(id, title, color)
+    });
 
     Effect::new(move || {
         if let Some(Ok(_)) = create_action.value().get() {

@@ -2,7 +2,6 @@ use leptos::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IconKind {
-    // Navigation icons (from nav.rs)
     Inbox,
     Today,
     Tasks,
@@ -10,7 +9,6 @@ pub enum IconKind {
     Filter,
     Stats,
     Settings,
-    // Task card icons
     Check,
     KebabMenu,
     Calendar,

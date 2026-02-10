@@ -1717,7 +1717,6 @@ checksum = "60993920e071b0c9b66f14e2b32740a4e27ffc82854dcd72035887f336a09a28"
 name = "north-app"
 version = "0.1.0"
 dependencies = [
- "ammonia",
  "argon2",
  "axum-extra",
  "chrono",
@@ -1729,7 +1728,7 @@ dependencies = [
  "leptos_router",
  "north-domain",
  "north-services",
- "pulldown-cmark",
+ "north-ui",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -1805,6 +1804,15 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "tracing",
+]
+
+[[package]]
+name = "north-ui"
+version = "0.1.0"
+dependencies = [
+ "ammonia",
+ "leptos",
+ "pulldown-cmark",
 ]
 
 [[package]]
