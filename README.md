@@ -60,7 +60,8 @@ north/
 │   ├── domain/     # Shared types (Task, Project, User, etc.) — no IO
 │   ├── db/         # Diesel schema, models, connection pool
 │   ├── services/   # Business logic (TaskService, ProjectService, etc.)
-│   ├── app/        # Leptos components, pages, server functions
+│   ├── ui/         # Generic UI components (Icon, Dropdown, Popover, Checkbox, Markdown)
+│   ├── app/        # Leptos pages, domain components, server functions (uses north-ui)
 │   └── server/     # Axum binary, REST API, auth, middleware
 ├── migrations/     # Diesel reversible migrations (up.sql + down.sql)
 ├── style/          # TailwindCSS entry point

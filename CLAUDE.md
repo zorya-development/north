@@ -276,12 +276,18 @@ Triggers: `update_updated_at()` on users, projects, tasks.
 5. Add nav item in `crates/app/src/components/nav.rs`
 6. For task-based pages: create `Resource`, `TaskStore`, pass to `TaskList`
 
+### Add New UI Primitive
+1. Create component file in `crates/ui/src/`
+2. Export in `crates/ui/src/lib.rs`
+3. No domain dependencies — only `leptos` and rendering libs
+
 ### Add New Component (with state)
 1. Create directory `crates/app/src/components/<name>/`
 2. `container.rs` — signals, handlers, concrete `Callback` props (no generics)
 3. `view.rs` — pure rendering, receives data + handlers as props
 4. `mod.rs` — `pub use container::ComponentName;`
 5. Export in `crates/app/src/components/mod.rs`
+6. Import generic UI primitives from `north_ui` (Icon, Dropdown, Popover, etc.)
 
 Pure presentational components (no internal state management) stay as single files.
 
