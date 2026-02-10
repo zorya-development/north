@@ -5,7 +5,8 @@ use north_ui::{Icon, IconKind, Popover};
 #[component]
 pub fn TagPickerView(
     task_id: i64,
-    tags: Vec<TagInfo>,
+    display_tags: ReadSignal<Vec<TagInfo>>,
+    set_display_tags: WriteSignal<Vec<TagInfo>>,
     popover_open: ReadSignal<bool>,
     set_popover_open: WriteSignal<bool>,
     all_tags: Resource<Result<Vec<Tag>, ServerFnError>>,
@@ -14,7 +15,6 @@ pub fn TagPickerView(
     on_set_tags: Callback<(i64, Vec<String>)>,
 ) -> impl IntoView {
     let (new_tag_input, set_new_tag_input) = signal(String::new());
-    let has_tags = !tags.is_empty();
 
     let toggle_tag = move |name: String| {
         let mut names = current_tags.get_untracked();
@@ -32,8 +32,16 @@ pub fn TagPickerView(
         if !name.is_empty() {
             let mut names = current_tags.get_untracked();
             if !names.contains(&name) {
-                names.push(name);
+                names.push(name.clone());
                 set_current_tags.set(names.clone());
+
+                let mut tags = display_tags.get_untracked();
+                tags.push(TagInfo {
+                    name,
+                    color: "#6b7280".to_string(),
+                });
+                set_display_tags.set(tags);
+
                 on_set_tags.run((task_id, names));
             }
             set_new_tag_input.set(String::new());
@@ -44,83 +52,99 @@ pub fn TagPickerView(
         <Popover
             open=popover_open
             set_open=set_popover_open
-            trigger=Box::new({
-                let tags = tags.clone();
-                move || {
-                    if has_tags {
-                        let tags_clone = tags.clone();
-                        view! {
-                            <div class="flex items-center gap-1 flex-wrap">
-                                {tags_clone
-                                    .into_iter()
-                                    .map(|tag| {
-                                        let name = tag.name.clone();
-                                        let color = tag.color.clone();
-                                        let remove_name = name.clone();
-                                        view! {
-                                            <span
-                                                class="text-xs px-2 py-0.5 rounded-full \
-                                                       inline-flex items-center gap-1"
-                                                style=format!(
-                                                    "background-color: {}22; color: {}; \
-                                                     border: 1px solid {}44",
-                                                    color, color, color,
-                                                )
-                                            >
-                                                {name}
+            trigger=Box::new(move || {
+                view! {
+                    {move || {
+                        let tags = display_tags.get();
+                        let names = current_tags.get();
+                        let active_tags: Vec<&TagInfo> = tags
+                            .iter()
+                            .filter(|t| names.contains(&t.name))
+                            .collect();
+                        if !active_tags.is_empty() {
+                            view! {
+                                <div class="flex items-center gap-0.5 flex-wrap">
+                                    {active_tags
+                                        .into_iter()
+                                        .map(|tag| {
+                                            let name = tag.name.clone();
+                                            let color = tag.color.clone();
+                                            let remove_name = name.clone();
+                                            view! {
                                                 <span
-                                                    class="cursor-pointer hover:opacity-70"
-                                                    on:click=move |ev| {
-                                                        ev.stop_propagation();
-                                                        let mut names =
-                                                            current_tags.get_untracked();
-                                                        names.retain(|n| {
-                                                            *n != remove_name
-                                                        });
-                                                        set_current_tags
-                                                            .set(names.clone());
-                                                        on_set_tags
-                                                            .run((task_id, names));
-                                                    }
+                                                    class="group/tag text-xs \
+                                                           inline-flex items-center \
+                                                           gap-0.5"
+                                                    style=format!(
+                                                        "color: {}",
+                                                        color,
+                                                    )
                                                 >
-                                                    "\u{00d7}"
+                                                    <Icon
+                                                        kind=IconKind::Tag
+                                                        class="w-3 h-3"
+                                                    />
+                                                    {name}
+                                                    <button
+                                                        class="cursor-pointer \
+                                                               hover:opacity-70 \
+                                                               hidden \
+                                                               group-hover/tag:inline"
+                                                        on:click=move |ev| {
+                                                            ev.stop_propagation();
+                                                            let mut names =
+                                                                current_tags.get_untracked();
+                                                            names.retain(|n| {
+                                                                *n != remove_name
+                                                            });
+                                                            set_current_tags
+                                                                .set(names.clone());
+                                                            on_set_tags
+                                                                .run((task_id, names));
+                                                        }
+                                                    >
+                                                        "\u{00d7}"
+                                                    </button>
                                                 </span>
-                                            </span>
+                                            }
+                                        })
+                                        .collect::<Vec<_>>()}
+                                    <button
+                                        class="text-text-tertiary \
+                                               hover:text-text-secondary \
+                                               hover:bg-bg-tertiary px-1 py-0.5 \
+                                               rounded transition-colors text-xs"
+                                        on:click=move |_| {
+                                            set_popover_open.update(|o| *o = !*o);
                                         }
-                                    })
-                                    .collect::<Vec<_>>()}
+                                    >
+                                        "+"
+                                    </button>
+                                </div>
+                            }
+                            .into_any()
+                        } else {
+                            view! {
                                 <button
-                                    class="text-text-tertiary hover:text-text-secondary \
-                                           hover:bg-bg-tertiary px-1 py-0.5 rounded \
-                                           transition-colors text-xs"
+                                    class="items-center gap-1 \
+                                           text-text-tertiary \
+                                           hover:text-text-secondary \
+                                           hover:bg-bg-tertiary px-1.5 py-0.5 \
+                                           rounded transition-colors hidden \
+                                           group-hover:inline-flex"
                                     on:click=move |_| {
                                         set_popover_open.update(|o| *o = !*o);
                                     }
                                 >
-                                    "+"
+                                    <Icon kind=IconKind::Tag class="w-3 h-3"/>
+                                    "Tags"
                                 </button>
-                            </div>
+                            }
+                            .into_any()
                         }
-                        .into_any()
-                    } else {
-                        view! {
-                            <button
-                                class="inline-flex items-center gap-1 \
-                                       text-text-tertiary hover:text-text-secondary \
-                                       hover:bg-bg-tertiary px-1.5 py-0.5 rounded \
-                                       transition-colors opacity-0 \
-                                       group-hover:opacity-100"
-                                on:click=move |_| {
-                                    set_popover_open.update(|o| *o = !*o);
-                                }
-                            >
-                                <Icon kind=IconKind::Tag class="w-3 h-3"/>
-                                "Tags"
-                            </button>
-                        }
-                        .into_any()
-                    }
+                    }}
                 }
+                .into_any()
             })
         >
             <div class="p-1 w-[200px] max-h-[280px] overflow-y-auto">

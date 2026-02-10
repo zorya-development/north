@@ -13,6 +13,7 @@ pub fn TagPicker(
     let (popover_open, set_popover_open) = signal(false);
     let current_names: Vec<String> = tags.iter().map(|t| t.name.clone()).collect();
     let (current_tags, set_current_tags) = signal(current_names);
+    let (display_tags, set_display_tags) = signal(tags.clone());
 
     let all_tags = Resource::new(
         move || popover_open.get(),
@@ -28,7 +29,8 @@ pub fn TagPicker(
     view! {
         <TagPickerView
             task_id=task_id
-            tags=tags
+            display_tags=display_tags
+            set_display_tags=set_display_tags
             popover_open=popover_open
             set_popover_open=set_popover_open
             all_tags=all_tags

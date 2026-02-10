@@ -11,7 +11,6 @@ pub fn TaskMeta(
     project_id: Option<i64>,
     project_title: Option<String>,
     due_date: Option<chrono::NaiveDate>,
-    is_completed: ReadSignal<bool>,
     tags: Vec<TagInfo>,
     on_set_start_at: Callback<(i64, String)>,
     on_clear_start_at: Callback<i64>,
@@ -38,13 +37,16 @@ pub fn TaskMeta(
                 on_clear_project=on_clear_project
             />
             {due_date.map(|d| {
+                let is_overdue = d < chrono::Utc::now().date_naive();
+                let class = if is_overdue {
+                    "text-red-500"
+                } else {
+                    "text-text-secondary"
+                };
                 view! {
-                    <span>{format!("Due {d}")}</span>
+                    <span class=class>{format!("Due {d}")}</span>
                 }
             })}
-            <Show when=move || is_completed.get()>
-                <span>"Completed"</span>
-            </Show>
             <crate::components::tag_picker::TagPicker
                 task_id=task_id
                 tags=tags

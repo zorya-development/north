@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use diesel::prelude::*;
 use diesel::dsl::max;
+use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use north_db::models::{NewTask, TagRow, TaskChangeset, TaskRow};
 use north_db::schema::{project_columns, projects, tags, task_tags, tasks, users};
@@ -43,11 +43,7 @@ impl TaskService {
             .filter(tasks::user_id.eq(user_id))
             .filter(tasks::start_at.is_not_null())
             .filter(tasks::completed_at.is_null())
-            .filter(
-                tasks::project_id
-                    .is_null()
-                    .or(projects::archived.eq(false)),
-            )
+            .filter(tasks::project_id.is_null().or(projects::archived.eq(false)))
             .order(tasks::start_at.asc())
             .select(TaskRow::as_select())
             .load(&mut conn)
@@ -72,11 +68,7 @@ impl TaskService {
             .left_join(projects::table.on(projects::id.nullable().eq(tasks::project_id)))
             .filter(tasks::user_id.eq(user_id))
             .filter(tasks::parent_id.is_null())
-            .filter(
-                tasks::project_id
-                    .is_null()
-                    .or(projects::archived.eq(false)),
-            )
+            .filter(tasks::project_id.is_null().or(projects::archived.eq(false)))
             .order((tasks::position.asc(), tasks::created_at.desc()))
             .select(TaskRow::as_select())
             .load(&mut conn)
@@ -133,25 +125,23 @@ impl TaskService {
             .await?;
         let settings: UserSettings = serde_json::from_value(settings_val).unwrap_or_default();
         let interval_days = settings.review_interval_days as i64;
-        let cutoff = Utc::now().date_naive()
-            - chrono::Duration::days(interval_days);
+        let cutoff = Utc::now().date_naive() - chrono::Duration::days(interval_days);
 
         let rows = tasks::table
             .left_join(projects::table.on(projects::id.nullable().eq(tasks::project_id)))
             .filter(tasks::user_id.eq(user_id))
             .filter(tasks::parent_id.is_null())
             .filter(tasks::completed_at.is_null())
-            .filter(
-                tasks::project_id
-                    .is_null()
-                    .or(projects::archived.eq(false)),
-            )
+            .filter(tasks::project_id.is_null().or(projects::archived.eq(false)))
             .filter(
                 tasks::reviewed_at
                     .is_null()
                     .or(tasks::reviewed_at.le(cutoff)),
             )
-            .order((tasks::reviewed_at.asc().nulls_first(), tasks::position.asc()))
+            .order((
+                tasks::reviewed_at.asc().nulls_first(),
+                tasks::position.asc(),
+            ))
             .select(TaskRow::as_select())
             .load(&mut conn)
             .await?;
@@ -159,11 +149,27 @@ impl TaskService {
         Self::enrich(pool, rows).await
     }
 
-    pub async fn get_by_id(
+    pub async fn get_recently_reviewed(
         pool: &DbPool,
         user_id: i64,
-        id: i64,
-    ) -> ServiceResult<Task> {
+    ) -> ServiceResult<Vec<TaskWithMeta>> {
+        let mut conn = pool.get().await?;
+        let rows = tasks::table
+            .left_join(projects::table.on(projects::id.nullable().eq(tasks::project_id)))
+            .filter(tasks::user_id.eq(user_id))
+            .filter(tasks::parent_id.is_null())
+            .filter(tasks::completed_at.is_null())
+            .filter(tasks::reviewed_at.is_not_null())
+            .filter(tasks::project_id.is_null().or(projects::archived.eq(false)))
+            .order(tasks::reviewed_at.desc())
+            .limit(50)
+            .select(TaskRow::as_select())
+            .load(&mut conn)
+            .await?;
+        Self::enrich(pool, rows).await
+    }
+
+    pub async fn get_by_id(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<Task> {
         let mut conn = pool.get().await?;
         let row = tasks::table
             .filter(tasks::id.eq(id))
@@ -248,8 +254,7 @@ impl TaskService {
                 .select(users::settings)
                 .first(&mut conn)
                 .await?;
-            let settings: UserSettings =
-                serde_json::from_value(settings_val).unwrap_or_default();
+            let settings: UserSettings = serde_json::from_value(settings_val).unwrap_or_default();
             let cutoff = Utc::now().date_naive()
                 - chrono::Duration::days(settings.review_interval_days as i64);
             query = query.filter(
@@ -369,8 +374,7 @@ impl TaskService {
         // Resolve @project by name
         let mut project_id: Option<i64> = None;
         if let Some(ref name) = project_name {
-            project_id =
-                crate::ProjectService::find_by_title(pool, user_id, name).await?;
+            project_id = crate::ProjectService::find_by_title(pool, user_id, name).await?;
         }
 
         // Get next position
@@ -502,9 +506,7 @@ impl TaskService {
         };
 
         if let Some(ref name) = project_name {
-            if let Some(pid) =
-                crate::ProjectService::find_by_title(pool, user_id, name).await?
-            {
+            if let Some(pid) = crate::ProjectService::find_by_title(pool, user_id, name).await? {
                 changeset.project_id = Some(Some(pid));
             }
         }
@@ -758,11 +760,7 @@ impl TaskService {
         Ok(())
     }
 
-    pub async fn clear_project(
-        pool: &DbPool,
-        user_id: i64,
-        task_id: i64,
-    ) -> ServiceResult<()> {
+    pub async fn clear_project(pool: &DbPool, user_id: i64, task_id: i64) -> ServiceResult<()> {
         let mut conn = pool.get().await?;
         let affected = diesel::update(
             tasks::table
@@ -827,8 +825,8 @@ impl TaskService {
             .first(&mut conn)
             .await?;
         let settings: UserSettings = serde_json::from_value(settings_val).unwrap_or_default();
-        let cutoff = Utc::now().date_naive()
-            - chrono::Duration::days(settings.review_interval_days as i64);
+        let cutoff =
+            Utc::now().date_naive() - chrono::Duration::days(settings.review_interval_days as i64);
 
         diesel::update(
             tasks::table
@@ -906,7 +904,10 @@ impl TaskService {
 
         let mut tags_map: HashMap<i64, Vec<TagInfo>> = HashMap::new();
         for (task_id, tag) in tag_rows {
-            tags_map.entry(task_id).or_default().push(TagInfo::from(&tag));
+            tags_map
+                .entry(task_id)
+                .or_default()
+                .push(TagInfo::from(&tag));
         }
 
         // 4. Batch load subtask counts
@@ -927,12 +928,8 @@ impl TaskService {
             .map(|row| {
                 let id = row.id;
                 TaskWithMeta {
-                    project_title: row
-                        .project_id
-                        .and_then(|pid| proj_map.get(&pid).cloned()),
-                    column_name: row
-                        .column_id
-                        .and_then(|cid| col_map.get(&cid).cloned()),
+                    project_title: row.project_id.and_then(|pid| proj_map.get(&pid).cloned()),
+                    column_name: row.column_id.and_then(|cid| col_map.get(&cid).cloned()),
                     tags: tags_map.remove(&id).unwrap_or_default(),
                     subtask_count: count_map.get(&id).copied().unwrap_or(0),
                     actionable: row.completed_at.is_none(),

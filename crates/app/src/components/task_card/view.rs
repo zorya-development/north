@@ -158,7 +158,6 @@ pub fn TaskCardView(
                                 project_id=project_id
                                 project_title=project_title
                                 due_date=due_date
-                                is_completed=is_completed
                                 tags=tags
                                 on_set_start_at=on_set_start_at
                                 on_clear_start_at=on_clear_start_at

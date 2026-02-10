@@ -51,11 +51,11 @@ pub fn ProjectPickerView(
                     } else {
                         view! {
                             <button
-                                class="inline-flex items-center gap-1 \
+                                class="items-center gap-1 \
                                        text-text-tertiary hover:text-text-secondary \
                                        hover:bg-bg-tertiary px-1.5 py-0.5 rounded \
-                                       transition-colors opacity-0 \
-                                       group-hover:opacity-100"
+                                       transition-colors hidden \
+                                       group-hover:inline-flex"
                                 on:click=move |_| {
                                     set_popover_open.update(|o| *o = !*o);
                                 }

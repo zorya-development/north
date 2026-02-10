@@ -13,9 +13,11 @@ impl TagService {
     pub async fn get_all(pool: &DbPool, user_id: i64) -> ServiceResult<Vec<Tag>> {
         let mut conn = pool.get().await?;
         let rows = tags::table
+            .inner_join(task_tags::table.on(task_tags::tag_id.eq(tags::id)))
             .filter(tags::user_id.eq(user_id))
-            .order(tags::name.asc())
             .select(TagRow::as_select())
+            .distinct()
+            .order(tags::name.asc())
             .load(&mut conn)
             .await?;
         Ok(rows.into_iter().map(Tag::from).collect())

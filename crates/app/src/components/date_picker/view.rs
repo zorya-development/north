@@ -5,6 +5,7 @@ use north_ui::{Icon, IconKind, Popover};
 pub fn DateTimePickerView(
     task_id: i64,
     has_start_at: bool,
+    #[prop(default = false)] is_overdue: bool,
     start_at_display: Option<String>,
     initial_date: String,
     initial_time: String,
@@ -15,6 +16,12 @@ pub fn DateTimePickerView(
     on_set_start_at: Callback<(i64, String)>,
     on_clear_start_at: Callback<i64>,
 ) -> impl IntoView {
+    let date_text_class = if is_overdue {
+        "text-red-500"
+    } else {
+        "text-text-secondary"
+    };
+
     view! {
         <Popover
             open=popover_open
@@ -30,9 +37,12 @@ pub fn DateTimePickerView(
                         let initial_time = initial_time.clone();
                         view! {
                             <button
-                                class="inline-flex items-center gap-1 text-accent \
-                                       hover:bg-bg-tertiary px-1.5 py-0.5 rounded \
-                                       transition-colors"
+                                class=format!(
+                                    "inline-flex items-center gap-1 {} \
+                                     hover:bg-bg-tertiary px-1.5 py-0.5 \
+                                     rounded transition-colors",
+                                    date_text_class,
+                                )
                                 on:click={
                                     let id = initial_date.clone();
                                     let it = initial_time.clone();
@@ -43,7 +53,10 @@ pub fn DateTimePickerView(
                                     }
                                 }
                             >
-                                <Icon kind=IconKind::Calendar class="w-3 h-3"/>
+                                <Icon
+                                    kind=IconKind::Calendar
+                                    class="w-3 h-3 text-text-tertiary"
+                                />
                                 {display}
                                 <span
                                     class="hover:text-text-primary ml-0.5 cursor-pointer"
@@ -60,11 +73,11 @@ pub fn DateTimePickerView(
                     } else {
                         view! {
                             <button
-                                class="inline-flex items-center gap-1 \
+                                class="items-center gap-1 \
                                        text-text-tertiary hover:text-text-secondary \
                                        hover:bg-bg-tertiary px-1.5 py-0.5 rounded \
-                                       transition-colors opacity-0 \
-                                       group-hover:opacity-100"
+                                       transition-colors hidden \
+                                       group-hover:inline-flex"
                                 on:click=move |_| {
                                     picked_date.set(String::new());
                                     picked_time.set("09:00".to_string());

@@ -1,8 +1,9 @@
 use leptos::prelude::*;
 
-use crate::components::task_form::InlineTaskForm;
 use crate::components::task_list::TaskList;
-use crate::server_fns::tasks::{create_task, get_review_tasks, review_all_tasks};
+use crate::server_fns::tasks::{
+    get_recently_reviewed_tasks, get_review_tasks, review_all_tasks,
+};
 use crate::stores::task_store::TaskStore;
 
 #[component]
@@ -10,18 +11,7 @@ pub fn ReviewPage() -> impl IntoView {
     let review_tasks = Resource::new(|| (), |_| get_review_tasks());
     let store = TaskStore::new(review_tasks);
 
-    let create_action = Action::new(|input: &(String, Option<String>)| {
-        let (title, body) = input.clone();
-        create_task(title, body)
-    });
-
     let review_all_action = Action::new(|_: &()| review_all_tasks());
-
-    Effect::new(move || {
-        if let Some(Ok(_)) = create_action.value().get() {
-            review_tasks.refetch();
-        }
-    });
 
     Effect::new(move || {
         if let Some(Ok(_)) = review_all_action.value().get() {
@@ -29,9 +19,18 @@ pub fn ReviewPage() -> impl IntoView {
         }
     });
 
-    let on_create = move |title: String, body: Option<String>| {
-        create_action.dispatch((title, body));
-    };
+    let (show_reviewed, set_show_reviewed) = signal(false);
+    let reviewed_tasks = Resource::new(
+        move || show_reviewed.get(),
+        move |show| async move {
+            if show {
+                get_recently_reviewed_tasks().await
+            } else {
+                Ok(vec![])
+            }
+        },
+    );
+    let reviewed_store = TaskStore::new(reviewed_tasks);
 
     view! {
         <div class="space-y-4">
@@ -45,13 +44,44 @@ pub fn ReviewPage() -> impl IntoView {
                     "Mark All as Reviewed"
                 </button>
             </div>
-            <InlineTaskForm on_submit=on_create/>
             <TaskList
                 resource=review_tasks
                 store=store
                 show_review=true
                 empty_message="All tasks are up to date. Nothing to review."
             />
+            <div class="border-t border-border pt-4">
+                <button
+                    on:click=move |_| {
+                        set_show_reviewed.update(|v| *v = !*v);
+                    }
+                    class="text-sm text-text-secondary \
+                           hover:text-text-primary transition-colors"
+                >
+                    {move || {
+                        if show_reviewed.get() {
+                            "Hide recently reviewed"
+                        } else {
+                            "Show recently reviewed"
+                        }
+                    }}
+                </button>
+                <Show when=move || show_reviewed.get()>
+                    {
+                        let reviewed_store = reviewed_store.clone();
+                        view! {
+                            <div class="mt-3">
+                                <TaskList
+                                    resource=reviewed_tasks
+                                    store=reviewed_store
+                                    show_review=true
+                                    empty_message="No recently reviewed tasks."
+                                />
+                            </div>
+                        }
+                    }
+                </Show>
+            </div>
         </div>
     }
 }

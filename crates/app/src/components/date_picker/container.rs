@@ -1,3 +1,4 @@
+use chrono::Utc;
 use leptos::prelude::*;
 
 use super::view::DateTimePickerView;
@@ -10,6 +11,9 @@ pub fn DateTimePicker(
     on_clear_start_at: Callback<i64>,
 ) -> impl IntoView {
     let has_start_at = start_at.is_some();
+    let is_overdue = start_at
+        .map(|dt| dt < Utc::now())
+        .unwrap_or(false);
     let (popover_open, set_popover_open) = signal(false);
 
     let picked_date = RwSignal::new(String::new());
@@ -28,6 +32,7 @@ pub fn DateTimePicker(
         <DateTimePickerView
             task_id=task_id
             has_start_at=has_start_at
+            is_overdue=is_overdue
             start_at_display=start_at_display
             initial_date=initial_date
             initial_time=initial_time
