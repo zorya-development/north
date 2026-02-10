@@ -1,14 +1,12 @@
 use argon2::password_hash::rand_core::OsRng;
 use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHasher};
+use north_db::DbPool;
 use north_domain::UserSettings;
-use sqlx::PgPool;
+use north_services::UserService;
 
-pub async fn seed_admin(pool: &PgPool) -> Result<(), Box<dyn std::error::Error>> {
-    let exists: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE role = 'admin')")
-            .fetch_one(pool)
-            .await?;
+pub async fn seed_admin(pool: &DbPool) -> Result<(), Box<dyn std::error::Error>> {
+    let exists = UserService::admin_exists(pool).await?;
 
     if exists {
         tracing::info!("Admin user already exists, skipping seed");
@@ -23,16 +21,8 @@ pub async fn seed_admin(pool: &PgPool) -> Result<(), Box<dyn std::error::Error>>
 
     let settings = serde_json::to_value(UserSettings::default())?;
 
-    sqlx::query(
-        "INSERT INTO users (email, password_hash, name, role, settings) \
-         VALUES ($1, $2, $3, 'admin', $4)",
-    )
-    .bind("admin@north.local")
-    .bind(&password_hash)
-    .bind("Admin")
-    .bind(&settings)
-    .execute(pool)
-    .await?;
+    UserService::create_admin(pool, "admin@north.local", &password_hash, "Admin", settings)
+        .await?;
 
     tracing::info!("Seeded admin user: admin@north.local / admin");
     Ok(())

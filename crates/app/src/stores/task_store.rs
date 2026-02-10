@@ -2,6 +2,7 @@ use leptos::prelude::*;
 use north_domain::TaskWithMeta;
 
 use crate::server_fns::projects::{clear_task_project, set_task_project};
+use crate::server_fns::tags::set_task_tags;
 use crate::server_fns::tasks::*;
 
 #[derive(Clone)]
@@ -13,6 +14,7 @@ pub struct TaskStore {
     pub on_clear_start_at: Callback<i64>,
     pub on_set_project: Callback<(i64, i64)>,
     pub on_clear_project: Callback<i64>,
+    pub on_set_tags: Callback<(i64, Vec<String>)>,
     pub on_review: Callback<i64>,
 }
 
@@ -56,6 +58,11 @@ impl TaskStore {
         let clear_project_action = Action::new(|id: &i64| {
             let id = *id;
             clear_task_project(id)
+        });
+
+        let set_tags_action = Action::new(|input: &(i64, Vec<String>)| {
+            let (task_id, tag_names) = input.clone();
+            set_task_tags(task_id, tag_names)
         });
 
         let review_action = Action::new(|id: &i64| {
@@ -112,6 +119,12 @@ impl TaskStore {
         });
 
         Effect::new(move || {
+            if let Some(Ok(_)) = set_tags_action.value().get() {
+                resource.refetch();
+            }
+        });
+
+        Effect::new(move || {
             if let Some(Ok(_)) = review_action.value().get() {
                 resource.refetch();
             }
@@ -142,6 +155,9 @@ impl TaskStore {
             }),
             on_clear_project: Callback::new(move |id: i64| {
                 clear_project_action.dispatch(id);
+            }),
+            on_set_tags: Callback::new(move |(task_id, tag_names): (i64, Vec<String>)| {
+                set_tags_action.dispatch((task_id, tag_names));
             }),
             on_review: Callback::new(move |id: i64| {
                 review_action.dispatch(id);

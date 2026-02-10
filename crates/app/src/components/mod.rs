@@ -1,3 +1,4 @@
+pub mod autocomplete;
 pub mod completion_toggle;
 pub mod date_picker;
 pub mod dropdown;
@@ -6,6 +7,7 @@ pub mod layout;
 pub mod markdown;
 pub mod nav;
 pub mod project_picker;
+pub mod tag_picker;
 pub mod task_card;
 pub mod task_form;
 pub mod task_list;

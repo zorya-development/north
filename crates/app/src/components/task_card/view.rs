@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use leptos::prelude::*;
+use north_domain::TagInfo;
 
 use crate::components::completion_toggle::CompletionToggle;
 use crate::components::dropdown::{DropdownItem, DropdownMenu};
@@ -19,7 +20,7 @@ pub fn TaskCardView(
     due_date: Option<chrono::NaiveDate>,
     start_at: Option<chrono::DateTime<chrono::Utc>>,
     reviewed_at: Option<chrono::NaiveDate>,
-    tags: Vec<String>,
+    tags: Vec<TagInfo>,
     is_completed: ReadSignal<bool>,
     editing: ReadSignal<bool>,
     set_editing: WriteSignal<bool>,
@@ -32,6 +33,7 @@ pub fn TaskCardView(
     on_clear_start_at: Callback<i64>,
     on_set_project: Callback<(i64, i64)>,
     on_clear_project: Callback<i64>,
+    on_set_tags: Callback<(i64, Vec<String>)>,
     on_review: Callback<i64>,
     #[prop(default = false)] show_review: bool,
 ) -> impl IntoView {
@@ -165,6 +167,7 @@ pub fn TaskCardView(
                                 on_clear_start_at=on_clear_start_at
                                 on_set_project=on_set_project
                                 on_clear_project=on_clear_project
+                                on_set_tags=on_set_tags
                                 reviewed_at=reviewed_at
                                 show_review=show_review
                             />

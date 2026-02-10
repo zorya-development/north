@@ -20,13 +20,19 @@ lint:
     cargo clippy -- -D warnings
 
 migrate:
-    sqlx migrate run
+    diesel migration run
 
 migration name:
-    sqlx migrate add {{ name }}
+    diesel migration generate {{ name }}
 
-sqlx-prepare:
-    cargo sqlx prepare --workspace
+migration-diff name:
+    diesel migration generate --diff-schema {{ name }}
+
+migrate-revert:
+    diesel migration revert
+
+migrate-redo:
+    diesel migration redo
 
 seed:
     cargo run --bin north-server --features ssr -- --seed

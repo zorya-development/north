@@ -3,11 +3,14 @@ use leptos_router::hooks::use_navigate;
 
 use crate::components::nav::Sidebar;
 use crate::server_fns::auth::check_auth;
+use crate::stores::lookup_store::LookupStore;
 
 #[component]
 pub fn AppLayout(children: Children) -> impl IntoView {
     let auth_check = Resource::new(|| (), |_| check_auth());
     let navigate = use_navigate();
+
+    provide_context(LookupStore::new());
 
     Effect::new(move || {
         if let Some(Err(_)) = auth_check.get() {

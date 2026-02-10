@@ -6,13 +6,15 @@ edition = "2021"
 [dependencies]
 north-domain = { workspace = true }
 north-app = { path = "../app", features = ["ssr"] }
+north-db = { path = "../db" }
+north-services = { path = "../services" }
 
 axum = "0.7"
 axum-extra = { version = "0.9", features = ["cookie"] }
 leptos = { version = "0.7", features = ["ssr"] }
 leptos_axum = "0.7"
 leptos_router = { version = "0.7", features = ["ssr"] }
-sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "chrono", "json", "migrate"] }
+diesel-async = { version = "0.5", features = ["postgres", "deadpool"] }
 tokio = { version = "1", features = ["full"] }
 tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "fs"] }

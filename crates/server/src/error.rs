@@ -3,6 +3,7 @@ use axum::response::{IntoResponse, Response};
 use serde_json::json;
 
 #[derive(Debug, thiserror::Error)]
+#[allow(dead_code)]
 pub enum AppError {
     #[error("{0}")]
     NotFound(String),
@@ -10,7 +11,6 @@ pub enum AppError {
     #[error("{0}")]
     Unauthorized(String),
 
-    #[allow(dead_code)]
     #[error("{0}")]
     Forbidden(String),
 
@@ -21,7 +21,7 @@ pub enum AppError {
     Internal(String),
 
     #[error(transparent)]
-    Sqlx(#[from] sqlx::Error),
+    Service(#[from] north_services::ServiceError),
 }
 
 impl IntoResponse for AppError {
@@ -35,12 +35,22 @@ impl IntoResponse for AppError {
                 tracing::error!("Internal error: {msg}");
                 (StatusCode::INTERNAL_SERVER_ERROR, msg.clone())
             }
-            AppError::Sqlx(err) => {
-                tracing::error!("Database error: {err}");
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal server error".to_string(),
-                )
+            AppError::Service(err) => {
+                match err {
+                    north_services::ServiceError::NotFound(msg) => {
+                        (StatusCode::NOT_FOUND, msg.clone())
+                    }
+                    north_services::ServiceError::BadRequest(msg) => {
+                        (StatusCode::BAD_REQUEST, msg.clone())
+                    }
+                    _ => {
+                        tracing::error!("Service error: {err}");
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "Internal server error".to_string(),
+                        )
+                    }
+                }
             }
         };
 

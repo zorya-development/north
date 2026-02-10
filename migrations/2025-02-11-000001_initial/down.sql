@@ -1,0 +1,11 @@
+-- Reverse of initial migration
+DROP TABLE IF EXISTS images;
+DROP TABLE IF EXISTS task_tags;
+DROP TABLE IF EXISTS tags;
+DROP TABLE IF EXISTS tasks;
+DROP TABLE IF EXISTS project_columns;
+DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS users;
+DROP FUNCTION IF EXISTS update_updated_at();
+DROP TYPE IF EXISTS project_view_type;
+DROP TYPE IF EXISTS user_role;

@@ -15,25 +15,12 @@ pub async fn login(email: String, password: String) -> Result<(), ServerFnError>
         exp: usize,
     }
 
-    #[derive(sqlx::FromRow)]
-    struct UserRow {
-        id: i64,
-        password_hash: String,
-        role: String,
-    }
+    let pool = expect_context::<north_services::DbPool>();
 
-    let pool = expect_context::<sqlx::PgPool>();
-
-    let row = sqlx::query_as::<_, UserRow>(
-        "SELECT id, password_hash, role::text as role \
-         FROM users WHERE email = $1",
-    )
-    .bind(&email)
-    .fetch_optional(&pool)
-    .await
-    .map_err(|e| ServerFnError::new(e.to_string()))?;
-
-    let row = row.ok_or_else(|| ServerFnError::new("Invalid credentials".to_string()))?;
+    let row = north_services::UserService::find_by_email(&pool, &email)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?
+        .ok_or_else(|| ServerFnError::new("Invalid credentials".to_string()))?;
 
     let parsed_hash =
         PasswordHash::new(&row.password_hash).map_err(|e| ServerFnError::new(e.to_string()))?;
@@ -45,9 +32,10 @@ pub async fn login(email: String, password: String) -> Result<(), ServerFnError>
     let jwt_secret =
         std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret-change-me".to_string());
 
-    let role_str = match row.role.as_str() {
-        "admin" => "admin",
-        _ => "user",
+    let role: north_domain::UserRole = row.role.into();
+    let role_str = match role {
+        north_domain::UserRole::Admin => "admin",
+        north_domain::UserRole::User => "user",
     };
 
     let exp = Utc::now() + Duration::days(7);

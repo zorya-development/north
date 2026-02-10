@@ -1,8 +1,6 @@
 use leptos::prelude::*;
 use north_domain::Project;
 
-use crate::components::icons::{Icon, IconKind};
-
 #[component]
 pub fn ProjectPickerView(
     task_id: i64,
@@ -27,7 +25,10 @@ pub fn ProjectPickerView(
                             set_popover_open.update(|o| *o = !*o);
                         }
                     >
-                        <Icon kind=IconKind::Folder class="w-3 h-3"/>
+                        <span
+                            class="w-2.5 h-2.5 rounded-full flex-shrink-0 \
+                                   bg-text-tertiary"
+                        />
                         {display}
                         <span
                             class="hover:text-text-primary ml-0.5 cursor-pointer"
@@ -53,7 +54,10 @@ pub fn ProjectPickerView(
                             set_popover_open.update(|o| *o = !*o);
                         }
                     >
-                        <Icon kind=IconKind::Folder class="w-3 h-3"/>
+                        <span
+                            class="w-2.5 h-2.5 rounded-full flex-shrink-0 \
+                                   bg-text-tertiary"
+                        />
                         "Project"
                     </button>
                 }
@@ -115,6 +119,7 @@ pub fn ProjectPickerView(
                                                         .map(|p| {
                                                             let pid = p.id;
                                                             let title = p.title.clone();
+                                                            let color = p.color.clone();
                                                             view! {
                                                                 <button
                                                                     class="w-full text-left \
@@ -132,10 +137,14 @@ pub fn ProjectPickerView(
                                                                             .run((task_id, pid));
                                                                     }
                                                                 >
-                                                                    <Icon
-                                                                        kind=IconKind::Folder
-                                                                        class="w-3 h-3 \
-                                                                               text-text-tertiary"
+                                                                    <span
+                                                                        class="w-2.5 h-2.5 \
+                                                                               rounded-full \
+                                                                               flex-shrink-0"
+                                                                        style=format!(
+                                                                            "background-color: {}",
+                                                                            color,
+                                                                        )
                                                                     />
                                                                     {title}
                                                                 </button>

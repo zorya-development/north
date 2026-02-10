@@ -2,7 +2,7 @@
 CREATE TYPE user_role AS ENUM ('admin', 'user');
 CREATE TYPE project_view_type AS ENUM ('list', 'kanban');
 
--- Updated at trigger function
+-- Legacy trigger function (used by existing triggers)
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -32,6 +32,7 @@ CREATE TABLE projects (
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     description TEXT,
+    color TEXT NOT NULL DEFAULT '#6b7280',
     view_type project_view_type NOT NULL DEFAULT 'list',
     position INTEGER NOT NULL DEFAULT 0,
     archived BOOLEAN NOT NULL DEFAULT false,
@@ -68,10 +69,10 @@ CREATE TABLE tasks (
     body TEXT,
     position INTEGER NOT NULL DEFAULT 0,
     sequential_limit SMALLINT NOT NULL DEFAULT 1,
-    start_date DATE,
+    start_at TIMESTAMPTZ,
     due_date DATE,
     completed_at TIMESTAMPTZ,
-    reviewed_at TIMESTAMPTZ,
+    reviewed_at DATE DEFAULT CURRENT_DATE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

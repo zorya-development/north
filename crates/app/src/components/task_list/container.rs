@@ -21,6 +21,7 @@ pub fn TaskList(
             on_clear_start_at=store.on_clear_start_at
             on_set_project=store.on_set_project
             on_clear_project=store.on_clear_project
+            on_set_tags=store.on_set_tags
             on_review=store.on_review
             show_review=show_review
             empty_message=empty_message

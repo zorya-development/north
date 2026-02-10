@@ -1,0 +1,15 @@
+[package]
+name = "north-db"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+north-domain = { path = "../domain" }
+diesel = { version = "2.2", features = ["postgres", "chrono", "serde_json"] }
+diesel-async = { version = "0.5", features = ["postgres", "deadpool"] }
+diesel-derive-enum = { version = "2.1", features = ["postgres"] }
+futures-util = { version = "0.3", features = ["async-await"] }
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"

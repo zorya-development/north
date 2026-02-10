@@ -18,6 +18,7 @@ pub struct Project {
     pub description: Option<String>,
     pub view_type: ProjectViewType,
     pub position: i32,
+    pub color: String,
     pub archived: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -44,4 +45,5 @@ pub struct UpdateProject {
     pub view_type: Option<ProjectViewType>,
     pub position: Option<i32>,
     pub archived: Option<bool>,
+    pub color: Option<String>,
 }

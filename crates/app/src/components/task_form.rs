@@ -1,6 +1,7 @@
 use leptos::ev::KeyboardEvent;
 use leptos::prelude::*;
 
+use crate::components::autocomplete::{AutocompleteInput, AutocompleteTextarea};
 use crate::components::markdown::MarkdownView;
 
 #[component]
@@ -91,31 +92,27 @@ where
                     view! {
                         <div class="border border-border rounded-lg p-3 \
                                     focus-within:border-accent transition-colors">
-                            <input
-                                type="text"
+                            <AutocompleteInput
+                                value=title
+                                set_value=set_title
                                 placeholder="Task title"
-                                prop:value=move || title.get()
-                                on:input=move |ev| {
-                                    set_title.set(event_target_value(&ev));
-                                }
-                                on:keydown=move |ev| on_title_keydown(ev)
                                 class="w-full text-sm font-semibold bg-transparent \
                                        outline-none placeholder:text-text-secondary \
                                        text-text-primary mb-2"
+                                on_keydown=on_title_keydown.clone()
                             />
 
                             <Show
                                 when=move || preview.get()
                                 fallback=move || {
                                     view! {
-                                        <textarea
+                                        <AutocompleteTextarea
+                                            value=body
+                                            set_value=set_body
                                             placeholder="Description (markdown supported)"
-                                            prop:value=move || body.get()
-                                            on:input=move |ev| {
-                                                set_body.set(event_target_value(&ev));
-                                            }
-                                            rows="3"
-                                            class="w-full text-sm bg-transparent outline-none \
+                                            rows=3
+                                            class="w-full text-sm bg-transparent \
+                                                   outline-none \
                                                    placeholder:text-text-tertiary \
                                                    text-text-secondary resize-none"
                                         />
@@ -216,7 +213,7 @@ where
     let handle_keydown = {
         let on_save = on_save.clone();
         let on_cancel = on_cancel.clone();
-        move |ev: KeyboardEvent| {
+        std::sync::Arc::new(move |ev: KeyboardEvent| {
             if ev.key() == "Enter" && ev.shift_key() {
                 ev.prevent_default();
                 let t = title_sig.get_untracked().trim().to_string();
@@ -228,35 +225,30 @@ where
             } else if ev.key() == "Escape" {
                 on_cancel();
             }
-        }
+        })
     };
 
     view! {
         <div class="border border-border rounded-lg p-3 \
                     focus-within:border-accent transition-colors">
-            <input
-                type="text"
-                prop:value=move || title_sig.get()
-                on:input=move |ev| {
-                    set_title.set(event_target_value(&ev));
-                }
-                on:keydown=handle_keydown
+            <AutocompleteInput
+                value=title_sig
+                set_value=set_title
                 class="w-full text-sm font-semibold bg-transparent \
                        outline-none placeholder:text-text-secondary \
                        text-text-primary mb-2"
+                on_keydown=handle_keydown
             />
 
             <Show
                 when=move || preview.get()
                 fallback=move || {
                     view! {
-                        <textarea
+                        <AutocompleteTextarea
+                            value=body_sig
+                            set_value=set_body
                             placeholder="Description (markdown supported)"
-                            prop:value=move || body_sig.get()
-                            on:input=move |ev| {
-                                set_body.set(event_target_value(&ev));
-                            }
-                            rows="3"
+                            rows=3
                             class="w-full text-sm bg-transparent outline-none \
                                    placeholder:text-text-tertiary \
                                    text-text-secondary resize-none"

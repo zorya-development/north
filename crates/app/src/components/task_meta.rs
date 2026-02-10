@@ -1,4 +1,5 @@
 use leptos::prelude::*;
+use north_domain::TagInfo;
 
 use crate::components::date_picker::DateTimePicker;
 use crate::components::project_picker::ProjectPicker;
@@ -11,17 +12,18 @@ pub fn TaskMeta(
     project_title: Option<String>,
     due_date: Option<chrono::NaiveDate>,
     is_completed: ReadSignal<bool>,
-    tags: Vec<String>,
+    tags: Vec<TagInfo>,
     on_set_start_at: Callback<(i64, String)>,
     on_clear_start_at: Callback<i64>,
     on_set_project: Callback<(i64, i64)>,
     on_clear_project: Callback<i64>,
+    on_set_tags: Callback<(i64, Vec<String>)>,
     #[prop(default = None)] reviewed_at: Option<chrono::NaiveDate>,
     #[prop(default = false)] show_review: bool,
 ) -> impl IntoView {
     view! {
         <div class="mt-0.5 ml-6 flex items-center gap-2 text-xs \
-                    text-text-tertiary">
+                    text-text-tertiary flex-wrap">
             <DateTimePicker
                 task_id=task_id
                 start_at=start_at
@@ -43,17 +45,11 @@ pub fn TaskMeta(
             <Show when=move || is_completed.get()>
                 <span>"Completed"</span>
             </Show>
-            {tags
-                .into_iter()
-                .map(|tag| {
-                    view! {
-                        <span class="bg-bg-tertiary text-text-secondary \
-                                     text-xs px-2 py-0.5 rounded-full">
-                            {tag}
-                        </span>
-                    }
-                })
-                .collect::<Vec<_>>()}
+            <crate::components::tag_picker::TagPicker
+                task_id=task_id
+                tags=tags
+                on_set_tags=on_set_tags
+            />
             {if show_review {
                 Some(view! {
                     <span class="ml-auto whitespace-nowrap">

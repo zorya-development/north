@@ -7,10 +7,12 @@ mod seed;
 
 use axum::extract::FromRef;
 use axum::Router;
+use diesel_async::pooled_connection::deadpool::Pool;
+use diesel_async::pooled_connection::AsyncDieselConnectionManager;
+use diesel_async::AsyncPgConnection;
 use leptos::prelude::*;
 use leptos_axum::{generate_route_list, LeptosRoutes};
-use sqlx::postgres::PgPoolOptions;
-use sqlx::PgPool;
+use north_db::DbPool;
 use tower_http::services::ServeDir;
 use tracing_subscriber::EnvFilter;
 
@@ -25,7 +27,7 @@ pub struct UploadDir(pub String);
 /// Shared application state available to all Axum handlers.
 #[derive(Clone)]
 pub struct AppState {
-    pub pool: PgPool,
+    pub pool: DbPool,
     pub jwt_secret: String,
     pub upload_dir: String,
     pub leptos_options: LeptosOptions,
@@ -52,16 +54,11 @@ async fn main() {
         std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret-change-me".to_string());
     let upload_dir = std::env::var("UPLOAD_DIR").unwrap_or_else(|_| "./uploads".to_string());
 
-    let pool = PgPoolOptions::new()
-        .max_connections(20)
-        .connect(&database_url)
-        .await
-        .expect("Failed to connect to database");
-
-    sqlx::migrate!("../../migrations")
-        .run(&pool)
-        .await
-        .expect("Failed to run migrations");
+    let config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(database_url);
+    let pool: DbPool = Pool::builder(config)
+        .max_size(20)
+        .build()
+        .expect("Failed to create connection pool");
 
     // Handle --seed flag
     let args: Vec<String> = std::env::args().collect();
