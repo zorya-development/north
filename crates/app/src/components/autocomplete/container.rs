@@ -2,7 +2,7 @@ use leptos::ev::KeyboardEvent;
 use leptos::prelude::*;
 use leptos::wasm_bindgen::JsCast;
 
-use super::view::{AutocompleteDropdown, SuggestionItem};
+use north_ui::{AutocompleteDropdown, SuggestionItem};
 use crate::stores::lookup_store::LookupStore;
 
 #[derive(Clone)]
