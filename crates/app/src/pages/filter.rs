@@ -3,12 +3,16 @@ use leptos_router::hooks::{use_navigate, use_params_map};
 use north_ui::{Icon, IconKind, Modal};
 
 use crate::components::filter_autocomplete::FilterAutocompleteTextarea;
+use crate::components::task_detail_modal::{TaskDetailContext, TaskDetailModal};
 use crate::components::task_list::TaskList;
 use crate::server_fns::filters::*;
 use crate::stores::task_store::TaskStore;
 
 #[component]
 pub fn FilterPage() -> impl IntoView {
+    let open_task_id = RwSignal::new(None::<i64>);
+    provide_context(TaskDetailContext { open_task_id });
+
     let params = use_params_map();
     let navigate = use_navigate();
 
@@ -99,6 +103,7 @@ pub fn FilterPage() -> impl IntoView {
     );
 
     let store = TaskStore::new(filter_results);
+    let modal_store = store.clone();
 
     // Save action
     let save_action = Action::new(move |input: &(Option<i64>, String, String)| {
@@ -364,6 +369,21 @@ pub fn FilterPage() -> impl IntoView {
                 store=store
                 empty_message="No matching tasks. Try adjusting your query."
             />
+
+            {
+                let task_ids = Signal::derive(move || {
+                    filter_results
+                        .get()
+                        .and_then(|r| r.ok())
+                        .unwrap_or_default()
+                        .iter()
+                        .map(|t| t.task.id)
+                        .collect::<Vec<_>>()
+                });
+                view! {
+                    <TaskDetailModal task_ids=task_ids task_store=modal_store.clone()/>
+                }
+            }
 
             // Save filter modal (new filters only)
             <Modal open=show_save_modal set_open=set_show_save_modal>

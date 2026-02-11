@@ -1,5 +1,6 @@
 use leptos::prelude::*;
 
+use crate::components::task_detail_modal::{TaskDetailContext, TaskDetailModal};
 use crate::components::task_list::TaskList;
 use crate::server_fns::tasks::{
     get_recently_reviewed_tasks, get_review_tasks, review_all_tasks,
@@ -8,6 +9,9 @@ use crate::stores::task_store::TaskStore;
 
 #[component]
 pub fn ReviewPage() -> impl IntoView {
+    let open_task_id = RwSignal::new(None::<i64>);
+    provide_context(TaskDetailContext { open_task_id });
+
     let review_tasks = Resource::new(|| (), |_| get_review_tasks());
     let store = TaskStore::new(review_tasks);
 
@@ -31,6 +35,18 @@ pub fn ReviewPage() -> impl IntoView {
         },
     );
     let reviewed_store = TaskStore::new(reviewed_tasks);
+
+    let modal_store = store.clone();
+
+    let task_ids = Signal::derive(move || {
+        review_tasks
+            .get()
+            .and_then(|r| r.ok())
+            .unwrap_or_default()
+            .iter()
+            .map(|t| t.task.id)
+            .collect::<Vec<_>>()
+    });
 
     view! {
         <div class="space-y-4">
@@ -82,6 +98,7 @@ pub fn ReviewPage() -> impl IntoView {
                     }
                 </Show>
             </div>
+            <TaskDetailModal task_ids=task_ids task_store=modal_store/>
         </div>
     }
 }

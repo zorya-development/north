@@ -4,9 +4,16 @@ use leptos::prelude::*;
 pub fn Modal(
     open: ReadSignal<bool>,
     set_open: WriteSignal<bool>,
+    #[prop(default = "md")] size: &'static str,
     children: Children,
 ) -> impl IntoView {
     let panel = children();
+
+    let size_class = match size {
+        "lg" => "max-w-3xl",
+        "xl" => "max-w-5xl",
+        _ => "max-w-md",
+    };
 
     view! {
         <div
@@ -19,8 +26,10 @@ pub fn Modal(
                 class="absolute inset-0 bg-black/50"
                 on:click=move |_| set_open.set(false)
             />
-            <div class="relative z-10 bg-bg-secondary border border-border \
-                        rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class=format!(
+                "relative z-10 bg-bg-secondary border border-border \
+                 rounded-lg shadow-xl {size_class} w-full mx-4"
+            )>
                 {panel}
             </div>
         </div>

@@ -4,13 +4,29 @@ use leptos::prelude::*;
 use north_domain::TaskWithMeta;
 
 use crate::components::task_card::TaskCard;
+use crate::components::task_detail_modal::{TaskDetailContext, TaskDetailModal};
 use crate::server_fns::tasks::get_today_tasks;
 use crate::stores::task_store::TaskStore;
 
 #[component]
 pub fn TodayPage() -> impl IntoView {
+    let open_task_id = RwSignal::new(None::<i64>);
+    provide_context(TaskDetailContext { open_task_id });
+
     let today_tasks = Resource::new(|| (), |_| get_today_tasks());
     let store = TaskStore::new(today_tasks);
+
+    let task_ids = Signal::derive(move || {
+        today_tasks
+            .get()
+            .and_then(|r| r.ok())
+            .unwrap_or_default()
+            .iter()
+            .map(|t| t.task.id)
+            .collect::<Vec<_>>()
+    });
+
+    let modal_store = store.clone();
 
     view! {
         <div class="space-y-4">
@@ -95,6 +111,7 @@ pub fn TodayPage() -> impl IntoView {
                     }
                 }
             </Suspense>
+            <TaskDetailModal task_ids=task_ids task_store=modal_store/>
         </div>
     }
 }

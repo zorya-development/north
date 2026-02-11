@@ -19,6 +19,13 @@ pub enum IconKind {
     Edit,
     Save,
     QuestionMark,
+    ChevronLeft,
+    ChevronRight,
+    Close,
+    Subtask,
+    ChevronDown,
+    ChevronUp,
+    Trash,
 }
 
 #[component]
@@ -201,6 +208,67 @@ pub fn Icon(kind: IconKind, #[prop(default = "w-4 h-4")] class: &'static str) ->
                 <circle cx="12" cy="12" r="10"/>
                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
                 <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+        }
+        .into_any(),
+        IconKind::ChevronLeft => view! {
+            <svg xmlns="http://www.w3.org/2000/svg" class=class viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"/>
+            </svg>
+        }
+        .into_any(),
+        IconKind::ChevronRight => view! {
+            <svg xmlns="http://www.w3.org/2000/svg" class=class viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+            </svg>
+        }
+        .into_any(),
+        IconKind::Close => view! {
+            <svg xmlns="http://www.w3.org/2000/svg" class=class viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        }
+        .into_any(),
+        IconKind::Subtask => view! {
+            <svg xmlns="http://www.w3.org/2000/svg" class=class viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 3v12"/>
+                <path d="M6 15a3 3 0 0 0 3 3h6"/>
+                <polyline points="15 15 18 18 15 21"/>
+            </svg>
+        }
+        .into_any(),
+        IconKind::ChevronDown => view! {
+            <svg xmlns="http://www.w3.org/2000/svg" class=class viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+            </svg>
+        }
+        .into_any(),
+        IconKind::ChevronUp => view! {
+            <svg xmlns="http://www.w3.org/2000/svg" class=class viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="18 15 12 9 6 15"/>
+            </svg>
+        }
+        .into_any(),
+        IconKind::Trash => view! {
+            <svg xmlns="http://www.w3.org/2000/svg" class=class viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4\
+                         a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
             </svg>
         }
         .into_any(),

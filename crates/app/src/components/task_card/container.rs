@@ -30,6 +30,8 @@ pub fn TaskCard(
     let reviewed_at = task.task.reviewed_at;
     let initial_completed = task.task.completed_at.is_some();
     let tags = task.tags.clone();
+    let subtask_count = task.subtask_count;
+    let completed_subtask_count = task.completed_subtask_count;
 
     let (is_completed, set_is_completed) = signal(initial_completed);
     let (editing, set_editing) = signal(false);
@@ -77,6 +79,8 @@ pub fn TaskCard(
             on_review=on_review
             show_review=show_review
             show_project=show_project
+            subtask_count=subtask_count
+            completed_subtask_count=completed_subtask_count
         />
     }
 }

@@ -6,6 +6,7 @@ use north_domain::TagInfo;
 use crate::components::date_picker::DateTimePicker;
 use crate::components::project_picker::ProjectPicker;
 use crate::components::tag_picker::TagPicker;
+use crate::components::task_detail_modal::TaskDetailContext;
 use crate::components::task_form::EditTaskForm;
 use crate::components::task_meta::TaskMeta;
 use north_ui::{Checkbox, DropdownItem, DropdownMenu, Icon, IconKind, MarkdownView};
@@ -37,7 +38,10 @@ pub fn TaskCardView(
     on_review: Callback<i64>,
     #[prop(default = false)] show_review: bool,
     #[prop(default = true)] show_project: bool,
+    #[prop(default = 0)] subtask_count: i64,
+    #[prop(default = 0)] completed_subtask_count: i64,
 ) -> impl IntoView {
+    let detail_ctx = use_context::<TaskDetailContext>();
     let edit_title = title.clone();
     let edit_body = body.clone();
 
@@ -57,23 +61,35 @@ pub fn TaskCardView(
                     let meta_tags = tags.clone();
                     let on_delete = on_delete.clone();
                     view! {
-                        <div class="group border-b border-border px-3 py-2 \
-                                    hover:bg-white/10 transition-colors">
+                        <div
+                            class="group border-b border-border px-3 py-2 \
+                                    hover:bg-white/10 transition-colors \
+                                    cursor-pointer"
+                            on:click=move |_| {
+                                if let Some(ctx) = detail_ctx {
+                                    ctx.open_task_id.set(Some(task_id));
+                                }
+                            }
+                        >
                             <div class="flex items-center gap-2">
-                                <Checkbox
-                                    checked=is_completed
-                                    on_toggle=on_toggle
-                                    checked_label="Mark task incomplete"
-                                    unchecked_label="Complete task"
-                                />
-                                <span class=move || {
-                                    if is_completed.get() {
-                                        "flex-1 text-sm text-text-tertiary \
-                                         line-through"
-                                    } else {
-                                        "flex-1 text-sm text-text-primary"
+                                <span on:click=move |ev| ev.stop_propagation()>
+                                    <Checkbox
+                                        checked=is_completed
+                                        on_toggle=on_toggle
+                                        checked_label="Mark task incomplete"
+                                        unchecked_label="Complete task"
+                                    />
+                                </span>
+                                <span
+                                    class=move || {
+                                        if is_completed.get() {
+                                            "flex-1 text-sm text-text-tertiary \
+                                             line-through"
+                                        } else {
+                                            "flex-1 text-sm text-text-primary"
+                                        }
                                     }
-                                }>
+                                >
                                     {title}
                                 </span>
                                 {if show_review {
@@ -96,9 +112,12 @@ pub fn TaskCardView(
                                 } else {
                                     None
                                 }}
-                                <div class="opacity-0 group-hover:opacity-100 \
+                                <div
+                                    class="opacity-0 group-hover:opacity-100 \
                                             transition-opacity flex \
-                                            items-center">
+                                            items-center"
+                                    on:click=move |ev| ev.stop_propagation()
+                                >
                                     <button
                                         on:click=move |ev| {
                                             ev.stop_propagation();
@@ -205,6 +224,8 @@ pub fn TaskCardView(
                                 tags=meta_tags
                                 reviewed_at=reviewed_at
                                 show_review=show_review
+                                subtask_count=subtask_count
+                                completed_subtask_count=completed_subtask_count
                             />
                         </div>
                     }

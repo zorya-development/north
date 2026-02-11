@@ -149,3 +149,103 @@ pub async fn get_completed_tasks(
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))
 }
+
+#[server(GetTaskDetailFn, "/api")]
+pub async fn get_task_detail(id: i64) -> Result<TaskWithMeta, ServerFnError> {
+    let pool = expect_context::<north_services::DbPool>();
+    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
+    north_services::TaskService::get_by_id_with_meta(&pool, user_id, id)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
+#[server(GetSubtasksFn, "/api")]
+pub async fn get_subtasks(parent_id: i64) -> Result<Vec<TaskWithMeta>, ServerFnError> {
+    let pool = expect_context::<north_services::DbPool>();
+    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
+    north_services::TaskService::get_children(&pool, user_id, parent_id)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
+#[server(GetTaskAncestorsFn, "/api")]
+pub async fn get_task_ancestors(
+    id: i64,
+) -> Result<Vec<(i64, String, i64)>, ServerFnError> {
+    let pool = expect_context::<north_services::DbPool>();
+    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
+    north_services::TaskService::get_ancestors(&pool, user_id, id)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
+#[server(CreateSubtaskFn, "/api")]
+pub async fn create_subtask(
+    parent_id: i64,
+    title: String,
+    project_id: Option<i64>,
+) -> Result<Task, ServerFnError> {
+    let pool = expect_context::<north_services::DbPool>();
+    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
+    let input = north_domain::CreateTask {
+        title,
+        body: None,
+        project_id,
+        parent_id: Some(parent_id),
+        column_id: None,
+        start_at: None,
+        due_date: None,
+    };
+    north_services::TaskService::create_task_full(&pool, user_id, &input)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
+#[server(SetTaskDueDateFn, "/api")]
+pub async fn set_task_due_date(id: i64, due_date: String) -> Result<(), ServerFnError> {
+    let pool = expect_context::<north_services::DbPool>();
+    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
+
+    let date = chrono::NaiveDate::parse_from_str(&due_date, "%Y-%m-%d")
+        .map_err(|e| ServerFnError::new(format!("Invalid date: {e}")))?;
+
+    north_services::TaskService::set_due_date(&pool, user_id, id, date)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
+#[server(ClearTaskDueDateFn, "/api")]
+pub async fn clear_task_due_date(id: i64) -> Result<(), ServerFnError> {
+    let pool = expect_context::<north_services::DbPool>();
+    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
+    north_services::TaskService::clear_due_date(&pool, user_id, id)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
+#[server(SetTaskColumnFn, "/api")]
+pub async fn set_task_column(id: i64, column_id: i64) -> Result<(), ServerFnError> {
+    let pool = expect_context::<north_services::DbPool>();
+    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
+    north_services::TaskService::set_column(&pool, user_id, id, column_id)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
+#[server(ClearTaskColumnFn, "/api")]
+pub async fn clear_task_column(id: i64) -> Result<(), ServerFnError> {
+    let pool = expect_context::<north_services::DbPool>();
+    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
+    north_services::TaskService::clear_column(&pool, user_id, id)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
+#[server(SetSequentialLimitFn, "/api")]
+pub async fn set_sequential_limit(id: i64, limit: i16) -> Result<(), ServerFnError> {
+    let pool = expect_context::<north_services::DbPool>();
+    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
+    north_services::TaskService::set_sequential_limit(&pool, user_id, id, limit)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}

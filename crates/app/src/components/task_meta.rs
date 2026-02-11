@@ -11,12 +11,15 @@ pub fn TaskMeta(
     tags: Vec<TagInfo>,
     #[prop(default = None)] reviewed_at: Option<chrono::NaiveDate>,
     #[prop(default = false)] show_review: bool,
+    #[prop(default = 0)] subtask_count: i64,
+    #[prop(default = 0)] completed_subtask_count: i64,
 ) -> impl IntoView {
     let has_meta = start_at.is_some()
         || (show_project && project_title.is_some())
         || due_date.is_some()
         || !tags.is_empty()
-        || (show_review && reviewed_at.is_some());
+        || (show_review && reviewed_at.is_some())
+        || subtask_count > 0;
 
     has_meta.then(|| {
         view! {
@@ -37,6 +40,20 @@ pub fn TaskMeta(
                                 class="w-3 h-3"
                             />
                             {display}
+                        </span>
+                    }
+                })}
+                {(subtask_count > 0).then(|| {
+                    view! {
+                        <span class="inline-flex items-center gap-0.5 \
+                                     text-text-secondary">
+                            <Icon
+                                kind=IconKind::Subtask
+                                class="w-3 h-3"
+                            />
+                            {format!(
+                                "{completed_subtask_count}/{subtask_count}",
+                            )}
                         </span>
                     }
                 })}

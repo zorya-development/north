@@ -655,18 +655,42 @@ impl TaskService {
 
     pub async fn complete_task(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<()> {
         let mut conn = pool.get().await?;
+        let now = Utc::now();
         let affected = diesel::update(
             tasks::table
                 .filter(tasks::id.eq(id))
                 .filter(tasks::user_id.eq(user_id))
                 .filter(tasks::completed_at.is_null()),
         )
-        .set(tasks::completed_at.eq(Some(Utc::now())))
+        .set(tasks::completed_at.eq(Some(now)))
         .execute(&mut conn)
         .await?;
         if affected == 0 {
             return Err(ServiceError::NotFound("Task not found".into()));
         }
+
+        // Cascade: complete all incomplete descendants (max depth 5)
+        let mut parent_ids = vec![id];
+        for _ in 0..5 {
+            if parent_ids.is_empty() {
+                break;
+            }
+            let child_ids: Vec<i64> = tasks::table
+                .filter(tasks::parent_id.eq_any(&parent_ids))
+                .filter(tasks::completed_at.is_null())
+                .select(tasks::id)
+                .load(&mut conn)
+                .await?;
+            if child_ids.is_empty() {
+                break;
+            }
+            diesel::update(tasks::table.filter(tasks::id.eq_any(&child_ids)))
+                .set(tasks::completed_at.eq(Some(now)))
+                .execute(&mut conn)
+                .await?;
+            parent_ids = child_ids;
+        }
+
         Ok(())
     }
 
@@ -768,6 +792,204 @@ impl TaskService {
                 .filter(tasks::user_id.eq(user_id)),
         )
         .set(tasks::project_id.eq(None::<i64>))
+        .execute(&mut conn)
+        .await?;
+        if affected == 0 {
+            return Err(ServiceError::NotFound("Task not found".into()));
+        }
+        Ok(())
+    }
+
+    pub async fn get_children(
+        pool: &DbPool,
+        user_id: i64,
+        parent_id: i64,
+    ) -> ServiceResult<Vec<TaskWithMeta>> {
+        let mut conn = pool.get().await?;
+        let rows = tasks::table
+            .filter(tasks::user_id.eq(user_id))
+            .filter(tasks::parent_id.eq(parent_id))
+            .order(tasks::position.asc())
+            .select(TaskRow::as_select())
+            .load(&mut conn)
+            .await?;
+
+        let mut results = Self::enrich(pool, rows).await?;
+
+        // Compute actionable based on parent's sequential_limit
+        let parent_limit: i16 = tasks::table
+            .filter(tasks::id.eq(parent_id))
+            .select(tasks::sequential_limit)
+            .first(&mut conn)
+            .await
+            .unwrap_or(1);
+
+        let mut active_count: i64 = 0;
+        for item in &mut results {
+            if item.task.completed_at.is_some() {
+                item.actionable = false;
+            } else {
+                item.actionable = active_count < parent_limit as i64;
+                active_count += 1;
+            }
+        }
+
+        Ok(results)
+    }
+
+    pub async fn get_ancestors(
+        pool: &DbPool,
+        user_id: i64,
+        id: i64,
+    ) -> ServiceResult<Vec<(i64, String, i64)>> {
+        let mut conn = pool.get().await?;
+        let mut ancestors = Vec::new();
+        let mut current_id = id;
+
+        for _ in 0..5 {
+            let row = tasks::table
+                .filter(tasks::id.eq(current_id))
+                .filter(tasks::user_id.eq(user_id))
+                .select(TaskRow::as_select())
+                .first(&mut conn)
+                .await
+                .optional()?;
+
+            match row {
+                Some(r) => {
+                    match r.parent_id {
+                        Some(pid) => {
+                            // Load parent info
+                            let parent = tasks::table
+                                .filter(tasks::id.eq(pid))
+                                .filter(tasks::user_id.eq(user_id))
+                                .select(TaskRow::as_select())
+                                .first(&mut conn)
+                                .await
+                                .optional()?;
+                            match parent {
+                                Some(p) => {
+                                    let child_count: i64 = tasks::table
+                                        .filter(tasks::parent_id.eq(p.id))
+                                        .count()
+                                        .get_result(&mut conn)
+                                        .await?;
+                                    ancestors.push((p.id, p.title.clone(), child_count));
+                                    current_id = p.id;
+                                }
+                                None => break,
+                            }
+                        }
+                        None => break,
+                    }
+                }
+                None => break,
+            }
+        }
+
+        ancestors.reverse();
+        Ok(ancestors)
+    }
+
+    pub async fn set_due_date(
+        pool: &DbPool,
+        user_id: i64,
+        id: i64,
+        date: chrono::NaiveDate,
+    ) -> ServiceResult<()> {
+        let mut conn = pool.get().await?;
+        let affected = diesel::update(
+            tasks::table
+                .filter(tasks::id.eq(id))
+                .filter(tasks::user_id.eq(user_id)),
+        )
+        .set(tasks::due_date.eq(Some(date)))
+        .execute(&mut conn)
+        .await?;
+        if affected == 0 {
+            return Err(ServiceError::NotFound("Task not found".into()));
+        }
+        Ok(())
+    }
+
+    pub async fn clear_due_date(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<()> {
+        let mut conn = pool.get().await?;
+        let affected = diesel::update(
+            tasks::table
+                .filter(tasks::id.eq(id))
+                .filter(tasks::user_id.eq(user_id)),
+        )
+        .set(tasks::due_date.eq(None::<chrono::NaiveDate>))
+        .execute(&mut conn)
+        .await?;
+        if affected == 0 {
+            return Err(ServiceError::NotFound("Task not found".into()));
+        }
+        Ok(())
+    }
+
+    pub async fn set_column(
+        pool: &DbPool,
+        user_id: i64,
+        id: i64,
+        column_id: i64,
+    ) -> ServiceResult<()> {
+        let mut conn = pool.get().await?;
+
+        // Check if column is_done
+        let is_done = crate::ColumnService::is_done(pool, column_id).await?;
+        let completed_at = if is_done == Some(true) {
+            Some(Utc::now())
+        } else {
+            None
+        };
+
+        let affected = diesel::update(
+            tasks::table
+                .filter(tasks::id.eq(id))
+                .filter(tasks::user_id.eq(user_id)),
+        )
+        .set((
+            tasks::column_id.eq(Some(column_id)),
+            tasks::completed_at.eq(completed_at),
+        ))
+        .execute(&mut conn)
+        .await?;
+        if affected == 0 {
+            return Err(ServiceError::NotFound("Task not found".into()));
+        }
+        Ok(())
+    }
+
+    pub async fn clear_column(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<()> {
+        let mut conn = pool.get().await?;
+        let affected = diesel::update(
+            tasks::table
+                .filter(tasks::id.eq(id))
+                .filter(tasks::user_id.eq(user_id)),
+        )
+        .set(tasks::column_id.eq(None::<i64>))
+        .execute(&mut conn)
+        .await?;
+        if affected == 0 {
+            return Err(ServiceError::NotFound("Task not found".into()));
+        }
+        Ok(())
+    }
+
+    pub async fn set_sequential_limit(
+        pool: &DbPool,
+        user_id: i64,
+        id: i64,
+        limit: i16,
+    ) -> ServiceResult<()> {
+        let mut conn = pool.get().await?;
+        let affected = diesel::update(
+            tasks::table
+                .filter(tasks::id.eq(id))
+                .filter(tasks::user_id.eq(user_id)),
+        )
+        .set(tasks::sequential_limit.eq(limit))
         .execute(&mut conn)
         .await?;
         if affected == 0 {
@@ -1025,6 +1247,19 @@ impl TaskService {
             .filter_map(|(pid, cnt)| pid.map(|id| (id, cnt)))
             .collect();
 
+        // 4b. Batch load completed subtask counts
+        let completed_counts: Vec<(Option<i64>, i64)> = tasks::table
+            .filter(tasks::parent_id.eq_any(&task_ids))
+            .filter(tasks::completed_at.is_not_null())
+            .group_by(tasks::parent_id)
+            .select((tasks::parent_id, diesel::dsl::count_star()))
+            .load(&mut conn)
+            .await?;
+        let completed_count_map: HashMap<i64, i64> = completed_counts
+            .into_iter()
+            .filter_map(|(pid, cnt)| pid.map(|id| (id, cnt)))
+            .collect();
+
         // 5. Assemble
         Ok(task_rows
             .into_iter()
@@ -1035,6 +1270,10 @@ impl TaskService {
                     column_name: row.column_id.and_then(|cid| col_map.get(&cid).cloned()),
                     tags: tags_map.remove(&id).unwrap_or_default(),
                     subtask_count: count_map.get(&id).copied().unwrap_or(0),
+                    completed_subtask_count: completed_count_map
+                        .get(&id)
+                        .copied()
+                        .unwrap_or(0),
                     actionable: row.completed_at.is_none(),
                     task: Task::from(row),
                 }

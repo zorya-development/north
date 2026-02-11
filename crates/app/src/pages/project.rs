@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 use leptos_router::hooks::use_params_map;
 
+use crate::components::task_detail_modal::{TaskDetailContext, TaskDetailModal};
 use crate::components::task_list::TaskList;
 use crate::server_fns::projects::{get_project, get_project_tasks};
 use crate::server_fns::tasks::get_completed_tasks;
@@ -8,6 +9,9 @@ use crate::stores::task_store::TaskStore;
 
 #[component]
 pub fn ProjectPage() -> impl IntoView {
+    let open_task_id = RwSignal::new(None::<i64>);
+    provide_context(TaskDetailContext { open_task_id });
+
     let params = use_params_map();
 
     let project_id = move || {
@@ -24,6 +28,16 @@ pub fn ProjectPage() -> impl IntoView {
         get_completed_tasks(Some(id), false)
     });
     let store = TaskStore::new(project_tasks);
+
+    let task_ids = Signal::derive(move || {
+        project_tasks
+            .get()
+            .and_then(|r| r.ok())
+            .unwrap_or_default()
+            .iter()
+            .map(|t| t.task.id)
+            .collect::<Vec<_>>()
+    });
 
     view! {
         <div class="space-y-4">
@@ -55,11 +69,12 @@ pub fn ProjectPage() -> impl IntoView {
             </Suspense>
             <TaskList
                 resource=project_tasks
-                store=store
+                store=store.clone()
                 show_project=false
                 empty_message="No tasks in this project."
                 completed_resource=completed
             />
+            <TaskDetailModal task_ids=task_ids task_store=store/>
         </div>
     }
 }

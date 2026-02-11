@@ -28,6 +28,7 @@ pub struct TaskWithMeta {
     pub column_name: Option<String>,
     pub tags: Vec<crate::TagInfo>,
     pub subtask_count: i64,
+    pub completed_subtask_count: i64,
     pub actionable: bool,
 }
 
