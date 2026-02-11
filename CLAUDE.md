@@ -87,6 +87,7 @@ north/
     │       ├── task.rs         # Task, TaskWithMeta, CreateTask, UpdateTask, MoveTask, TaskFilter
     │       ├── filter_dsl.rs   # FilterQuery, FilterExpr, Condition, FilterField, FilterOp, FilterValue, OrderBy
     │       ├── filter_parser.rs # parse_filter() — recursive descent parser for filter DSL
+    │       ├── filter_context.rs # DslCompletionContext, detect_completion_context() — autocomplete context detection
     │       ├── saved_filter.rs # SavedFilter, CreateSavedFilter, UpdateSavedFilter
     │       ├── text_parser.rs  # parse_tokens() — extracts #tags and @project from text
     │       └── user.rs         # User, UserRole, UserSettings, DefaultColumn, auth DTOs
@@ -113,7 +114,7 @@ north/
     │       ├── task_service.rs # CRUD, enrich(), actionable computation, filtering
     │       ├── project_service.rs # CRUD, columns, archive/unarchive
     │       ├── tag_service.rs  # CRUD, sync_task_tags (full replace), add_task_tags (additive)
-    │       ├── column_service.rs # CRUD, task reassignment on delete
+    │       ├── column_service.rs # CRUD, task reassignment on delete, get_all_for_user
     │       ├── user_service.rs # Auth lookup, settings, admin creation
     │       ├── stats_service.rs # Aggregated statistics
     │       ├── filter_service.rs # SavedFilter CRUD with query validation
@@ -127,6 +128,7 @@ north/
     │       ├── popover.rs          # Popover (trigger + overlay + positioned panel)
     │       ├── checkbox.rs         # Checkbox (checked + on_toggle callback)
     │       ├── markdown.rs         # MarkdownView + render_markdown()
+    │       ├── modal.rs            # Modal (backdrop + centered panel)
     │       └── autocomplete.rs     # AutocompleteDropdown, SuggestionItem
     │
     ├── app/                    # Leptos library (SSR + WASM hydration)
@@ -142,24 +144,27 @@ north/
     │       │   ├── archive.rs  # ArchivePage (archived projects, unarchive/delete)
     │       │   ├── review.rs   # ReviewPage (GTD-style task review)
     │       │   ├── settings.rs # SettingsPage (user preferences)
-    │       │   ├── filter.rs   # FilterPage (create/edit saved filters, live DSL results)
+    │       │   ├── filter.rs   # FilterPage (create/edit saved filters, search bar + explicit query execution)
     │       │   └── filter_help.rs # FilterHelpPage (DSL syntax reference)
     │       ├── components/
     │       │   ├── task_card/          # Container/view pattern
     │       │   │   ├── container.rs    # Signals, handlers, concrete Callback props
-    │       │   │   └── view.rs         # Pure rendering (uses north_ui components)
+    │       │   │   └── view.rs         # Pure rendering, action icon bar (edit/date/project/tags/menu)
     │       │   ├── task_list/          # Container/view pattern
     │       │   │   ├── container.rs    # Store → callback extraction
     │       │   │   └── view.rs         # Suspense + list rendering
     │       │   ├── date_picker/        # Container/view pattern
-    │       │   │   ├── container.rs    # Popover state signals
+    │       │   │   ├── container.rs    # Popover state signals (supports icon_only prop)
     │       │   │   └── view.rs         # Uses north_ui::Popover
     │       │   ├── project_picker/     # Container/view pattern
-    │       │   │   ├── container.rs    # Project selection state
+    │       │   │   ├── container.rs    # Project selection state (supports icon_only prop)
     │       │   │   └── view.rs         # Uses north_ui::Popover
     │       │   ├── tag_picker/         # Container/view pattern
-    │       │   │   ├── container.rs    # Tag selection + creation state
+    │       │   │   ├── container.rs    # Tag selection + creation state (supports icon_only prop)
     │       │   │   └── view.rs         # Uses north_ui::Popover
+    │       │   ├── filter_autocomplete/ # DSL autocomplete for filter page
+    │       │   │   ├── container.rs    # Context detection, suggestion generation, keyboard nav
+    │       │   │   └── mod.rs          # pub use FilterAutocompleteTextarea
     │       │   ├── autocomplete/       # Container/view pattern
     │       │   │   ├── container.rs    # Autocomplete state, keyboard nav
     │       │   │   └── view.rs         # Re-exports north_ui::{AutocompleteDropdown, SuggestionItem}
@@ -169,7 +174,7 @@ north/
     │       │   └── nav.rs              # Sidebar navigation (projects, filters, archive)
     │       ├── stores/
     │       │   ├── task_store.rs       # TaskStore: actions, effects, Callback fields
-    │       │   └── lookup_store.rs     # LookupStore: cached projects + tags for pickers
+    │       │   └── lookup_store.rs     # LookupStore: cached projects, tags + columns for pickers
     │       └── server_fns/
     │           ├── auth.rs     # check_auth(), get_auth_user_id()
     │           ├── tasks.rs    # Task CRUD → calls north_services::TaskService
@@ -196,10 +201,10 @@ north/
 
 ### Crate Details
 
-- **`domain`** — Pure data types with serde + chrono, no IO. Compiled for both server and WASM. Key types: `TaskFilter` (complex query object), `TaskWithMeta` (task + project_title, column_name, tags, subtask_count, actionable), `UserSettings` (review_interval_days, default_sequential_limit, default_columns), `FilterQuery`/`FilterExpr` (filter DSL AST), `SavedFilter`. Includes `parse_filter()` recursive descent parser for the filter DSL (runs in WASM for client-side validation).
+- **`domain`** — Pure data types with serde + chrono, no IO. Compiled for both server and WASM. Key types: `TaskFilter` (complex query object), `TaskWithMeta` (task + project_title, column_name, tags, subtask_count, actionable), `UserSettings` (review_interval_days, default_sequential_limit, default_columns), `FilterQuery`/`FilterExpr` (filter DSL AST), `SavedFilter`. Includes `parse_filter()` recursive descent parser for the filter DSL (runs in WASM for client-side validation). Also includes `detect_completion_context()` for DSL autocomplete — tokenizes text up to cursor position and returns `DslCompletionContext` (FieldName, FieldValue, ArrayValue, Keyword, None) to drive autocomplete suggestions.
 - **`db`** — Diesel infrastructure: `schema.rs` (auto-generated by `diesel print-schema`), model structs (`XxxRow` for reading, `NewXxx` for inserting, `XxxChangeset` for updating), PG enum mappings via `diesel-derive-enum`, `DbPool` type alias for `diesel_async::deadpool::Pool<AsyncPgConnection>`.
 - **`services`** — Business logic layer. Each service is a struct with static async methods that use Diesel's query builder directly. Key patterns: `TaskService::enrich()` for batch metadata loading (projects, columns, tags, subtask counts), `compute_actionable()` for sequential task logic in Rust, `into_boxed()` for dynamic filtering, `execute_dsl_filter()` for filter DSL evaluation via `filter_translator`. `FilterService` for saved filter CRUD. Re-exports `DbPool` so consumers only depend on `north-services`.
-- **`ui`** — Generic UI component library (`north-ui`). No domain dependencies — only `leptos`, `pulldown-cmark`, `ammonia`. Components: `Icon`/`IconKind`, `DropdownMenu`/`DropdownItem`, `Popover`, `Checkbox`, `MarkdownView`/`render_markdown()`, `AutocompleteDropdown`/`SuggestionItem`. Used by `app` crate for reusable UI primitives.
+- **`ui`** — Generic UI component library (`north-ui`). No domain dependencies — only `leptos`, `pulldown-cmark`, `ammonia`. Components: `Icon`/`IconKind`, `DropdownMenu`/`DropdownItem`, `Popover`, `Modal`, `Checkbox`, `MarkdownView`/`render_markdown()`, `AutocompleteDropdown`/`SuggestionItem`. Used by `app` crate for reusable UI primitives.
 - **`app`** — Leptos library crate. Features: `hydrate` (WASM client), `ssr` (server-side, pulls in north-services/argon2/jsonwebtoken). Server functions use `#[server]` macro with DB access via `expect_context::<north_services::DbPool>()`, then delegate to service methods. Domain-specific components import generic UI primitives from `north-ui`.
 - **`server`** — Axum binary. Depends on `north-app` with `ssr` feature. Auth middleware injects `AuthUser { id, role }` into request extensions. Route handlers delegate to service methods.
 
@@ -249,11 +254,13 @@ Triggers: `update_updated_at()` on users, projects, tasks.
 - **Sequential tasks:** `tasks.sequential_limit` controls how many subtasks are actionable. Computed in Rust via `compute_actionable()`, not SQL window functions.
 - **Custom columns:** Each project has its own columns (statuses). Created from user's `default_columns` setting.
 - **Data access:** Diesel ORM with `diesel-async` for async PostgreSQL. Service layer uses Diesel query builder directly (no repository abstraction). Batch metadata loading via `enrich()` to avoid N+1 queries.
-- **Container/view pattern:** Components with state management are split into directories: `container.rs` (signals, handlers, callback wiring) and `view.rs` (pure rendering). Pure presentational components stay as single files. Containers use concrete `Callback<T>` types, not generic type params.
+- **Container/view pattern:** Components with state management are split into directories: `container.rs` (signals, handlers, callback wiring) and `view.rs` (pure rendering). Pure presentational components stay as single files. Containers use concrete `Callback<T>` types, not generic type params. Picker components (date, project, tag) support `icon_only` prop for compact action bar rendering in task cards.
 - **TaskStore:** Centralized controller (`stores/task_store.rs`) that owns actions and effects for task mutations (complete, delete, update, set/clear start_at). Pages create a `TaskStore` from a `Resource` and pass it to `TaskList`.
-- **LookupStore:** Cached projects and tags loaded once and shared across pickers (`stores/lookup_store.rs`).
+- **LookupStore:** Cached projects, tags, and columns loaded once and shared across pickers and autocomplete (`stores/lookup_store.rs`).
 - **Token parsing:** `parse_tokens()` in domain crate extracts `#tags` and `@project` references from task title/body text. Services resolve these to DB records.
 - **Filter DSL:** JQL-like query language parsed by hand-written recursive descent parser in domain crate (`parse_filter()`). Runs in WASM for client-side validation. Supports fields (title, body, project, tags, status, due_date, start_at, column, created, updated), operators (`=`, `!=`, `=~` glob, `>`, `<`, `>=`, `<=`, `is null`, `in [...]`), logical operators (`AND`, `OR`, `NOT`, parentheses), and `ORDER BY`. Two-pass evaluation in services: parse → AST, then recursively evaluate AST → `HashSet<i64>` of matching task IDs (AND=intersection, OR=union, NOT=difference).
+- **DSL autocomplete:** `FilterAutocompleteTextarea` wraps a textarea with context-aware suggestions powered by `detect_completion_context()` from domain crate. Suggests field names, operators/keywords, and field-specific values (tags, projects, columns, statuses) from `LookupStore`. Uses `on_submit` callback for Enter-to-search.
+- **Filter page search bar:** Filter results use a `committed_query` signal — the resource only re-fetches when the user explicitly clicks Search or presses Enter, not on every keystroke. Save modal (`Modal` component) prompts for title when creating new filters.
 - **Completed tasks toggle:** Task list pages (inbox, today, all_tasks, project) pass an optional `completed_resource` to `TaskList`. The `CompletedSection` component renders a toggle button with count and dimmed completed tasks below the active list.
 
 ## Code Conventions
