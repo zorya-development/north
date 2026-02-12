@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 use leptos_router::hooks::use_location;
 
+use crate::components::theme_toggle::ThemeToggle;
 use crate::server_fns::filters::get_saved_filters;
 use crate::server_fns::projects::{
     archive_project, create_project, get_projects, update_project_details,
@@ -55,15 +56,9 @@ pub fn Sidebar() -> impl IntoView {
     });
 
     view! {
-        <aside class="w-56 bg-bg-secondary flex flex-col h-full">
-            <div class="px-5 pt-2 pb-2 flex justify-center" style="height: 140px;">
-                <div
-                    class="w-full"
-                    style="width: 100%; height: 160px; \
-                           background-image: url('/public/logo-big.png'); \
-                           background-size: cover; \
-                           background-position: center;"
-                />
+        <aside class="w-60 bg-sidebar border-r border-border flex flex-col h-full">
+            <div class="px-5 pt-2 pb-2 mb-6 flex justify-center h-[140px]">
+                <div class="sidebar-logo w-full"/>
             </div>
 
             <nav class="flex-1 px-2 space-y-1">
@@ -217,8 +212,9 @@ pub fn Sidebar() -> impl IntoView {
                 </div>
             </nav>
 
-            <div class="p-2 border-t border-border">
+            <div class="p-2 border-t border-border space-y-0.5">
                 <NavItem href="/settings" label="Settings" icon=IconKind::Settings/>
+                <ThemeToggle/>
             </div>
         </aside>
     }
@@ -243,7 +239,7 @@ fn ProjectItem(
     let href_cmp = href.clone();
 
     let class = Memo::new(move |_| {
-        let base = "group flex items-center gap-2 px-3 py-1.5 rounded-md \
+        let base = "group flex items-center gap-2 px-3 py-1.5 rounded-lg \
                     text-sm text-text-primary hover:bg-bg-tertiary \
                     select-none transition-colors";
         if location.pathname.get() == href_cmp {
@@ -361,7 +357,7 @@ fn ProjectItem(
                                                 style=move || {
                                                     let border =
                                                         if edit_color.get() == c3 {
-                                                            "border-color: white"
+                                                            "border-color: var(--text-primary)"
                                                         } else {
                                                             "border-color: transparent"
                                                         };
@@ -396,7 +392,7 @@ fn ProjectItem(
                                 </button>
                                 <button
                                     class="px-2 py-0.5 text-xs bg-accent \
-                                           text-white rounded \
+                                           text-on-accent rounded \
                                            hover:bg-accent-hover \
                                            transition-colors"
                                     on:click=move |_| {
@@ -431,7 +427,7 @@ fn FilterNavItem(href: String, title: String) -> impl IntoView {
     let href_cmp = href.clone();
 
     let class = Memo::new(move |_| {
-        let base = "flex items-center gap-2 px-3 py-1.5 rounded-md \
+        let base = "flex items-center gap-2 px-3 py-1.5 rounded-lg \
                     text-sm text-text-primary hover:bg-bg-tertiary \
                     transition-colors";
         if location.pathname.get() == href_cmp {
@@ -456,7 +452,7 @@ fn NavItem(href: &'static str, label: &'static str, icon: IconKind) -> impl Into
     let is_active = move || location.pathname.get() == href;
 
     let class = move || {
-        let base = "flex items-center gap-2 px-3 py-2 rounded-md text-sm \
+        let base = "flex items-center gap-2 px-3 py-2 rounded-lg text-sm \
                     text-text-primary hover:bg-bg-tertiary transition-colors";
         if is_active() {
             format!("{base} bg-bg-tertiary font-medium")
