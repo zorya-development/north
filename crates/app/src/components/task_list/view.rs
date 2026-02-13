@@ -32,131 +32,201 @@ pub fn TaskListView(
     let expanded = RwSignal::new(HashSet::<i64>::new());
     let drag_ctx = use_context::<DragDropContext>();
 
-    view! {
-        <Suspense fallback=move || {
-            view! {
-                <div class="text-sm text-text-secondary py-4">
-                    "Loading tasks..."
-                </div>
+    // Tasks uncompleted from the completed section, rendered in the active list
+    let locally_uncompleted: RwSignal<Vec<TaskWithMeta>> = RwSignal::new(vec![]);
+    let uncompleted_ids = Memo::new(move |_| {
+        locally_uncompleted
+            .get()
+            .iter()
+            .map(|t| t.task.id)
+            .collect::<HashSet<i64>>()
+    });
+
+    // Wrap toggle to move uncompleted tasks from completed → active list
+    let wrapped_toggle = {
+        let cr = completed_resource;
+        Callback::new(move |(id, was_completed): (i64, bool)| {
+            if was_completed {
+                // Uncompleting — if task is in completed resource, move it
+                if let Some(cr) = cr {
+                    if let Some(Ok(tasks)) = cr.get_untracked() {
+                        if let Some(task) = tasks.iter().find(|t| t.task.id == id) {
+                            let mut task = task.clone();
+                            task.task.completed_at = None;
+                            locally_uncompleted.update(|v| {
+                                if !v.iter().any(|t| t.task.id == id) {
+                                    v.push(task);
+                                }
+                            });
+                        }
+                    }
+                }
             }
-        }>
-            {move || {
-                Suspend::new(async move {
-                    match resource.await {
-                        Ok(tasks) => {
-                            if tasks.is_empty() {
-                                view! {
-                                    <div class="text-sm text-text-secondary \
-                                                py-8 text-center">
-                                        {empty_message}
-                                    </div>
-                                }
-                                    .into_any()
-                            } else {
-                                let tasks_clone = tasks.clone();
-                                view! {
-                                    <div
-                                        on:drop=move |ev: web_sys::DragEvent| {
-                                            ev.prevent_default();
-                                            handle_drop(
-                                                &ev,
-                                                drag_ctx,
-                                                &tasks_clone,
-                                                on_reorder,
-                                            );
-                                        }
-                                        on:dragover=move |ev: web_sys::DragEvent| {
-                                            if drag_ctx.is_some() {
+            on_toggle_complete.run((id, was_completed));
+        })
+    };
+
+    view! {
+        <div>
+            <Suspense fallback=move || {
+                view! {
+                    <div class="text-sm text-text-secondary py-4">
+                        "Loading tasks..."
+                    </div>
+                }
+            }>
+                {move || {
+                    Suspend::new(async move {
+                        match resource.await {
+                            Ok(tasks) => {
+                                if tasks.is_empty() {
+                                    view! {
+                                        <div class="text-sm text-text-secondary \
+                                                    py-8 text-center">
+                                            {empty_message}
+                                        </div>
+                                    }
+                                        .into_any()
+                                } else {
+                                    let tasks_clone = tasks.clone();
+                                    view! {
+                                        <div
+                                            on:drop=move |ev: web_sys::DragEvent| {
                                                 ev.prevent_default();
+                                                handle_drop(
+                                                    &ev,
+                                                    drag_ctx,
+                                                    &tasks_clone,
+                                                    on_reorder,
+                                                );
                                             }
-                                        }
-                                    >
-                                        {tasks
-                                            .into_iter()
-                                            .map(|task| {
-                                                let task_id = task.task.id;
-                                                let has_subtasks =
-                                                    task.subtask_count > 0;
-                                                view! {
-                                                    <TaskCard
-                                                        task=task
-                                                        on_toggle_complete=on_toggle_complete
-                                                        on_delete=on_delete
-                                                        on_update=on_update
-                                                        on_set_start_at=on_set_start_at
-                                                        on_clear_start_at=on_clear_start_at
-                                                        on_set_project=on_set_project
-                                                        on_clear_project=on_clear_project
-                                                        on_set_tags=on_set_tags
-                                                        on_review=on_review
-                                                        show_review=show_review
-                                                        show_project=show_project
-                                                        draggable=draggable
-                                                    />
-                                                    {if has_subtasks {
-                                                        Some(view! {
-                                                            <InlineSubtasks
-                                                                parent_id=task_id
-                                                                expanded=expanded
-                                                                on_toggle_complete=on_toggle_complete
-                                                                on_delete=on_delete
-                                                                on_update=on_update
-                                                                on_set_start_at=on_set_start_at
-                                                                on_clear_start_at=on_clear_start_at
-                                                                on_set_project=on_set_project
-                                                                on_clear_project=on_clear_project
-                                                                on_set_tags=on_set_tags
-                                                                on_review=on_review
-                                                                show_project=show_project
-                                                                draggable=draggable
-                                                                depth=1
-                                                            />
-                                                        })
-                                                    } else {
-                                                        None
-                                                    }}
+                                            on:dragover=move |ev: web_sys::DragEvent| {
+                                                if drag_ctx.is_some() {
+                                                    ev.prevent_default();
                                                 }
-                                            })
-                                            .collect::<Vec<_>>()}
+                                            }
+                                        >
+                                            {tasks
+                                                .into_iter()
+                                                .map(|task| {
+                                                    let task_id = task.task.id;
+                                                    let has_subtasks =
+                                                        task.subtask_count > 0;
+                                                    view! {
+                                                        <TaskCard
+                                                            task=task
+                                                            on_toggle_complete=wrapped_toggle
+                                                            on_delete=on_delete
+                                                            on_update=on_update
+                                                            on_set_start_at=on_set_start_at
+                                                            on_clear_start_at=on_clear_start_at
+                                                            on_set_project=on_set_project
+                                                            on_clear_project=on_clear_project
+                                                            on_set_tags=on_set_tags
+                                                            on_review=on_review
+                                                            show_review=show_review
+                                                            show_project=show_project
+                                                            draggable=draggable
+                                                        />
+                                                        {if has_subtasks {
+                                                            Some(view! {
+                                                                <InlineSubtasks
+                                                                    parent_id=task_id
+                                                                    expanded=expanded
+                                                                    on_toggle_complete=wrapped_toggle
+                                                                    on_delete=on_delete
+                                                                    on_update=on_update
+                                                                    on_set_start_at=on_set_start_at
+                                                                    on_clear_start_at=on_clear_start_at
+                                                                    on_set_project=on_set_project
+                                                                    on_clear_project=on_clear_project
+                                                                    on_set_tags=on_set_tags
+                                                                    on_review=on_review
+                                                                    show_project=show_project
+                                                                    draggable=draggable
+                                                                    depth=1
+                                                                />
+                                                            })
+                                                        } else {
+                                                            None
+                                                        }}
+                                                    }
+                                                })
+                                                .collect::<Vec<_>>()}
+                                        </div>
+                                    }
+                                        .into_any()
+                                }
+                            }
+                            Err(e) => {
+                                view! {
+                                    <div class="text-sm text-danger py-4">
+                                        {format!("Failed to load tasks: {e}")}
                                     </div>
                                 }
                                     .into_any()
                             }
                         }
-                        Err(e) => {
-                            view! {
-                                <div class="text-sm text-danger py-4">
-                                    {format!("Failed to load tasks: {e}")}
-                                </div>
-                            }
-                                .into_any()
-                        }
+                    })
+                }}
+            </Suspense>
+
+            // Tasks recently uncompleted from completed section
+            {move || {
+                let tasks = locally_uncompleted.get();
+                if tasks.is_empty() {
+                    None
+                } else {
+                    Some(
+                        tasks
+                            .into_iter()
+                            .map(|task| {
+                                view! {
+                                    <TaskCard
+                                        task=task
+                                        on_toggle_complete=wrapped_toggle
+                                        on_delete=on_delete
+                                        on_update=on_update
+                                        on_set_start_at=on_set_start_at
+                                        on_clear_start_at=on_clear_start_at
+                                        on_set_project=on_set_project
+                                        on_clear_project=on_clear_project
+                                        on_set_tags=on_set_tags
+                                        on_review=on_review
+                                        show_review=show_review
+                                        show_project=show_project
+                                        draggable=draggable
+                                    />
+                                }
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                }
+            }}
+
+            {move || {
+                completed_resource.map(|cr| {
+                    view! {
+                        <CompletedSection
+                            resource=cr
+                            showing=showing_completed
+                            set_showing=set_showing_completed
+                            on_toggle_complete=wrapped_toggle
+                            on_delete=on_delete
+                            on_update=on_update
+                            on_set_start_at=on_set_start_at
+                            on_clear_start_at=on_clear_start_at
+                            on_set_project=on_set_project
+                            on_clear_project=on_clear_project
+                            on_set_tags=on_set_tags
+                            on_review=on_review
+                            show_project=show_project
+                            exclude_ids=uncompleted_ids
+                        />
                     }
                 })
             }}
-        </Suspense>
-
-        {move || {
-            completed_resource.map(|cr| {
-                view! {
-                    <CompletedSection
-                        resource=cr
-                        showing=showing_completed
-                        set_showing=set_showing_completed
-                        on_toggle_complete=on_toggle_complete
-                        on_delete=on_delete
-                        on_update=on_update
-                        on_set_start_at=on_set_start_at
-                        on_clear_start_at=on_clear_start_at
-                        on_set_project=on_set_project
-                        on_clear_project=on_clear_project
-                        on_set_tags=on_set_tags
-                        on_review=on_review
-                        show_project=show_project
-                    />
-                }
-            })
-        }}
+        </div>
     }
 }
 
@@ -398,13 +468,26 @@ fn CompletedSection(
     on_set_tags: Callback<(i64, Vec<String>)>,
     on_review: Callback<i64>,
     #[prop(default = true)] show_project: bool,
+    #[prop(optional)] exclude_ids: Option<Memo<HashSet<i64>>>,
 ) -> impl IntoView {
     view! {
         <Suspense fallback=|| ()>
             {move || {
+                // Read exclude_ids reactively so we re-render when it changes
+                let excluded = exclude_ids
+                    .map(|m| m.get())
+                    .unwrap_or_default();
+
                 Suspend::new(async move {
                     match resource.await {
                         Ok(tasks) if !tasks.is_empty() => {
+                            let tasks: Vec<_> = tasks
+                                .into_iter()
+                                .filter(|t| !excluded.contains(&t.task.id))
+                                .collect();
+                            if tasks.is_empty() {
+                                return view! { <div/> }.into_any();
+                            }
                             let count = tasks.len();
                             view! {
                                 <div class="mt-4 border-t border-border pt-3">

@@ -41,7 +41,7 @@ pub fn FilterHelpPage() -> impl IntoView {
                         />
                         <FieldRow
                             field="column (or col)"
-                            desc="Column/status name"
+                            desc="Project status/column name"
                         />
                         <FieldRow
                             field="created (or created_at)"

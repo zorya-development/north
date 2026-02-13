@@ -81,17 +81,8 @@ impl TaskStore {
                 reorder_task(task_id, sort_key, change_parent, new_parent_id)
             });
 
-        Effect::new(move || {
-            if let Some(Ok(_)) = complete_action.value().get() {
-                resource.refetch();
-            }
-        });
-
-        Effect::new(move || {
-            if let Some(Ok(_)) = uncomplete_action.value().get() {
-                resource.refetch();
-            }
-        });
+        // Complete/uncomplete: do NOT refetch — task stays in place so the
+        // user can undo a misclick. TaskListView handles local list movement.
 
         Effect::new(move || {
             if let Some(Ok(_)) = delete_action.value().get() {

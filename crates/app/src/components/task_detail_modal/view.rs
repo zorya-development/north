@@ -6,7 +6,7 @@ use crate::components::project_picker::ProjectPicker;
 use crate::components::subtask_list::SubtaskList;
 use crate::components::tag_picker::TagPicker;
 use crate::stores::lookup_store::LookupStore;
-use north_ui::{Checkbox, Icon, IconKind, MarkdownView};
+use north_ui::{Checkbox, Icon, IconKind, MarkdownView, Popover};
 
 #[component]
 pub fn TaskDetailModalView(
@@ -57,7 +57,7 @@ pub fn TaskDetailModalView(
             <div class="relative z-10 bg-bg-secondary border border-border/60 \
                         rounded-2xl shadow-2xl max-w-3xl w-full mx-4 \
                         max-h-[85vh] flex flex-col">
-                <Suspense fallback=move || {
+                <Transition fallback=move || {
                     view! {
                         <div class="p-8 text-center text-text-secondary">
                             "Loading..."
@@ -509,8 +509,8 @@ pub fn TaskDetailModalView(
                                             />
                                         </SidebarRow>
 
-                                        // Column
-                                        <SidebarRow label="Column">
+                                        // Status
+                                        <SidebarRow label="Status">
                                             <ColumnPicker
                                                 task_id=task_id
                                                 project_id=project_id
@@ -563,7 +563,7 @@ pub fn TaskDetailModalView(
                             }.into_any()
                         })
                     }}
-                </Suspense>
+                </Transition>
             </div>
         </div>
     }
@@ -572,7 +572,7 @@ pub fn TaskDetailModalView(
 #[component]
 fn SidebarRow(label: &'static str, children: Children) -> impl IntoView {
     view! {
-        <div>
+        <div class="group">
             <div class="text-xs text-text-tertiary mb-1">{label}</div>
             {children()}
         </div>
@@ -591,107 +591,117 @@ fn ColumnPicker(
     let lookup = use_context::<LookupStore>();
     let (open, set_open) = signal(false);
 
-    // Pre-clone the store so we can move it into closures
     let columns_resource = lookup.map(|s| s.columns);
 
     view! {
-        <div class="relative">
-            <button
-                class="text-sm text-text-secondary hover:text-text-primary \
-                       transition-colors"
-                on:click=move |_| set_open.update(|o| *o = !*o)
-            >
-                {column_name.unwrap_or_else(|| "None".to_string())}
-            </button>
-            <Show when=move || open.get()>
-                {move || {
+        <Popover
+            open=open
+            set_open=set_open
+            trigger=Box::new({
+                let column_name = column_name.clone();
+                move || {
+                    let display = column_name
+                        .clone()
+                        .unwrap_or_else(|| "None".to_string());
                     view! {
-                        <div class="absolute top-full left-0 mt-1 z-50 \
-                                    bg-bg-secondary border border-border \
-                                    rounded shadow-lg min-w-[10rem] py-1">
-                            <button
-                                class="w-full text-left px-3 py-1 text-sm \
-                                       text-text-tertiary hover:bg-bg-tertiary \
-                                       transition-colors"
-                                on:click=move |_| {
-                                    on_clear_column.run(task_id);
-                                    set_open.set(false);
-                                }
-                            >
-                                "None"
-                            </button>
-                            {columns_resource.map(|res| {
-                                view! {
-                                    <Suspense fallback=|| ()>
-                                        {move || {
-                                            Suspend::new(async move {
-                                                let cols = res.await;
-                                                match cols {
-                                                    Ok(cols) => {
-                                                        let filtered: Vec<_> = cols
-                                                            .into_iter()
-                                                            .filter(|c| {
-                                                                project_id
-                                                                    .map(|pid| {
-                                                                        c.project_id == pid
-                                                                    })
-                                                                    .unwrap_or(false)
-                                                            })
-                                                            .collect();
-                                                        view! {
-                                                            <div>
-                                                                {filtered
-                                                                    .into_iter()
-                                                                    .map(|col| {
-                                                                        let cid = col.id;
-                                                                        let is_current = column_id
-                                                                            == Some(cid);
-                                                                        view! {
-                                                                            <button
-                                                                                class=if is_current {
-                                                                                    "w-full text-left px-3 \
-                                                                                     py-1 text-sm \
-                                                                                     text-accent \
-                                                                                     bg-bg-tertiary"
-                                                                                } else {
-                                                                                    "w-full text-left px-3 \
-                                                                                     py-1 text-sm \
-                                                                                     text-text-primary \
-                                                                                     hover:bg-bg-tertiary \
-                                                                                     transition-colors"
-                                                                                }
-                                                                                on:click=move |_| {
-                                                                                    on_set_column.run((
-                                                                                        task_id, cid,
-                                                                                    ));
-                                                                                    set_open.set(false);
-                                                                                }
-                                                                            >
-                                                                                {col.name}
-                                                                            </button>
-                                                                        }
-                                                                    })
-                                                                    .collect::<Vec<_>>()}
-                                                            </div>
-                                                        }.into_any()
-                                                    }
-                                                    Err(_) => view! {
-                                                        <div class="px-3 py-1 text-xs \
-                                                                    text-text-tertiary">
-                                                            "Error loading columns"
-                                                        </div>
-                                                    }.into_any(),
-                                                }
-                                            })
-                                        }}
-                                    </Suspense>
-                                }
-                            })}
-                        </div>
+                        <button
+                            class="text-sm text-text-secondary \
+                                   hover:text-text-primary \
+                                   transition-colors"
+                            on:click=move |_| {
+                                set_open.update(|o| *o = !*o);
+                            }
+                        >
+                            {display}
+                        </button>
                     }
-                }}
-            </Show>
-        </div>
+                    .into_any()
+                }
+            })
+        >
+            <div class="p-1 min-w-[10rem] max-h-[240px] overflow-y-auto">
+                <button
+                    class="w-full text-left px-3 py-1.5 text-sm \
+                           text-text-tertiary hover:bg-bg-tertiary \
+                           rounded transition-colors"
+                    on:click=move |_| {
+                        on_clear_column.run(task_id);
+                        set_open.set(false);
+                    }
+                >
+                    "None"
+                </button>
+                {columns_resource.map(|res| {
+                    view! {
+                        <Suspense fallback=|| ()>
+                            {move || {
+                                Suspend::new(async move {
+                                    let cols = res.await;
+                                    match cols {
+                                        Ok(cols) => {
+                                            let filtered: Vec<_> = cols
+                                                .into_iter()
+                                                .filter(|c| {
+                                                    project_id
+                                                        .map(|pid| {
+                                                            c.project_id == pid
+                                                        })
+                                                        .unwrap_or(false)
+                                                })
+                                                .collect();
+                                            view! {
+                                                <div>
+                                                    {filtered
+                                                        .into_iter()
+                                                        .map(|col| {
+                                                            let cid = col.id;
+                                                            let is_current = column_id
+                                                                == Some(cid);
+                                                            view! {
+                                                                <button
+                                                                    class=if is_current {
+                                                                        "w-full text-left px-3 \
+                                                                         py-1.5 text-sm \
+                                                                         text-accent \
+                                                                         bg-bg-tertiary \
+                                                                         rounded"
+                                                                    } else {
+                                                                        "w-full text-left px-3 \
+                                                                         py-1.5 text-sm \
+                                                                         text-text-primary \
+                                                                         hover:bg-bg-tertiary \
+                                                                         rounded \
+                                                                         transition-colors"
+                                                                    }
+                                                                    on:click=move |_| {
+                                                                        on_set_column.run((
+                                                                            task_id, cid,
+                                                                        ));
+                                                                        set_open.set(false);
+                                                                    }
+                                                                >
+                                                                    {col.name}
+                                                                </button>
+                                                            }
+                                                        })
+                                                        .collect::<Vec<_>>()}
+                                                </div>
+                                            }.into_any()
+                                        }
+                                        Err(_) => view! {
+                                            <div class="px-3 py-1 text-xs \
+                                                        text-text-tertiary">
+                                                "Error loading statuses"
+                                            </div>
+                                        }.into_any(),
+                                    }
+                                })
+                            }}
+                        </Suspense>
+                    }
+                })}
+            </div>
+        </Popover>
     }
 }
 
