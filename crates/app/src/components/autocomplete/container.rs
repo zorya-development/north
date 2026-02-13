@@ -1,4 +1,5 @@
 use leptos::ev::KeyboardEvent;
+use leptos::html;
 use leptos::prelude::*;
 use leptos::wasm_bindgen::JsCast;
 
@@ -86,11 +87,21 @@ pub fn AutocompleteInput(
     #[prop(optional)] placeholder: &'static str,
     #[prop(optional)] class: &'static str,
     #[prop(optional)] on_keydown: Option<std::sync::Arc<dyn Fn(KeyboardEvent) + Send + Sync>>,
+    #[prop(optional)] autofocus: bool,
 ) -> impl IntoView {
     let lookup = use_context::<LookupStore>();
     let (trigger_state, set_trigger_state) = signal(None::<TriggerState>);
     let (highlighted, set_highlighted) = signal(0_usize);
     let (suggestions, set_suggestions) = signal(Vec::<SuggestionItem>::new());
+    let input_ref = NodeRef::<html::Input>::new();
+
+    if autofocus {
+        Effect::new(move || {
+            if let Some(el) = input_ref.get() {
+                let _ = el.focus();
+            }
+        });
+    }
 
     let update_suggestions = move |val: &str, cursor: usize| {
         if let Some(ref lookup) = lookup {
@@ -120,6 +131,7 @@ pub fn AutocompleteInput(
         <div class="relative">
             <input
                 type="text"
+                node_ref=input_ref
                 placeholder=placeholder
                 prop:value=move || value.get()
                 on:input=move |ev| {
@@ -200,6 +212,7 @@ pub fn AutocompleteTextarea(
     #[prop(optional)] placeholder: &'static str,
     #[prop(optional)] class: &'static str,
     #[prop(optional, default = 3)] rows: u32,
+    #[prop(optional)] on_keydown: Option<std::sync::Arc<dyn Fn(KeyboardEvent) + Send + Sync>>,
 ) -> impl IntoView {
     let lookup = use_context::<LookupStore>();
     let (trigger_state, set_trigger_state) = signal(None::<TriggerState>);
@@ -284,6 +297,9 @@ pub fn AutocompleteTextarea(
                             }
                             _ => {}
                         }
+                    }
+                    if let Some(ref handler) = on_keydown {
+                        handler(ev);
                     }
                 }
                 on:blur=move |_| {

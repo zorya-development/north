@@ -11,8 +11,8 @@
   --text-primary: #2C2C2E;
   --text-secondary: #6B6B6E;
   --text-tertiary: #9B9B9E;
-  --accent: #D4AC63;
-  --accent-hover: #C49A53;
+  --accent: #0087D6;
+  --accent-hover: #0070B5;
   --danger: #CD2435;
   --danger-hover: #B71F2E;
   --warning: #E56335;
@@ -36,8 +36,8 @@
   --text-primary: #E8E6E1;
   --text-secondary: #8E8D96;
   --text-tertiary: #5F5E67;
-  --accent: #D4AC63;
-  --accent-hover: #E0BC73;
+  --accent: #0087D6;
+  --accent-hover: #339DE0;
   --danger: #EF5350;
   --danger-hover: #E53935;
   --warning: #FFA726;
@@ -118,6 +118,10 @@ body {
 
 @utility bg-backdrop {
   background-color: var(--backdrop);
+}
+
+.no-focus-ring:focus-visible {
+  outline: none;
 }
 
 /* ── Sidebar logo ──────────────────────────────────────────── */

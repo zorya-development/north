@@ -18,8 +18,6 @@ where
 
     let on_cancel = std::sync::Arc::new(move |_: leptos::ev::MouseEvent| {
         set_expanded.set(false);
-        set_title.set(String::new());
-        set_body.set(String::new());
         set_preview.set(false);
     });
 
@@ -39,7 +37,7 @@ where
         })
     };
 
-    let on_title_keydown = {
+    let on_form_keydown = {
         let on_submit = on_submit.clone();
         std::sync::Arc::new(move |ev: KeyboardEvent| {
             if ev.key() == "Enter" && ev.shift_key() {
@@ -56,8 +54,6 @@ where
                 }
             } else if ev.key() == "Escape" {
                 set_expanded.set(false);
-                set_title.set(String::new());
-                set_body.set(String::new());
                 set_preview.set(false);
             }
         })
@@ -71,10 +67,10 @@ where
                     <button
                         on:click=move |_| set_expanded.set(true)
                         class="flex items-center gap-2 p-4 w-full text-left \
-                               border border-border rounded-xl \
+                               cursor-pointer border-2 border-border rounded-xl \
                                hover:border-accent transition-colors"
                     >
-                        <span class="text-accent text-sm font-medium">"+"</span>
+                        <span class="text-accent text-lg font-medium">"+"</span>
                         <span class="text-sm text-text-secondary">
                             "Add a task..."
                         </span>
@@ -83,11 +79,11 @@ where
             }
         >
             {
-                let on_title_keydown = on_title_keydown.clone();
+                let on_form_keydown = on_form_keydown.clone();
                 let on_cancel = on_cancel.clone();
                 let on_save = on_save.clone();
                 move || {
-                    let on_title_keydown = on_title_keydown.clone();
+                    let on_form_keydown = on_form_keydown.clone();
                     let on_cancel = on_cancel.clone();
                     let on_save = on_save.clone();
                     view! {
@@ -98,25 +94,31 @@ where
                                 set_value=set_title
                                 placeholder="Task title"
                                 class="w-full text-sm font-semibold bg-transparent \
-                                       outline-none placeholder:text-text-secondary \
+                                       outline-none no-focus-ring \
+                                       placeholder:text-text-secondary \
                                        text-text-primary mb-2"
-                                on_keydown=on_title_keydown.clone()
+                                on_keydown=on_form_keydown.clone()
+                                autofocus=true
                             />
 
                             <Show
                                 when=move || preview.get()
                                 fallback=move || {
-                                    view! {
-                                        <AutocompleteTextarea
-                                            value=body
-                                            set_value=set_body
-                                            placeholder="Description (markdown supported)"
-                                            rows=3
-                                            class="w-full text-sm bg-transparent \
-                                                   outline-none \
-                                                   placeholder:text-text-tertiary \
-                                                   text-text-secondary resize-none"
-                                        />
+                                    {
+                                        let on_form_keydown = on_form_keydown.clone();
+                                        view! {
+                                            <AutocompleteTextarea
+                                                value=body
+                                                set_value=set_body
+                                                placeholder="Description (markdown supported)"
+                                                rows=3
+                                                class="w-full text-sm bg-transparent \
+                                                       outline-none no-focus-ring \
+                                                       placeholder:text-text-tertiary \
+                                                       text-text-secondary resize-none"
+                                                on_keydown=on_form_keydown
+                                            />
+                                        }
                                     }
                                 }
                             >
