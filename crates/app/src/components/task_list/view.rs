@@ -5,7 +5,6 @@ use north_domain::TaskWithMeta;
 
 use crate::components::drag_drop::{DragDropContext, DropZone};
 use crate::components::task_card::TaskCard;
-use crate::server_fns::tasks::get_subtasks;
 
 #[component]
 pub fn TaskListView(
@@ -29,7 +28,6 @@ pub fn TaskListView(
     #[prop(default = false)] draggable: bool,
 ) -> impl IntoView {
     let (showing_completed, set_showing_completed) = signal(false);
-    let expanded = RwSignal::new(HashSet::<i64>::new());
     let drag_ctx = use_context::<DragDropContext>();
 
     // Tasks uncompleted from the completed section, rendered in the active list
@@ -109,9 +107,6 @@ pub fn TaskListView(
                                             {tasks
                                                 .into_iter()
                                                 .map(|task| {
-                                                    let task_id = task.task.id;
-                                                    let has_subtasks =
-                                                        task.subtask_count > 0;
                                                     view! {
                                                         <TaskCard
                                                             task=task
@@ -128,28 +123,6 @@ pub fn TaskListView(
                                                             show_project=show_project
                                                             draggable=draggable
                                                         />
-                                                        {if has_subtasks {
-                                                            Some(view! {
-                                                                <InlineSubtasks
-                                                                    parent_id=task_id
-                                                                    expanded=expanded
-                                                                    on_toggle_complete=wrapped_toggle
-                                                                    on_delete=on_delete
-                                                                    on_update=on_update
-                                                                    on_set_start_at=on_set_start_at
-                                                                    on_clear_start_at=on_clear_start_at
-                                                                    on_set_project=on_set_project
-                                                                    on_clear_project=on_clear_project
-                                                                    on_set_tags=on_set_tags
-                                                                    on_review=on_review
-                                                                    show_project=show_project
-                                                                    draggable=draggable
-                                                                    depth=1
-                                                                />
-                                                            })
-                                                        } else {
-                                                            None
-                                                        }}
                                                     }
                                                 })
                                                 .collect::<Vec<_>>()}
@@ -289,168 +262,6 @@ fn handle_drop(
 
     ctx.dragging_task_id.set(None);
     ctx.drop_target.set(None);
-}
-
-#[component]
-fn InlineSubtasks(
-    parent_id: i64,
-    expanded: RwSignal<HashSet<i64>>,
-    on_toggle_complete: Callback<(i64, bool)>,
-    on_delete: Callback<i64>,
-    on_update: Callback<(i64, String, Option<String>)>,
-    on_set_start_at: Callback<(i64, String)>,
-    on_clear_start_at: Callback<i64>,
-    on_set_project: Callback<(i64, i64)>,
-    on_clear_project: Callback<i64>,
-    on_set_tags: Callback<(i64, Vec<String>)>,
-    on_review: Callback<i64>,
-    #[prop(default = true)] show_project: bool,
-    #[prop(default = false)] draggable: bool,
-    #[prop(default = 1)] depth: u8,
-) -> impl IntoView {
-    let is_expanded = Signal::derive(move || expanded.get().contains(&parent_id));
-
-    view! {
-        <div class="ml-2">
-            <button
-                class="text-xs text-text-secondary hover:text-text-primary \
-                       transition-colors flex items-center gap-1 px-4 py-1"
-                on:click=move |_| {
-                    expanded.update(|set| {
-                        if set.contains(&parent_id) {
-                            set.remove(&parent_id);
-                        } else {
-                            set.insert(parent_id);
-                        }
-                    });
-                }
-            >
-                <north_ui::Icon
-                    kind={if is_expanded.get() {
-                        north_ui::IconKind::ChevronDown
-                    } else {
-                        north_ui::IconKind::ChevronRight
-                    }}
-                    class="w-3 h-3"
-                />
-                {move || {
-                    if is_expanded.get() {
-                        "Hide subtasks"
-                    } else {
-                        "Show subtasks"
-                    }
-                }}
-            </button>
-            <Show when=move || is_expanded.get()>
-                <SubtaskList
-                    parent_id=parent_id
-                    expanded=expanded
-                    on_toggle_complete=on_toggle_complete
-                    on_delete=on_delete
-                    on_update=on_update
-                    on_set_start_at=on_set_start_at
-                    on_clear_start_at=on_clear_start_at
-                    on_set_project=on_set_project
-                    on_clear_project=on_clear_project
-                    on_set_tags=on_set_tags
-                    on_review=on_review
-                    show_project=show_project
-                    draggable=draggable
-                    depth=depth
-                />
-            </Show>
-        </div>
-    }
-}
-
-#[component]
-fn SubtaskList(
-    parent_id: i64,
-    expanded: RwSignal<HashSet<i64>>,
-    on_toggle_complete: Callback<(i64, bool)>,
-    on_delete: Callback<i64>,
-    on_update: Callback<(i64, String, Option<String>)>,
-    on_set_start_at: Callback<(i64, String)>,
-    on_clear_start_at: Callback<i64>,
-    on_set_project: Callback<(i64, i64)>,
-    on_clear_project: Callback<i64>,
-    on_set_tags: Callback<(i64, Vec<String>)>,
-    on_review: Callback<i64>,
-    #[prop(default = true)] show_project: bool,
-    #[prop(default = false)] draggable: bool,
-    #[prop(default = 1)] depth: u8,
-) -> impl IntoView {
-    let subtasks = Resource::new(
-        move || parent_id,
-        |pid| get_subtasks(pid),
-    );
-
-    view! {
-        <Suspense fallback=|| ()>
-            {move || {
-                Suspend::new(async move {
-                    match subtasks.await {
-                        Ok(tasks) => {
-                            view! {
-                                <div>
-                                    {tasks
-                                        .into_iter()
-                                        .map(|task| {
-                                            let task_id = task.task.id;
-                                            let has_subtasks =
-                                                task.subtask_count > 0
-                                                    && depth < 2;
-                                            view! {
-                                                <TaskCard
-                                                    task=task
-                                                    on_toggle_complete=on_toggle_complete
-                                                    on_delete=on_delete
-                                                    on_update=on_update
-                                                    on_set_start_at=on_set_start_at
-                                                    on_clear_start_at=on_clear_start_at
-                                                    on_set_project=on_set_project
-                                                    on_clear_project=on_clear_project
-                                                    on_set_tags=on_set_tags
-                                                    on_review=on_review
-                                                    show_project=show_project
-                                                    draggable=draggable
-                                                    depth=depth
-                                                />
-                                                {if has_subtasks {
-                                                    Some(view! {
-                                                        <InlineSubtasks
-                                                            parent_id=task_id
-                                                            expanded=expanded
-                                                            on_toggle_complete=on_toggle_complete
-                                                            on_delete=on_delete
-                                                            on_update=on_update
-                                                            on_set_start_at=on_set_start_at
-                                                            on_clear_start_at=on_clear_start_at
-                                                            on_set_project=on_set_project
-                                                            on_clear_project=on_clear_project
-                                                            on_set_tags=on_set_tags
-                                                            on_review=on_review
-                                                            show_project=show_project
-                                                            draggable=draggable
-                                                            depth={depth + 1}
-                                                        />
-                                                    })
-                                                } else {
-                                                    None
-                                                }}
-                                            }
-                                        })
-                                        .collect::<Vec<_>>()}
-                                </div>
-                            }
-                            .into_any()
-                        }
-                        Err(_) => view! { <div/> }.into_any(),
-                    }
-                })
-            }}
-        </Suspense>
-    }
 }
 
 #[component]

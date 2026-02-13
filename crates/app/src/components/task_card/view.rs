@@ -11,6 +11,7 @@ use crate::components::tag_picker::TagPicker;
 use crate::components::task_detail_modal::TaskDetailContext;
 use crate::components::task_form::EditTaskForm;
 use crate::components::task_meta::TaskMeta;
+use crate::server_fns::tasks::get_subtasks;
 use north_ui::{Checkbox, DropdownItem, DropdownMenu, Icon, IconKind, MarkdownView};
 
 #[allow(unused_variables)]
@@ -41,6 +42,9 @@ pub fn TaskCardView(
     on_clear_project: Callback<i64>,
     on_set_tags: Callback<(i64, Vec<String>)>,
     on_review: Callback<i64>,
+    on_toggle_complete: Callback<(i64, bool)>,
+    on_delete_task: Callback<i64>,
+    on_update_task: Callback<(i64, String, Option<String>)>,
     #[prop(default = false)] show_review: bool,
     #[prop(default = true)] show_project: bool,
     #[prop(default = 0)] subtask_count: i64,
@@ -53,6 +57,9 @@ pub fn TaskCardView(
     let drag_ctx = use_context::<DragDropContext>();
     let edit_title = title.clone();
     let edit_body = body.clone();
+    let (subtasks_expanded, set_subtasks_expanded) = signal(false);
+    let has_subtasks = subtask_count > 0;
+    let (hovered, set_hovered) = signal(false);
 
     let indent_class = match depth {
         1 => "pl-6",
@@ -79,9 +86,11 @@ pub fn TaskCardView(
                     let sort_key = sort_key.clone();
                     view! {
                         <div
+                            on:mouseenter=move |_| set_hovered.set(true)
+                            on:mouseleave=move |_| set_hovered.set(false)
                             class=move || {
                                 let mut classes = format!(
-                                    "group border-b border-border/60 px-4 py-3 \
+                                    "border-b border-border/60 px-4 py-3 \
                                      hover:bg-hover-overlay transition-colors \
                                      cursor-pointer {indent_class}"
                                 );
@@ -187,11 +196,16 @@ pub fn TaskCardView(
                                 {if draggable {
                                     Some(view! {
                                         <span
-                                            class="dnd-handle opacity-0 \
-                                                   group-hover:opacity-60 \
-                                                   cursor-grab \
-                                                   active:cursor-grabbing \
-                                                   transition-opacity"
+                                            class=move || format!(
+                                                "dnd-handle {} cursor-grab \
+                                                 active:cursor-grabbing \
+                                                 transition-opacity",
+                                                if hovered.get() {
+                                                    "opacity-60"
+                                                } else {
+                                                    "opacity-0"
+                                                },
+                                            )
                                             on:click=move |ev| {
                                                 ev.stop_propagation()
                                             }
@@ -250,9 +264,15 @@ pub fn TaskCardView(
                                     None
                                 }}
                                 <div
-                                    class="opacity-0 group-hover:opacity-100 \
-                                            transition-opacity flex \
-                                            items-center"
+                                    class=move || format!(
+                                        "{} transition-opacity flex \
+                                         items-center",
+                                        if hovered.get() {
+                                            "opacity-100"
+                                        } else {
+                                            "opacity-0"
+                                        },
+                                    )
                                     on:click=move |ev| ev.stop_propagation()
                                 >
                                     <button
@@ -363,7 +383,55 @@ pub fn TaskCardView(
                                 show_review=show_review
                                 subtask_count=subtask_count
                                 completed_subtask_count=completed_subtask_count
+                                on_toggle_subtasks=Callback::new(move |()| {
+                                    set_subtasks_expanded
+                                        .update(|v| *v = !*v);
+                                })
                             />
+                            {if has_subtasks {
+                                Some(view! {
+                                    <Show when=move || subtasks_expanded.get()>
+                                        <div
+                                            on:mouseenter=move |_| {
+                                                set_hovered.set(false)
+                                            }
+                                            on:mouseleave=move |_| {
+                                                set_hovered.set(true)
+                                            }
+                                            on:click=|ev: web_sys::MouseEvent| {
+                                                ev.stop_propagation()
+                                            }
+                                            on:dragstart=|ev: web_sys::DragEvent| {
+                                                ev.stop_propagation()
+                                            }
+                                            on:dragover=|ev: web_sys::DragEvent| {
+                                                ev.stop_propagation()
+                                            }
+                                            on:dragleave=|ev: web_sys::DragEvent| {
+                                                ev.stop_propagation()
+                                            }
+                                        >
+                                            <InlineSubtaskList
+                                                parent_id=task_id
+                                                on_toggle_complete=on_toggle_complete
+                                                on_delete=on_delete_task
+                                                on_update=on_update_task
+                                                on_set_start_at=on_set_start_at
+                                                on_clear_start_at=on_clear_start_at
+                                                on_set_project=on_set_project
+                                                on_clear_project=on_clear_project
+                                                on_set_tags=on_set_tags
+                                                on_review=on_review
+                                                show_project=show_project
+                                                draggable=draggable
+                                                depth={depth + 1}
+                                            />
+                                        </div>
+                                    </Show>
+                                })
+                            } else {
+                                None
+                            }}
                         </div>
                     }
                 }
@@ -388,5 +456,68 @@ pub fn TaskCardView(
                 }
             }
         </Show>
+    }
+}
+
+#[component]
+fn InlineSubtaskList(
+    parent_id: i64,
+    on_toggle_complete: Callback<(i64, bool)>,
+    on_delete: Callback<i64>,
+    on_update: Callback<(i64, String, Option<String>)>,
+    on_set_start_at: Callback<(i64, String)>,
+    on_clear_start_at: Callback<i64>,
+    on_set_project: Callback<(i64, i64)>,
+    on_clear_project: Callback<i64>,
+    on_set_tags: Callback<(i64, Vec<String>)>,
+    on_review: Callback<i64>,
+    #[prop(default = true)] show_project: bool,
+    #[prop(default = false)] draggable: bool,
+    #[prop(default = 1)] depth: u8,
+) -> impl IntoView {
+    let subtasks = Resource::new(
+        move || parent_id,
+        |pid| get_subtasks(pid),
+    );
+
+    view! {
+        <Suspense fallback=|| ()>
+            {move || {
+                Suspend::new(async move {
+                    match subtasks.await {
+                        Ok(tasks) => {
+                            view! {
+                                <div class="ml-4">
+                                    {tasks
+                                        .into_iter()
+                                        .map(|task| {
+                                            view! {
+                                                <super::TaskCard
+                                                    task=task
+                                                    on_toggle_complete=on_toggle_complete
+                                                    on_delete=on_delete
+                                                    on_update=on_update
+                                                    on_set_start_at=on_set_start_at
+                                                    on_clear_start_at=on_clear_start_at
+                                                    on_set_project=on_set_project
+                                                    on_clear_project=on_clear_project
+                                                    on_set_tags=on_set_tags
+                                                    on_review=on_review
+                                                    show_project=show_project
+                                                    draggable=draggable
+                                                    depth=depth
+                                                />
+                                            }
+                                        })
+                                        .collect::<Vec<_>>()}
+                                </div>
+                            }
+                            .into_any()
+                        }
+                        Err(_) => view! { <div/> }.into_any(),
+                    }
+                })
+            }}
+        </Suspense>
     }
 }

@@ -83,6 +83,9 @@ pub fn TaskCard(
             on_clear_project=on_clear_project
             on_set_tags=on_set_tags
             on_review=on_review
+            on_toggle_complete=on_toggle_complete
+            on_delete_task=on_delete
+            on_update_task=on_update
             show_review=show_review
             show_project=show_project
             subtask_count=subtask_count

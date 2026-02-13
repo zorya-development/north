@@ -13,6 +13,7 @@ pub fn TaskMeta(
     #[prop(default = false)] show_review: bool,
     #[prop(default = 0)] subtask_count: i64,
     #[prop(default = 0)] completed_subtask_count: i64,
+    #[prop(optional)] on_toggle_subtasks: Option<Callback<()>>,
 ) -> impl IntoView {
     let has_meta = start_at.is_some()
         || (show_project && project_title.is_some())
@@ -46,13 +47,23 @@ pub fn TaskMeta(
                 {(subtask_count > 0).then(|| {
                     view! {
                         <span class="inline-flex items-center gap-0.5 \
-                                     text-text-secondary">
+                                     text-text-secondary \
+                                     hover:text-accent cursor-pointer \
+                                     transition-colors"
+                            on:click=move |ev| {
+                                ev.stop_propagation();
+                                if let Some(cb) = on_toggle_subtasks {
+                                    cb.run(());
+                                }
+                            }
+                        >
                             <Icon
                                 kind=IconKind::Subtask
                                 class="w-3 h-3"
                             />
                             {format!(
-                                "{completed_subtask_count}/{subtask_count}",
+                                "{completed_subtask_count}/{subtask_count} subtask{}",
+                                if subtask_count == 1 { "" } else { "s" },
                             )}
                         </span>
                     }
