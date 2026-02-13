@@ -37,7 +37,7 @@ pub fn SubtaskListView(
                     let tasks = match subtasks.await {
                         Ok(t) => t,
                         Err(_) => return view! {
-                            <div class="text-xs text-red-400">
+                            <div class="text-xs text-danger">
                                 "Error loading subtasks"
                             </div>
                         }.into_any(),
@@ -222,7 +222,7 @@ pub fn SubtaskListView(
                                                         // Delete
                                                         <button
                                                             class="p-0.5 text-text-tertiary \
-                                                                   hover:text-red-400 \
+                                                                   hover:text-danger \
                                                                    transition-colors \
                                                                    opacity-0 \
                                                                    group-hover/subtask:opacity-100"

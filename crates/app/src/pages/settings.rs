@@ -22,7 +22,7 @@ pub fn SettingsPage() -> impl IntoView {
 
     view! {
         <div class="space-y-6 max-w-lg">
-            <h1 class="text-xl font-semibold text-text-primary">"Settings"</h1>
+            <h1 class="text-2xl font-semibold tracking-tight text-text-primary">"Settings"</h1>
 
             <Suspense fallback=move || {
                 view! {
@@ -84,7 +84,7 @@ pub fn SettingsPage() -> impl IntoView {
                                                     }
                                                 }
                                                 class="px-4 py-1.5 text-sm \
-                                                       bg-accent text-white \
+                                                       bg-accent text-on-accent \
                                                        rounded \
                                                        hover:bg-accent-hover \
                                                        transition-colors"
@@ -93,7 +93,7 @@ pub fn SettingsPage() -> impl IntoView {
                                             </button>
                                             <Show when=move || saved.get()>
                                                 <span class="text-sm \
-                                                             text-green-500">
+                                                             text-success">
                                                     "Saved"
                                                 </span>
                                             </Show>
@@ -104,7 +104,7 @@ pub fn SettingsPage() -> impl IntoView {
                             }
                             Err(e) => {
                                 view! {
-                                    <div class="text-sm text-red-500 py-4">
+                                    <div class="text-sm text-danger py-4">
                                         {format!("Failed to load settings: {e}")}
                                     </div>
                                 }

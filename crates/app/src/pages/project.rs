@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 use leptos_router::hooks::use_params_map;
 
+use crate::components::drag_drop::DragDropContext;
 use crate::components::task_detail_modal::{TaskDetailContext, TaskDetailModal};
 use crate::components::task_list::TaskList;
 use crate::server_fns::projects::{get_project, get_project_tasks};
@@ -11,6 +12,7 @@ use crate::stores::task_store::TaskStore;
 pub fn ProjectPage() -> impl IntoView {
     let open_task_id = RwSignal::new(None::<i64>);
     provide_context(TaskDetailContext { open_task_id });
+    provide_context(DragDropContext::new());
 
     let params = use_params_map();
 
@@ -43,7 +45,7 @@ pub fn ProjectPage() -> impl IntoView {
         <div class="space-y-4">
             <Suspense fallback=move || {
                 view! {
-                    <h1 class="text-xl font-semibold text-text-primary">
+                    <h1 class="text-2xl font-semibold tracking-tight text-text-primary">
                         "Loading..."
                     </h1>
                 }
@@ -52,13 +54,13 @@ pub fn ProjectPage() -> impl IntoView {
                     Suspend::new(async move {
                         match project.await {
                             Ok(p) => view! {
-                                <h1 class="text-xl font-semibold text-text-primary">
+                                <h1 class="text-2xl font-semibold tracking-tight text-text-primary">
                                     {p.title}
                                 </h1>
                             }
                             .into_any(),
                             Err(e) => view! {
-                                <h1 class="text-xl font-semibold text-red-500">
+                                <h1 class="text-2xl font-semibold tracking-tight text-danger">
                                     {format!("Error: {e}")}
                                 </h1>
                             }
@@ -73,6 +75,7 @@ pub fn ProjectPage() -> impl IntoView {
                 show_project=false
                 empty_message="No tasks in this project."
                 completed_resource=completed
+                draggable=true
             />
             <TaskDetailModal task_ids=task_ids task_store=store/>
         </div>

@@ -4,7 +4,7 @@ use leptos::prelude::*;
 pub fn FilterHelpPage() -> impl IntoView {
     view! {
         <div class="max-w-2xl space-y-6">
-            <h1 class="text-xl font-semibold text-text-primary">
+            <h1 class="text-2xl font-semibold tracking-tight text-text-primary">
                 "Filter Query Syntax"
             </h1>
 

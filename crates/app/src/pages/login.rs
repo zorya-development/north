@@ -98,16 +98,16 @@ pub fn LoginPage() -> impl IntoView {
 
     view! {
         <div class="min-h-screen bg-bg-primary flex items-center justify-center px-4">
-            <div class="w-full max-w-sm bg-bg-secondary rounded-lg border border-border p-8">
-                <h1 class="text-xl font-semibold text-text-primary text-center mb-6">
+            <div class="w-full max-w-sm bg-bg-secondary rounded-2xl border border-border shadow-lg p-8">
+                <h1 class="text-2xl font-semibold tracking-tight text-text-primary text-center mb-6">
                     "North"
                 </h1>
 
                 {move || {
                     error_message().map(|msg| {
                         view! {
-                            <div class="mb-4 p-3 bg-accent/10 border border-accent/30 \
-                                        rounded-md text-accent text-sm">
+                            <div class="mb-4 p-3 bg-danger/10 border border-danger/30 \
+                                        rounded-md text-danger text-sm">
                                 {msg}
                             </div>
                         }
@@ -164,8 +164,8 @@ pub fn LoginPage() -> impl IntoView {
                     <button
                         type="submit"
                         disabled=pending
-                        class="w-full py-2 px-4 text-sm font-medium rounded-md \
-                               bg-accent text-white hover:bg-accent-hover \
+                        class="w-full py-2.5 px-4 text-sm font-medium rounded-lg \
+                               bg-accent text-on-accent hover:bg-accent-hover \
                                disabled:opacity-50 disabled:cursor-not-allowed \
                                transition-colors"
                     >

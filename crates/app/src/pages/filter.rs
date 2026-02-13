@@ -195,7 +195,7 @@ pub fn FilterPage() -> impl IntoView {
                     <Show
                         when=move || filter_id.get().is_some()
                         fallback=|| view! {
-                            <span class="text-xl font-semibold text-text-primary">
+                            <span class="text-2xl font-semibold tracking-tight text-text-primary">
                                 "New Filter"
                             </span>
                         }
@@ -203,7 +203,7 @@ pub fn FilterPage() -> impl IntoView {
                         <Show
                             when=move || is_editing_title.get()
                             fallback=move || view! {
-                                <span class="text-xl font-semibold \
+                                <span class="text-2xl font-semibold tracking-tight \
                                              text-text-primary truncate">
                                     {move || title_text.get()}
                                 </span>
@@ -222,7 +222,7 @@ pub fn FilterPage() -> impl IntoView {
                         >
                             <input
                                 type="text"
-                                class="text-xl font-semibold text-text-primary \
+                                class="text-2xl font-semibold tracking-tight text-text-primary \
                                        bg-transparent border-none outline-none \
                                        placeholder:text-text-tertiary w-full"
                                 placeholder="Filter title"
@@ -311,8 +311,8 @@ pub fn FilterPage() -> impl IntoView {
                     // Delete button (saved filters only)
                     <Show when=move || filter_id.get().is_some()>
                         <button
-                            class="px-2 py-1 text-sm text-red-400 \
-                                   hover:text-red-300 transition-colors"
+                            class="px-2 py-1 text-sm text-danger \
+                                   hover:text-danger-hover transition-colors"
                             on:click=on_delete
                         >
                             "Delete"
@@ -341,7 +341,7 @@ pub fn FilterPage() -> impl IntoView {
                     </div>
                     <button
                         class="w-24 py-0 text-sm bg-accent \
-                               hover:bg-accent-hover text-white \
+                               hover:bg-accent-hover text-on-accent \
                                rounded transition-colors \
                                disabled:opacity-50 \
                                disabled:cursor-not-allowed flex-shrink-0"
@@ -356,7 +356,7 @@ pub fn FilterPage() -> impl IntoView {
                     </button>
                 </div>
                 <Show when=move || parse_error.get().is_some()>
-                    <p class="text-xs text-red-400 mt-1">
+                    <p class="text-xs text-danger mt-1">
                         {move || parse_error.get().unwrap_or_default()}
                     </p>
                 </Show>
@@ -428,7 +428,7 @@ pub fn FilterPage() -> impl IntoView {
                         </button>
                         <button
                             class="px-3 py-1.5 text-sm bg-accent \
-                                   hover:bg-accent-hover text-white \
+                                   hover:bg-accent-hover text-on-accent \
                                    rounded transition-colors \
                                    disabled:opacity-50 \
                                    disabled:cursor-not-allowed"

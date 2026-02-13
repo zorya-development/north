@@ -30,7 +30,7 @@ pub fn TodayPage() -> impl IntoView {
 
     view! {
         <div class="space-y-4">
-            <h1 class="text-xl font-semibold text-text-primary">"Today"</h1>
+            <h1 class="text-2xl font-semibold tracking-tight text-text-primary">"Today"</h1>
             <Suspense fallback=move || {
                 view! {
                     <div class="text-sm text-text-secondary py-4">
@@ -100,7 +100,7 @@ pub fn TodayPage() -> impl IntoView {
                                 }
                                 Err(e) => {
                                     view! {
-                                        <div class="text-sm text-red-500 py-4">
+                                        <div class="text-sm text-danger py-4">
                                             {format!("Failed to load tasks: {e}")}
                                         </div>
                                     }

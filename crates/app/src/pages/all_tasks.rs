@@ -26,7 +26,7 @@ pub fn AllTasksPage() -> impl IntoView {
 
     view! {
         <div class="space-y-4">
-            <h1 class="text-xl font-semibold text-text-primary">
+            <h1 class="text-2xl font-semibold tracking-tight text-text-primary">
                 "All Tasks"
             </h1>
             <TaskList

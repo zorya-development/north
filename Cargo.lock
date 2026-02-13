@@ -761,6 +761,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fractional_index"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce01fad85c73f947e62a39152c7b0f785af7f44859da36e421c42a3023bcbe3a"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "futf"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1735,6 +1744,7 @@ dependencies = [
  "tokio",
  "tracing",
  "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]
@@ -1757,6 +1767,7 @@ name = "north-domain"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "fractional_index",
  "serde",
  "serde_json",
 ]

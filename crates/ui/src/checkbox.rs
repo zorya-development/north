@@ -25,18 +25,18 @@ pub fn Checkbox(
                 when=move || checked.get()
                 fallback=move || {
                     view! {
-                        <div class="w-4 h-4 rounded-full border-2 \
-                                    border-text-secondary \
+                        <div class="w-5 h-5 rounded-full border \
+                                    border-text-tertiary \
                                     hover:border-accent \
-                                    hover:bg-accent \
-                                    transition-colors" />
+                                    hover:bg-accent/10 \
+                                    transition-all duration-200" />
                     }
                 }
             >
-                <div class="w-4 h-4 rounded-full bg-text-tertiary \
-                            hover:bg-text-secondary flex items-center \
-                            justify-center transition-colors">
-                    <Icon kind=IconKind::Check class="w-2.5 h-2.5 text-bg-primary"/>
+                <div class="w-5 h-5 rounded-full bg-accent \
+                            hover:bg-accent-hover flex items-center \
+                            justify-center transition-all duration-200">
+                    <Icon kind=IconKind::Check class="w-3 h-3 text-on-accent"/>
                 </div>
             </Show>
         </button>

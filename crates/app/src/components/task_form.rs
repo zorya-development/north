@@ -70,8 +70,8 @@ where
                 view! {
                     <button
                         on:click=move |_| set_expanded.set(true)
-                        class="flex items-center gap-2 p-3 w-full text-left \
-                               border border-border rounded-lg \
+                        class="flex items-center gap-2 p-4 w-full text-left \
+                               border border-border rounded-xl \
                                hover:border-accent transition-colors"
                     >
                         <span class="text-accent text-sm font-medium">"+"</span>
@@ -91,7 +91,7 @@ where
                     let on_cancel = on_cancel.clone();
                     let on_save = on_save.clone();
                     view! {
-                        <div class="border border-border rounded-lg p-3 \
+                        <div class="border border-border rounded-xl p-3 shadow-sm \
                                     focus-within:border-accent transition-colors">
                             <AutocompleteInput
                                 value=title
@@ -168,7 +168,7 @@ where
                                             move |ev| on_save(ev)
                                         }
                                         class="px-3 py-1 text-sm bg-accent \
-                                               text-white rounded hover:bg-accent-hover \
+                                               text-on-accent rounded hover:bg-accent-hover \
                                                transition-colors"
                                     >
                                         "Add task"
@@ -230,7 +230,7 @@ where
     };
 
     view! {
-        <div class="border border-border rounded-lg p-3 \
+        <div class="border border-border rounded-xl p-3 shadow-sm \
                     focus-within:border-accent transition-colors">
             <AutocompleteInput
                 value=title_sig
@@ -296,7 +296,7 @@ where
                     </button>
                     <button
                         on:click=handle_save
-                        class="px-3 py-1 text-sm bg-accent text-white \
+                        class="px-3 py-1 text-sm bg-accent text-on-accent \
                                rounded hover:bg-accent-hover \
                                transition-colors"
                     >

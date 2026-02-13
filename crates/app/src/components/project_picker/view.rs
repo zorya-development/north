@@ -181,7 +181,7 @@ pub fn ProjectPickerView(
                                 Err(_) => {
                                     view! {
                                         <div class="px-3 py-2 text-xs \
-                                                    text-red-500">
+                                                    text-danger">
                                             "Failed to load"
                                         </div>
                                     }

@@ -11,15 +11,22 @@ use crate::pages;
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
         <!DOCTYPE html>
-        <html lang="en" style="color-scheme: dark">
+        <html lang="en">
             <head>
                 <meta charset="utf-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <script>
+                    "(function(){try{var t=localStorage.getItem('north-theme');\
+                    if(t==='dark'||(t!=='light'&&window.matchMedia\
+                    ('(prefers-color-scheme:dark)').matches))\
+                    {document.documentElement.classList.add('dark')}\
+                    }catch(e){}})()"
+                </script>
                 <AutoReload options=options.clone()/>
                 <HydrationScripts options/>
                 <link rel="stylesheet" id="leptos" href="/pkg/north.css"/>
             </head>
-            <body class="bg-bg-primary text-text-primary font-sans">
+            <body class="bg-bg-primary text-text-primary font-sans antialiased">
                 <App/>
             </body>
         </html>

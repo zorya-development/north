@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use diesel::dsl::max;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use north_db::models::{NewTask, TagRow, TaskChangeset, TaskRow};
@@ -26,7 +25,7 @@ impl TaskService {
             .filter(tasks::project_id.is_null())
             .filter(tasks::parent_id.is_null())
             .filter(tasks::completed_at.is_null())
-            .order(tasks::position.asc())
+            .order(tasks::sort_key.asc())
             .select(TaskRow::as_select())
             .load(&mut conn)
             .await?;
@@ -69,7 +68,7 @@ impl TaskService {
             .filter(tasks::user_id.eq(user_id))
             .filter(tasks::parent_id.is_null())
             .filter(tasks::project_id.is_null().or(projects::archived.eq(false)))
-            .order((tasks::position.asc(), tasks::created_at.desc()))
+            .order((tasks::sort_key.asc(), tasks::created_at.desc()))
             .select(TaskRow::as_select())
             .load(&mut conn)
             .await?;
@@ -83,7 +82,7 @@ impl TaskService {
             match (a_done, b_done) {
                 (false, true) => std::cmp::Ordering::Less,
                 (true, false) => std::cmp::Ordering::Greater,
-                (false, false) => a.task.position.cmp(&b.task.position),
+                (false, false) => a.task.sort_key.cmp(&b.task.sort_key),
                 (true, true) => b.task.completed_at.cmp(&a.task.completed_at),
             }
         });
@@ -107,7 +106,7 @@ impl TaskService {
             .filter(tasks::project_id.eq(project_id))
             .filter(tasks::parent_id.is_null())
             .filter(tasks::completed_at.is_null())
-            .order(tasks::position.asc())
+            .order(tasks::sort_key.asc())
             .select(TaskRow::as_select())
             .load(&mut conn)
             .await?;
@@ -140,7 +139,7 @@ impl TaskService {
             )
             .order((
                 tasks::reviewed_at.asc().nulls_first(),
-                tasks::position.asc(),
+                tasks::sort_key.asc(),
             ))
             .select(TaskRow::as_select())
             .load(&mut conn)
@@ -282,7 +281,7 @@ impl TaskService {
         let rows = match filter.sort.as_deref() {
             Some("due_date") => {
                 query
-                    .order((tasks::due_date.asc().nulls_last(), tasks::position.asc()))
+                    .order((tasks::due_date.asc().nulls_last(), tasks::sort_key.asc()))
                     .select(TaskRow::as_select())
                     .load(&mut conn)
                     .await?
@@ -303,7 +302,7 @@ impl TaskService {
             }
             _ => {
                 query
-                    .order((tasks::position.asc(), tasks::created_at.desc()))
+                    .order((tasks::sort_key.asc(), tasks::created_at.desc()))
                     .select(TaskRow::as_select())
                     .load(&mut conn)
                     .await?
@@ -377,15 +376,17 @@ impl TaskService {
             project_id = crate::ProjectService::find_by_title(pool, user_id, name).await?;
         }
 
-        // Get next position
-        let max_pos: Option<i32> = tasks::table
+        // Get sort key after last sibling
+        let last_key: Option<String> = tasks::table
             .filter(tasks::user_id.eq(user_id))
             .filter(tasks::project_id.is_null())
             .filter(tasks::parent_id.is_null())
-            .select(max(tasks::position))
+            .order(tasks::sort_key.desc())
+            .select(tasks::sort_key)
             .first(&mut conn)
-            .await?;
-        let position = max_pos.unwrap_or(0) + 1;
+            .await
+            .optional()?;
+        let sort_key = north_domain::sort_key_after(last_key.as_deref());
 
         let task_row = diesel::insert_into(tasks::table)
             .values(&NewTask {
@@ -395,7 +396,7 @@ impl TaskService {
                 project_id,
                 parent_id: None,
                 column_id: None,
-                position,
+                sort_key: &sort_key,
                 start_at: None,
                 due_date: None,
             })
@@ -417,32 +418,38 @@ impl TaskService {
     ) -> ServiceResult<Task> {
         let mut conn = pool.get().await?;
 
-        // Determine position context
-        let max_pos: Option<i32> = if input.parent_id.is_some() {
+        // Determine sort key context
+        let last_key: Option<String> = if input.parent_id.is_some() {
             tasks::table
                 .filter(tasks::parent_id.eq(input.parent_id))
                 .filter(tasks::user_id.eq(user_id))
-                .select(max(tasks::position))
+                .order(tasks::sort_key.desc())
+                .select(tasks::sort_key)
                 .first(&mut conn)
-                .await?
+                .await
+                .optional()?
         } else if input.project_id.is_some() {
             tasks::table
                 .filter(tasks::project_id.eq(input.project_id))
                 .filter(tasks::parent_id.is_null())
                 .filter(tasks::user_id.eq(user_id))
-                .select(max(tasks::position))
+                .order(tasks::sort_key.desc())
+                .select(tasks::sort_key)
                 .first(&mut conn)
-                .await?
+                .await
+                .optional()?
         } else {
             tasks::table
                 .filter(tasks::project_id.is_null())
                 .filter(tasks::parent_id.is_null())
                 .filter(tasks::user_id.eq(user_id))
-                .select(max(tasks::position))
+                .order(tasks::sort_key.desc())
+                .select(tasks::sort_key)
                 .first(&mut conn)
-                .await?
+                .await
+                .optional()?
         };
-        let position = max_pos.unwrap_or(-1) + 1;
+        let sort_key = north_domain::sort_key_after(last_key.as_deref());
 
         let row = diesel::insert_into(tasks::table)
             .values(&NewTask {
@@ -452,7 +459,7 @@ impl TaskService {
                 project_id: input.project_id,
                 parent_id: input.parent_id,
                 column_id: input.column_id,
-                position,
+                sort_key: &sort_key,
                 start_at: input.start_at,
                 due_date: input.due_date,
             })
@@ -554,7 +561,7 @@ impl TaskService {
         let project_id = input.project_id.or(existing.project_id);
         let parent_id = input.parent_id.or(existing.parent_id);
         let new_column_id = input.column_id.or(existing.column_id);
-        let position = input.position.unwrap_or(existing.position);
+        let sort_key = input.sort_key.as_ref().unwrap_or(&existing.sort_key);
         let sequential_limit = input.sequential_limit.unwrap_or(existing.sequential_limit);
         let start_at = input.start_at.or(existing.start_at);
         let due_date = input.due_date.or(existing.due_date);
@@ -581,7 +588,7 @@ impl TaskService {
             project_id: Some(project_id),
             parent_id: Some(parent_id),
             column_id: Some(new_column_id),
-            position: Some(position),
+            sort_key: Some(sort_key),
             sequential_limit: Some(sequential_limit),
             start_at: Some(start_at),
             due_date: Some(due_date),
@@ -619,8 +626,29 @@ impl TaskService {
             .ok_or_else(|| ServiceError::NotFound("Task not found".into()))?;
 
         let new_column_id = input.column_id.or(existing.column_id);
-        let new_position = input.position.unwrap_or(existing.position);
-        let new_parent_id = input.parent_id.or(existing.parent_id);
+        let new_sort_key = input.sort_key.as_deref().unwrap_or(&existing.sort_key);
+        let new_parent_id = match &input.parent_id {
+            Some(pid) => *pid,       // Some(None)=unnest, Some(Some(id))=nest
+            None => existing.parent_id, // no change
+        };
+
+        // When nesting under a new parent, inherit parent's project_id
+        let new_project_id = if input.parent_id.is_some() {
+            if let Some(pid) = new_parent_id {
+                let parent_project: Option<i64> = tasks::table
+                    .filter(tasks::id.eq(pid))
+                    .select(tasks::project_id)
+                    .first(&mut conn)
+                    .await
+                    .optional()?
+                    .flatten();
+                parent_project
+            } else {
+                existing.project_id
+            }
+        } else {
+            existing.project_id
+        };
 
         // Handle completed_at based on column change
         let completed_at = if input.column_id.is_some() && input.column_id != existing.column_id {
@@ -641,8 +669,9 @@ impl TaskService {
         let row = diesel::update(tasks::table.filter(tasks::id.eq(id)))
             .set(&TaskChangeset {
                 column_id: Some(new_column_id),
-                position: Some(new_position),
+                sort_key: Some(new_sort_key),
                 parent_id: Some(new_parent_id),
+                project_id: Some(new_project_id),
                 completed_at: Some(completed_at),
                 ..Default::default()
             })
@@ -651,6 +680,59 @@ impl TaskService {
             .await?;
 
         Ok(Task::from(row))
+    }
+
+    pub async fn reorder_task(
+        pool: &DbPool,
+        user_id: i64,
+        task_id: i64,
+        sort_key: String,
+        parent_id: Option<Option<i64>>,
+    ) -> ServiceResult<()> {
+        let mut conn = pool.get().await?;
+
+        let existing = tasks::table
+            .filter(tasks::id.eq(task_id))
+            .filter(tasks::user_id.eq(user_id))
+            .select(TaskRow::as_select())
+            .first(&mut conn)
+            .await
+            .optional()?
+            .ok_or_else(|| ServiceError::NotFound("Task not found".into()))?;
+
+        let mut changeset = TaskChangeset {
+            sort_key: Some(&sort_key),
+            ..Default::default()
+        };
+
+        if let Some(new_parent) = parent_id {
+            changeset.parent_id = Some(new_parent);
+
+            // When nesting, inherit parent's project_id
+            if let Some(pid) = new_parent {
+                let parent_project: Option<i64> = tasks::table
+                    .filter(tasks::id.eq(pid))
+                    .select(tasks::project_id)
+                    .first(&mut conn)
+                    .await
+                    .optional()?
+                    .flatten();
+                changeset.project_id = Some(parent_project);
+            } else if existing.parent_id.is_some() {
+                // Unnesting — keep current project_id
+            }
+        }
+
+        diesel::update(
+            tasks::table
+                .filter(tasks::id.eq(task_id))
+                .filter(tasks::user_id.eq(user_id)),
+        )
+        .set(&changeset)
+        .execute(&mut conn)
+        .await?;
+
+        Ok(())
     }
 
     pub async fn complete_task(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<()> {
@@ -809,7 +891,7 @@ impl TaskService {
         let rows = tasks::table
             .filter(tasks::user_id.eq(user_id))
             .filter(tasks::parent_id.eq(parent_id))
-            .order(tasks::position.asc())
+            .order(tasks::sort_key.asc())
             .select(TaskRow::as_select())
             .load(&mut conn)
             .await?;
@@ -1129,7 +1211,7 @@ impl TaskService {
                     north_domain::FilterField::Updated => {
                         a.task.updated_at.cmp(&b.task.updated_at)
                     }
-                    _ => a.task.position.cmp(&b.task.position),
+                    _ => a.task.sort_key.cmp(&b.task.sort_key),
                 };
                 match order_by.direction {
                     SortDirection::Asc => cmp,
@@ -1309,7 +1391,7 @@ impl TaskService {
         let siblings_before: i64 = tasks::table
             .filter(tasks::parent_id.eq(parent_id))
             .filter(tasks::completed_at.is_null())
-            .filter(tasks::position.lt(task.position))
+            .filter(tasks::sort_key.lt(&task.sort_key))
             .count()
             .get_result(&mut conn)
             .await?;

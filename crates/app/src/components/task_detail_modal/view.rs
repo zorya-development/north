@@ -51,11 +51,11 @@ pub fn TaskDetailModalView(
             }
         >
             <div
-                class="absolute inset-0 bg-black/50"
+                class="absolute inset-0 bg-backdrop"
                 on:click=move |_| on_close.run(())
             />
-            <div class="relative z-10 bg-bg-secondary border border-border \
-                        rounded-lg shadow-xl max-w-3xl w-full mx-4 \
+            <div class="relative z-10 bg-bg-secondary border border-border/60 \
+                        rounded-2xl shadow-2xl max-w-3xl w-full mx-4 \
                         max-h-[85vh] flex flex-col">
                 <Suspense fallback=move || {
                     view! {
@@ -185,8 +185,8 @@ pub fn TaskDetailModalView(
                                             />
                                         </button>
                                         <button
-                                            class="p-1 rounded text-red-400 \
-                                                   hover:text-red-300 \
+                                            class="p-1 rounded text-danger \
+                                                   hover:text-danger-hover \
                                                    hover:bg-bg-tertiary \
                                                    transition-colors"
                                             on:click=move |_| on_delete.run(task_id)

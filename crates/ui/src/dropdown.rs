@@ -37,7 +37,7 @@ pub fn DropdownMenu(
             {trigger()}
             <div
                 class="absolute right-0 top-full mt-1 z-50 min-w-[140px] \
-                        bg-bg-secondary border border-border rounded-lg \
+                        bg-bg-secondary border border-border/60 rounded-xl \
                         shadow-lg py-1"
                 style:display=move || {
                     if open.get() { "block" } else { "none" }
@@ -59,7 +59,7 @@ where
     F: Fn() + Send + Sync + 'static,
 {
     let text_class = if danger {
-        "w-full text-left px-3 py-1.5 text-sm text-accent \
+        "w-full text-left px-3 py-1.5 text-sm text-danger \
          hover:bg-bg-tertiary transition-colors"
     } else {
         "w-full text-left px-3 py-1.5 text-sm text-text-primary \

@@ -14,6 +14,7 @@ pub fn TaskList(
     #[prop(optional)] completed_resource: Option<
         Resource<Result<Vec<TaskWithMeta>, ServerFnError>>,
     >,
+    #[prop(default = false)] draggable: bool,
 ) -> impl IntoView {
     match completed_resource {
         Some(cr) => view! {
@@ -28,10 +29,12 @@ pub fn TaskList(
                 on_clear_project=store.on_clear_project
                 on_set_tags=store.on_set_tags
                 on_review=store.on_review
+                on_reorder=store.on_reorder
                 show_review=show_review
                 show_project=show_project
                 empty_message=empty_message
                 completed_resource=cr
+                draggable=draggable
             />
         }
         .into_any(),
@@ -47,9 +50,11 @@ pub fn TaskList(
                 on_clear_project=store.on_clear_project
                 on_set_tags=store.on_set_tags
                 on_review=store.on_review
+                on_reorder=store.on_reorder
                 show_review=show_review
                 show_project=show_project
                 empty_message=empty_message
+                draggable=draggable
             />
         }
         .into_any(),

@@ -1,6 +1,25 @@
 use leptos::prelude::*;
 use north_domain::{Task, TaskWithMeta};
 
+#[server(ReorderTaskFn, "/api")]
+pub async fn reorder_task(
+    task_id: i64,
+    sort_key: String,
+    change_parent: bool,
+    new_parent_id: Option<i64>,
+) -> Result<(), ServerFnError> {
+    let pool = expect_context::<north_services::DbPool>();
+    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
+    let parent_id = if change_parent {
+        Some(new_parent_id)
+    } else {
+        None
+    };
+    north_services::TaskService::reorder_task(&pool, user_id, task_id, sort_key, parent_id)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
 #[server(GetInboxTasksFn, "/api")]
 pub async fn get_inbox_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();

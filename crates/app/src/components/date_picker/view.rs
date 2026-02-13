@@ -18,7 +18,7 @@ pub fn DateTimePickerView(
     #[prop(default = false)] icon_only: bool,
 ) -> impl IntoView {
     let date_text_class = if is_overdue {
-        "text-red-500"
+        "text-danger"
     } else {
         "text-text-secondary"
     };
@@ -185,7 +185,7 @@ pub fn DateTimePickerView(
                         </button>
                         <button
                             class="text-xs bg-accent \
-                                   hover:bg-accent-hover text-white \
+                                   hover:bg-accent-hover text-on-accent \
                                    px-3 py-1 rounded transition-colors"
                             on:click=move |_| {
                                 let d = picked_date.get_untracked();

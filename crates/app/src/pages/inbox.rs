@@ -1,5 +1,6 @@
 use leptos::prelude::*;
 
+use crate::components::drag_drop::DragDropContext;
 use crate::components::task_detail_modal::{TaskDetailContext, TaskDetailModal};
 use crate::components::task_form::InlineTaskForm;
 use crate::components::task_list::TaskList;
@@ -10,6 +11,7 @@ use crate::stores::task_store::TaskStore;
 pub fn InboxPage() -> impl IntoView {
     let open_task_id = RwSignal::new(None::<i64>);
     provide_context(TaskDetailContext { open_task_id });
+    provide_context(DragDropContext::new());
 
     let inbox_tasks = Resource::new(|| (), |_| get_inbox_tasks());
     let completed = Resource::new(|| (), |_| get_completed_tasks(None, true));
@@ -42,13 +44,14 @@ pub fn InboxPage() -> impl IntoView {
 
     view! {
         <div class="space-y-4">
-            <h1 class="text-xl font-semibold text-text-primary">"Inbox"</h1>
+            <h1 class="text-2xl font-semibold tracking-tight text-text-primary">"Inbox"</h1>
             <InlineTaskForm on_submit=on_create/>
             <TaskList
                 resource=inbox_tasks
                 store=store.clone()
                 empty_message="No tasks in your inbox. Add one above."
                 completed_resource=completed
+                draggable=true
             />
             <TaskDetailModal task_ids=task_ids task_store=store/>
         </div>

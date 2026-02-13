@@ -23,12 +23,12 @@ pub fn Modal(
             }
         >
             <div
-                class="absolute inset-0 bg-black/50"
+                class="absolute inset-0 bg-backdrop"
                 on:click=move |_| set_open.set(false)
             />
             <div class=format!(
-                "relative z-10 bg-bg-secondary border border-border \
-                 rounded-lg shadow-xl {size_class} w-full mx-4"
+                "relative z-10 bg-bg-secondary border border-border/60 \
+                 rounded-2xl shadow-2xl {size_class} w-full mx-4"
             )>
                 {panel}
             </div>

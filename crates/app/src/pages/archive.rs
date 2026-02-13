@@ -30,7 +30,7 @@ pub fn ArchivePage() -> impl IntoView {
 
     view! {
         <div class="space-y-4">
-            <h1 class="text-xl font-semibold text-text-primary">"Archive"</h1>
+            <h1 class="text-2xl font-semibold tracking-tight text-text-primary">"Archive"</h1>
             <Suspense fallback=move || {
                 view! {
                     <div class="text-sm text-text-secondary py-4">
@@ -91,8 +91,8 @@ pub fn ArchivePage() -> impl IntoView {
                                                                     class="text-xs px-2 py-1 \
                                                                            rounded \
                                                                            bg-bg-tertiary \
-                                                                           text-red-400 \
-                                                                           hover:text-red-300 \
+                                                                           text-danger \
+                                                                           hover:text-danger-hover \
                                                                            transition-colors"
                                                                     on:click=move |_| {
                                                                         delete_action
@@ -113,7 +113,7 @@ pub fn ArchivePage() -> impl IntoView {
                             }
                             Err(e) => {
                                 view! {
-                                    <div class="text-sm text-red-500 py-4">
+                                    <div class="text-sm text-danger py-4">
                                         {format!("Failed to load: {e}")}
                                     </div>
                                 }

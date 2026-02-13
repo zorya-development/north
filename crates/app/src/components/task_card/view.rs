@@ -2,8 +2,10 @@ use std::sync::Arc;
 
 use leptos::prelude::*;
 use north_domain::TagInfo;
+use wasm_bindgen::JsCast;
 
 use crate::components::date_picker::DateTimePicker;
+use crate::components::drag_drop::{DragDropContext, DropZone};
 use crate::components::project_picker::ProjectPicker;
 use crate::components::tag_picker::TagPicker;
 use crate::components::task_detail_modal::TaskDetailContext;
@@ -11,11 +13,14 @@ use crate::components::task_form::EditTaskForm;
 use crate::components::task_meta::TaskMeta;
 use north_ui::{Checkbox, DropdownItem, DropdownMenu, Icon, IconKind, MarkdownView};
 
+#[allow(unused_variables)]
 #[component]
 pub fn TaskCardView(
     task_id: i64,
     title: String,
     body: Option<String>,
+    sort_key: String,
+    parent_id: Option<i64>,
     project_id: Option<i64>,
     project_title: Option<String>,
     due_date: Option<chrono::NaiveDate>,
@@ -40,10 +45,20 @@ pub fn TaskCardView(
     #[prop(default = true)] show_project: bool,
     #[prop(default = 0)] subtask_count: i64,
     #[prop(default = 0)] completed_subtask_count: i64,
+    #[prop(default = false)] draggable: bool,
+    #[prop(default = 0)] depth: u8,
 ) -> impl IntoView {
+    let _ = parent_id;
     let detail_ctx = use_context::<TaskDetailContext>();
+    let drag_ctx = use_context::<DragDropContext>();
     let edit_title = title.clone();
     let edit_body = body.clone();
+
+    let indent_class = match depth {
+        1 => "pl-6",
+        2 => "pl-12",
+        _ => "",
+    };
 
     view! {
         <Show
@@ -54,17 +69,114 @@ pub fn TaskCardView(
                 let project_title = project_title.clone();
                 let tags = tags.clone();
                 let on_delete = on_delete.clone();
+                let sort_key = sort_key.clone();
                 move || {
                     let title = title.clone();
                     let body = body.clone();
                     let project_title = project_title.clone();
                     let meta_tags = tags.clone();
                     let on_delete = on_delete.clone();
+                    let sort_key = sort_key.clone();
                     view! {
                         <div
-                            class="group border-b border-border px-3 py-2 \
-                                    hover:bg-white/10 transition-colors \
-                                    cursor-pointer"
+                            class=move || {
+                                let mut classes = format!(
+                                    "group border-b border-border/60 px-4 py-3 \
+                                     hover:bg-hover-overlay transition-colors \
+                                     cursor-pointer {indent_class}"
+                                );
+                                if let Some(ctx) = drag_ctx {
+                                    if ctx.dragging_task_id.get() == Some(task_id) {
+                                        classes.push_str(" opacity-30");
+                                    }
+                                    match ctx.drop_target.get() {
+                                        Some((id, DropZone::Above)) if id == task_id => {
+                                            classes.push_str(
+                                                " dnd-drop-above"
+                                            );
+                                        }
+                                        Some((id, DropZone::Below)) if id == task_id => {
+                                            classes.push_str(
+                                                " dnd-drop-below"
+                                            );
+                                        }
+                                        Some((id, DropZone::Nest)) if id == task_id => {
+                                            classes.push_str(
+                                                " dnd-drop-nest"
+                                            );
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                                classes
+                            }
+                            draggable=move || {
+                                if draggable { "true" } else { "false" }
+                            }
+                            on:dragstart={
+                                let sort_key = sort_key.clone();
+                                move |ev: web_sys::DragEvent| {
+                                    if !draggable { return; }
+                                    if let Some(ctx) = drag_ctx {
+                                        ctx.dragging_task_id.set(Some(task_id));
+                                    }
+                                    if let Some(dt) = ev.data_transfer() {
+                                        let _ = dt.set_data(
+                                            "text/plain",
+                                            &format!(
+                                                "{}|{}",
+                                                task_id, sort_key,
+                                            ),
+                                        );
+                                        dt.set_effect_allowed("move");
+                                    }
+                                }
+                            }
+                            on:dragend=move |_: web_sys::DragEvent| {
+                                if let Some(ctx) = drag_ctx {
+                                    ctx.dragging_task_id.set(None);
+                                    ctx.drop_target.set(None);
+                                }
+                            }
+                            on:dragover=move |ev: web_sys::DragEvent| {
+                                if drag_ctx.is_none() { return; }
+                                let ctx = drag_ctx.unwrap();
+                                if ctx.dragging_task_id.get_untracked()
+                                    == Some(task_id)
+                                {
+                                    return;
+                                }
+                                ev.prevent_default();
+                                // Compute drop zone from mouse Y
+                                if let Some(target) = ev
+                                    .current_target()
+                                    .and_then(|t| {
+                                        t.dyn_into::<web_sys::HtmlElement>().ok()
+                                    })
+                                {
+                                    let rect = target.get_bounding_client_rect();
+                                    let y = ev.client_y() as f64 - rect.top();
+                                    let h = rect.height();
+                                    let zone = if y < h * 0.25 {
+                                        DropZone::Above
+                                    } else if y > h * 0.75 {
+                                        DropZone::Below
+                                    } else {
+                                        DropZone::Nest
+                                    };
+                                    ctx.drop_target
+                                        .set(Some((task_id, zone)));
+                                }
+                            }
+                            on:dragleave=move |_: web_sys::DragEvent| {
+                                if let Some(ctx) = drag_ctx {
+                                    if ctx.drop_target.get_untracked()
+                                        .map(|(id, _)| id) == Some(task_id)
+                                    {
+                                        ctx.drop_target.set(None);
+                                    }
+                                }
+                            }
                             on:click=move |_| {
                                 if let Some(ctx) = detail_ctx {
                                     ctx.open_task_id.set(Some(task_id));
@@ -72,6 +184,31 @@ pub fn TaskCardView(
                             }
                         >
                             <div class="flex items-center gap-2">
+                                {if draggable {
+                                    Some(view! {
+                                        <span
+                                            class="dnd-handle opacity-0 \
+                                                   group-hover:opacity-60 \
+                                                   cursor-grab \
+                                                   active:cursor-grabbing \
+                                                   transition-opacity"
+                                            on:click=move |ev| {
+                                                ev.stop_propagation()
+                                            }
+                                            on:mousedown=move |ev| {
+                                                ev.stop_propagation()
+                                            }
+                                        >
+                                            <Icon
+                                                kind=IconKind::DragHandle
+                                                class="w-4 h-4 \
+                                                       text-text-tertiary"
+                                            />
+                                        </span>
+                                    })
+                                } else {
+                                    None
+                                }}
                                 <span on:click=move |ev| ev.stop_propagation()>
                                     <Checkbox
                                         checked=is_completed

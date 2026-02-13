@@ -51,10 +51,10 @@ pub fn ReviewPage() -> impl IntoView {
     view! {
         <div class="space-y-4">
             <div class="flex items-center justify-between">
-                <h1 class="text-xl font-semibold text-text-primary">"Review"</h1>
+                <h1 class="text-2xl font-semibold tracking-tight text-text-primary">"Review"</h1>
                 <button
                     on:click=move |_| { review_all_action.dispatch(()); }
-                    class="px-3 py-1.5 text-sm bg-accent text-white rounded \
+                    class="px-3 py-1.5 text-sm bg-accent text-on-accent rounded \
                            hover:bg-accent-hover transition-colors"
                 >
                     "Mark All as Reviewed"

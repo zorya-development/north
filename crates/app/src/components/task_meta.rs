@@ -28,7 +28,7 @@ pub fn TaskMeta(
                 {start_at.map(|dt| {
                     let is_overdue = dt < chrono::Utc::now();
                     let class = if is_overdue {
-                        "inline-flex items-center gap-1 text-red-500"
+                        "inline-flex items-center gap-1 text-danger"
                     } else {
                         "inline-flex items-center gap-1 text-text-secondary"
                     };
@@ -76,7 +76,7 @@ pub fn TaskMeta(
                 {due_date.map(|d| {
                     let is_overdue = d < chrono::Utc::now().date_naive();
                     let class = if is_overdue {
-                        "text-red-500"
+                        "text-danger"
                     } else {
                         "text-text-secondary"
                     };

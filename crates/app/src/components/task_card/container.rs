@@ -19,10 +19,14 @@ pub fn TaskCard(
     on_review: Callback<i64>,
     #[prop(default = false)] show_review: bool,
     #[prop(default = true)] show_project: bool,
+    #[prop(default = false)] draggable: bool,
+    #[prop(default = 0)] depth: u8,
 ) -> impl IntoView {
     let task_id = task.task.id;
     let title = task.task.title.clone();
     let body = task.task.body.clone();
+    let sort_key = task.task.sort_key.clone();
+    let parent_id = task.task.parent_id;
     let project_id = task.task.project_id;
     let project_title = task.project_title.clone();
     let due_date = task.task.due_date;
@@ -57,6 +61,8 @@ pub fn TaskCard(
             task_id=task_id
             title=title
             body=body
+            sort_key=sort_key
+            parent_id=parent_id
             project_id=project_id
             project_title=project_title
             due_date=due_date
@@ -81,6 +87,8 @@ pub fn TaskCard(
             show_project=show_project
             subtask_count=subtask_count
             completed_subtask_count=completed_subtask_count
+            draggable=draggable
+            depth=depth
         />
     }
 }

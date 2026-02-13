@@ -22,7 +22,7 @@ pub fn AppLayout(children: Children) -> impl IntoView {
         <div class="flex h-screen">
             <Sidebar/>
             <main class="flex-1 overflow-y-auto bg-bg-primary">
-                <div class="max-w-5xl mx-auto px-6 py-8">{children()}</div>
+                <div class="max-w-4xl mx-auto px-8 py-10">{children()}</div>
             </main>
         </div>
     }

@@ -10,7 +10,7 @@ pub struct Task {
     pub user_id: i64,
     pub title: String,
     pub body: Option<String>,
-    pub position: i32,
+    pub sort_key: String,
     pub sequential_limit: i16,
     pub start_at: Option<DateTime<Utc>>,
     pub due_date: Option<NaiveDate>,
@@ -50,17 +50,17 @@ pub struct UpdateTask {
     pub project_id: Option<i64>,
     pub parent_id: Option<i64>,
     pub column_id: Option<i64>,
-    pub position: Option<i32>,
+    pub sort_key: Option<String>,
     pub sequential_limit: Option<i16>,
     pub start_at: Option<DateTime<Utc>>,
     pub due_date: Option<NaiveDate>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MoveTask {
     pub column_id: Option<i64>,
-    pub position: Option<i32>,
-    pub parent_id: Option<i64>,
+    pub sort_key: Option<String>,
+    pub parent_id: Option<Option<i64>>,
 }
 
 #[derive(Debug, Default, Deserialize)]

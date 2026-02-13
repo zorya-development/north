@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-hydrate = ["leptos/hydrate", "dep:wasm-bindgen"]
+hydrate = ["leptos/hydrate"]
 ssr = [
     "leptos/ssr",
     "dep:leptos_axum",
@@ -41,4 +41,5 @@ jsonwebtoken = { version = "9", optional = true }
 tokio = { version = "1", optional = true, features = ["full"] }
 http = { version = "1", optional = true }
 axum-extra = { version = "0.9", optional = true, features = ["cookie"] }
-wasm-bindgen = { version = "0.2", optional = true }
+wasm-bindgen = { version = "0.2" }
+web-sys = { version = "0.3", features = ["DragEvent", "DataTransfer", "HtmlElement", "DomRect"] }

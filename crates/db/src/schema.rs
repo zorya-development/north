@@ -90,7 +90,6 @@ diesel::table! {
         user_id -> Int8,
         title -> Text,
         body -> Nullable<Text>,
-        position -> Int4,
         sequential_limit -> Int2,
         start_at -> Nullable<Timestamptz>,
         due_date -> Nullable<Date>,
@@ -98,6 +97,7 @@ diesel::table! {
         reviewed_at -> Nullable<Date>,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
+        sort_key -> Varchar,
     }
 }
 
