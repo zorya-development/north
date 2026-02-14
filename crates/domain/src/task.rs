@@ -6,7 +6,6 @@ pub struct Task {
     pub id: i64,
     pub project_id: Option<i64>,
     pub parent_id: Option<i64>,
-    pub column_id: Option<i64>,
     pub user_id: i64,
     pub title: String,
     pub body: Option<String>,
@@ -25,7 +24,6 @@ pub struct TaskWithMeta {
     #[serde(flatten)]
     pub task: Task,
     pub project_title: Option<String>,
-    pub column_name: Option<String>,
     pub tags: Vec<crate::TagInfo>,
     pub subtask_count: i64,
     pub completed_subtask_count: i64,
@@ -38,7 +36,6 @@ pub struct CreateTask {
     pub body: Option<String>,
     pub project_id: Option<i64>,
     pub parent_id: Option<i64>,
-    pub column_id: Option<i64>,
     pub start_at: Option<DateTime<Utc>>,
     pub due_date: Option<NaiveDate>,
 }
@@ -67,13 +64,6 @@ pub struct UpdateTask {
         with = "crate::serde_helpers::double_option"
     )]
     pub parent_id: Option<Option<i64>>,
-
-    #[serde(
-        default,
-        skip_serializing_if = "crate::serde_helpers::is_none_outer",
-        with = "crate::serde_helpers::double_option"
-    )]
-    pub column_id: Option<Option<i64>>,
 
     pub sort_key: Option<String>,
     pub sequential_limit: Option<i16>,
@@ -107,18 +97,10 @@ pub struct UpdateTask {
     pub reviewed_at: Option<Option<NaiveDate>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct MoveTask {
-    pub column_id: Option<i64>,
-    pub sort_key: Option<String>,
-    pub parent_id: Option<Option<i64>>,
-}
-
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct TaskFilter {
     pub project: Option<i64>,
     pub parent: Option<i64>,
-    pub column: Option<i64>,
     pub tag: Option<Vec<String>>,
     pub actionable: Option<bool>,
     pub review_due: Option<bool>,

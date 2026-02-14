@@ -40,10 +40,6 @@ pub fn FilterHelpPage() -> impl IntoView {
                             desc="Start date/time"
                         />
                         <FieldRow
-                            field="column (or col)"
-                            desc="Project status/column name"
-                        />
-                        <FieldRow
                             field="created (or created_at)"
                             desc="Creation timestamp"
                         />

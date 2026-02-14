@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 
 use crate::schema::projects;
-use crate::sql_types::ProjectViewTypeMapping;
+use crate::sql_types::{ProjectStatusMapping, ProjectViewTypeMapping};
 
 #[derive(Debug, Clone, Queryable, Selectable, Identifiable)]
 #[diesel(table_name = projects)]
@@ -14,7 +14,7 @@ pub struct ProjectRow {
     pub view_type: ProjectViewTypeMapping,
     pub position: i32,
     pub color: String,
-    pub archived: bool,
+    pub status: ProjectStatusMapping,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -37,7 +37,7 @@ pub struct ProjectChangeset<'a> {
     pub view_type: Option<ProjectViewTypeMapping>,
     pub position: Option<i32>,
     pub color: Option<&'a str>,
-    pub archived: Option<bool>,
+    pub status: Option<ProjectStatusMapping>,
 }
 
 impl From<ProjectRow> for north_domain::Project {
@@ -50,7 +50,7 @@ impl From<ProjectRow> for north_domain::Project {
             view_type: row.view_type.into(),
             position: row.position,
             color: row.color,
-            archived: row.archived,
+            status: row.status.into(),
             created_at: row.created_at,
             updated_at: row.updated_at,
         }

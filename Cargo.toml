@@ -8,7 +8,7 @@ north-app = { path = "crates/app" }
 north-ui = { path = "crates/ui" }
 north-stores = { path = "crates/stores" }
 north-repositories = { path = "crates/repositories" }
-north-api = { path = "crates/api" }
+north-server-fns = { path = "crates/server-fns" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -25,7 +25,7 @@ site-pkg-dir = "pkg"
 site-addr = "0.0.0.0:5000"
 reload-port = 5001
 style-file = "style/main.css"
-tailwind-input-file = "style/main.css"
+tailwind-input-file = "style/tailwind.css"
 assets-dir = "public"
 bin-default-features = false
 bin-features = []

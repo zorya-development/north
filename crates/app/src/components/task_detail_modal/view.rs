@@ -5,8 +5,7 @@ use crate::components::date_picker::DateTimePicker;
 use crate::components::project_picker::ProjectPicker;
 use crate::components::subtask_list::SubtaskList;
 use crate::components::tag_picker::TagPicker;
-use crate::stores::lookup_store::LookupStore;
-use north_ui::{Checkbox, Icon, IconKind, MarkdownView, Popover};
+use north_ui::{Checkbox, Icon, IconKind, MarkdownView};
 
 #[component]
 pub fn TaskDetailModalView(
@@ -28,8 +27,6 @@ pub fn TaskDetailModalView(
     on_set_tags: Callback<(i64, Vec<String>)>,
     on_set_due_date: Callback<(i64, String)>,
     on_clear_due_date: Callback<i64>,
-    on_set_column: Callback<(i64, i64)>,
-    on_clear_column: Callback<i64>,
     on_set_seq_limit: Callback<(i64, i16)>,
     on_refetch_detail: Callback<()>,
 ) -> impl IntoView {
@@ -80,8 +77,6 @@ pub fn TaskDetailModalView(
                         let on_set_tags = on_set_tags;
                         let on_set_due_date = on_set_due_date;
                         let on_clear_due_date = on_clear_due_date;
-                        let on_set_column = on_set_column;
-                        let on_clear_column = on_clear_column;
                         let on_set_seq_limit = on_set_seq_limit;
                         let on_refetch_detail = on_refetch_detail;
 
@@ -105,8 +100,6 @@ pub fn TaskDetailModalView(
                             let body = task.task.body.clone();
                             let project_id = task.task.project_id;
                             let project_title = task.project_title.clone();
-                            let column_id = task.task.column_id;
-                            let column_name = task.column_name.clone();
                             let tags = task.tags.clone();
                             let start_at = task.task.start_at;
                             let due_date = task.task.due_date;
@@ -138,18 +131,6 @@ pub fn TaskDetailModalView(
                                                 <span class="text-text-secondary">
                                                     {pt}
                                                 </span>
-                                            }
-                                        })}
-                                        {column_name.clone().map(|cn| {
-                                            view! {
-                                                <>
-                                                    {project_title.as_ref().map(|_| {
-                                                        view! {
-                                                            <span class="mx-1">"/"</span>
-                                                        }
-                                                    })}
-                                                    <span>{cn}</span>
-                                                </>
                                             }
                                         })}
                                     </div>
@@ -509,18 +490,6 @@ pub fn TaskDetailModalView(
                                             />
                                         </SidebarRow>
 
-                                        // Status
-                                        <SidebarRow label="Status">
-                                            <ColumnPicker
-                                                task_id=task_id
-                                                project_id=project_id
-                                                column_id=column_id
-                                                column_name=column_name
-                                                on_set_column=on_set_column
-                                                on_clear_column=on_clear_column
-                                            />
-                                        </SidebarRow>
-
                                         // Tags
                                         <SidebarRow label="Tags">
                                             <TagPicker
@@ -576,132 +545,6 @@ fn SidebarRow(label: &'static str, children: Children) -> impl IntoView {
             <div class="text-xs text-text-tertiary mb-1">{label}</div>
             {children()}
         </div>
-    }
-}
-
-#[component]
-fn ColumnPicker(
-    task_id: i64,
-    project_id: Option<i64>,
-    column_id: Option<i64>,
-    column_name: Option<String>,
-    on_set_column: Callback<(i64, i64)>,
-    on_clear_column: Callback<i64>,
-) -> impl IntoView {
-    let lookup = use_context::<LookupStore>();
-    let (open, set_open) = signal(false);
-
-    let columns_resource = lookup.map(|s| s.columns);
-
-    view! {
-        <Popover
-            open=open
-            set_open=set_open
-            trigger=Box::new({
-                let column_name = column_name.clone();
-                move || {
-                    let display = column_name
-                        .clone()
-                        .unwrap_or_else(|| "None".to_string());
-                    view! {
-                        <button
-                            class="text-sm text-text-secondary \
-                                   hover:text-text-primary \
-                                   transition-colors"
-                            on:click=move |_| {
-                                set_open.update(|o| *o = !*o);
-                            }
-                        >
-                            {display}
-                        </button>
-                    }
-                    .into_any()
-                }
-            })
-        >
-            <div class="p-1 min-w-[10rem] max-h-[240px] overflow-y-auto">
-                <button
-                    class="w-full text-left px-3 py-1.5 text-sm \
-                           text-text-tertiary hover:bg-bg-tertiary \
-                           rounded transition-colors"
-                    on:click=move |_| {
-                        on_clear_column.run(task_id);
-                        set_open.set(false);
-                    }
-                >
-                    "None"
-                </button>
-                {columns_resource.map(|res| {
-                    view! {
-                        <Suspense fallback=|| ()>
-                            {move || {
-                                Suspend::new(async move {
-                                    let cols = res.await;
-                                    match cols {
-                                        Ok(cols) => {
-                                            let filtered: Vec<_> = cols
-                                                .into_iter()
-                                                .filter(|c| {
-                                                    project_id
-                                                        .map(|pid| {
-                                                            c.project_id == pid
-                                                        })
-                                                        .unwrap_or(false)
-                                                })
-                                                .collect();
-                                            view! {
-                                                <div>
-                                                    {filtered
-                                                        .into_iter()
-                                                        .map(|col| {
-                                                            let cid = col.id;
-                                                            let is_current = column_id
-                                                                == Some(cid);
-                                                            view! {
-                                                                <button
-                                                                    class=if is_current {
-                                                                        "w-full text-left px-3 \
-                                                                         py-1.5 text-sm \
-                                                                         text-accent \
-                                                                         bg-bg-tertiary \
-                                                                         rounded"
-                                                                    } else {
-                                                                        "w-full text-left px-3 \
-                                                                         py-1.5 text-sm \
-                                                                         text-text-primary \
-                                                                         hover:bg-bg-tertiary \
-                                                                         rounded \
-                                                                         transition-colors"
-                                                                    }
-                                                                    on:click=move |_| {
-                                                                        on_set_column.run((
-                                                                            task_id, cid,
-                                                                        ));
-                                                                        set_open.set(false);
-                                                                    }
-                                                                >
-                                                                    {col.name}
-                                                                </button>
-                                                            }
-                                                        })
-                                                        .collect::<Vec<_>>()}
-                                                </div>
-                                            }.into_any()
-                                        }
-                                        Err(_) => view! {
-                                            <div class="px-3 py-1 text-xs \
-                                                        text-text-tertiary">
-                                                "Error loading statuses"
-                                            </div>
-                                        }.into_any(),
-                                    }
-                                })
-                            }}
-                        </Suspense>
-                    }
-                })}
-            </div>
-        </Popover>
     }
 }
 

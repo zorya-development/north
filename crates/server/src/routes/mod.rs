@@ -25,7 +25,6 @@ pub fn protected_api_router(state: AppState) -> Router<AppState> {
                 .patch(tasks::update_task)
                 .delete(tasks::delete_task),
         )
-        .route("/tasks/:id/move", patch(tasks::move_task))
         .route("/tasks/:id/review", patch(tasks::review_task))
         // Project routes
         .route(
@@ -35,13 +34,7 @@ pub fn protected_api_router(state: AppState) -> Router<AppState> {
         .route(
             "/projects/:id",
             get(projects::get_project)
-                .patch(projects::update_project)
-                .delete(projects::archive_project),
-        )
-        .route("/projects/:id/columns", post(projects::create_column))
-        .route(
-            "/columns/:id",
-            patch(projects::update_column).delete(projects::delete_column),
+                .patch(projects::update_project),
         )
         // Stats routes
         .route("/stats", get(stats::get_stats))

@@ -30,7 +30,6 @@ pub enum FilterField {
     Status,
     DueDate,
     StartAt,
-    Column,
     Created,
     Updated,
 }
@@ -45,7 +44,6 @@ impl FilterField {
             "status" => Some(Self::Status),
             "due_date" | "due" => Some(Self::DueDate),
             "start_at" | "start" => Some(Self::StartAt),
-            "column" | "col" => Some(Self::Column),
             "created" | "created_at" => Some(Self::Created),
             "updated" | "updated_at" => Some(Self::Updated),
             _ => None,

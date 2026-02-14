@@ -1723,20 +1723,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60993920e071b0c9b66f14e2b32740a4e27ffc82854dcd72035887f336a09a28"
 
 [[package]]
-name = "north-api"
-version = "0.1.0"
-dependencies = [
- "axum-extra",
- "http",
- "jsonwebtoken",
- "leptos",
- "leptos_axum",
- "north-domain",
- "north-services",
- "serde",
-]
-
-[[package]]
 name = "north-app"
 version = "0.1.0"
 dependencies = [
@@ -1761,6 +1747,21 @@ dependencies = [
  "tracing",
  "wasm-bindgen",
  "web-sys",
+]
+
+[[package]]
+name = "north-core"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "diesel",
+ "diesel-async",
+ "north-db",
+ "north-domain",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tracing",
 ]
 
 [[package]]
@@ -1793,8 +1794,8 @@ name = "north-repositories"
 version = "0.1.0"
 dependencies = [
  "leptos",
- "north-api",
  "north-domain",
+ "north-server-fns",
 ]
 
 [[package]]
@@ -1812,6 +1813,7 @@ dependencies = [
  "leptos_axum",
  "leptos_router",
  "north-app",
+ "north-core",
  "north-db",
  "north-domain",
  "north-services",
@@ -1824,6 +1826,21 @@ dependencies = [
  "tower-http 0.5.2",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "north-server-fns"
+version = "0.1.0"
+dependencies = [
+ "axum-extra",
+ "http",
+ "jsonwebtoken",
+ "leptos",
+ "leptos_axum",
+ "north-core",
+ "north-domain",
+ "north-services",
+ "serde",
 ]
 
 [[package]]

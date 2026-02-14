@@ -1,52 +1,48 @@
 use leptos::prelude::*;
-use north_domain::{CreateTask, Task, TaskWithMeta, UpdateTask};
+use north_domain::{CreateTask, Task, TaskFilter, TaskWithMeta, UpdateTask};
 
 #[server(ApiListTasksFn, "/api")]
 pub async fn list_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
-    let pool = expect_context::<north_services::DbPool>();
+    let pool = expect_context::<north_core::DbPool>();
     let user_id = crate::auth::get_auth_user_id().await?;
-    let mut tasks = north_services::TaskService::get_all(&pool, user_id)
+    let filter = TaskFilter::default();
+    north_core::TaskService::list(&pool, user_id, &filter)
         .await
-        .map_err(|e| ServerFnError::new(e.to_string()))?;
-    let completed = north_services::TaskService::get_completed(&pool, user_id, None, false)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))?;
-    tasks.extend(completed);
-    Ok(tasks)
+        .map_err(|e| ServerFnError::new(e.to_string()))
 }
 
 #[server(ApiGetTaskFn, "/api")]
 pub async fn get_task(id: i64) -> Result<TaskWithMeta, ServerFnError> {
-    let pool = expect_context::<north_services::DbPool>();
+    let pool = expect_context::<north_core::DbPool>();
     let user_id = crate::auth::get_auth_user_id().await?;
-    north_services::TaskService::get_by_id_with_meta(&pool, user_id, id)
+    north_core::TaskService::get_by_id(&pool, user_id, id)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))
 }
 
 #[server(ApiCreateTaskFn, "/api")]
 pub async fn create_task(input: CreateTask) -> Result<Task, ServerFnError> {
-    let pool = expect_context::<north_services::DbPool>();
+    let pool = expect_context::<north_core::DbPool>();
     let user_id = crate::auth::get_auth_user_id().await?;
-    north_services::TaskService::create_task_full(&pool, user_id, &input)
+    north_core::TaskService::create(&pool, user_id, &input)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))
 }
 
 #[server(ApiUpdateTaskFn, "/api")]
 pub async fn update_task(id: i64, input: UpdateTask) -> Result<Task, ServerFnError> {
-    let pool = expect_context::<north_services::DbPool>();
+    let pool = expect_context::<north_core::DbPool>();
     let user_id = crate::auth::get_auth_user_id().await?;
-    north_services::TaskService::update_task_full(&pool, user_id, id, &input)
+    north_core::TaskService::update(&pool, user_id, id, &input)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))
 }
 
 #[server(ApiDeleteTaskFn, "/api")]
 pub async fn delete_task(id: i64) -> Result<(), ServerFnError> {
-    let pool = expect_context::<north_services::DbPool>();
+    let pool = expect_context::<north_core::DbPool>();
     let user_id = crate::auth::get_auth_user_id().await?;
-    north_services::TaskService::delete_task(&pool, user_id, id)
+    north_core::TaskService::delete(&pool, user_id, id)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))
 }

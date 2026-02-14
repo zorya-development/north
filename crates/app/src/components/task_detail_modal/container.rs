@@ -114,16 +114,6 @@ pub fn TaskDetailModal(task_ids: Signal<Vec<i64>>, task_store: TaskStore) -> imp
         clear_task_due_date(id)
     });
 
-    let column_action = Action::new(|input: &(i64, i64)| {
-        let (id, column_id) = *input;
-        set_task_column(id, column_id)
-    });
-
-    let clear_column_action = Action::new(|id: &i64| {
-        let id = *id;
-        clear_task_column(id)
-    });
-
     let seq_limit_action = Action::new(|input: &(i64, i16)| {
         let (id, limit) = *input;
         set_sequential_limit(id, limit)
@@ -143,18 +133,6 @@ pub fn TaskDetailModal(task_ids: Signal<Vec<i64>>, task_store: TaskStore) -> imp
     });
 
     Effect::new(move || {
-        if let Some(Ok(_)) = column_action.value().get() {
-            task_detail.refetch();
-        }
-    });
-
-    Effect::new(move || {
-        if let Some(Ok(_)) = clear_column_action.value().get() {
-            task_detail.refetch();
-        }
-    });
-
-    Effect::new(move || {
         if let Some(Ok(_)) = seq_limit_action.value().get() {
             task_detail.refetch();
         }
@@ -166,14 +144,6 @@ pub fn TaskDetailModal(task_ids: Signal<Vec<i64>>, task_store: TaskStore) -> imp
 
     let on_clear_due_date = Callback::new(move |id: i64| {
         clear_due_date_action.dispatch(id);
-    });
-
-    let on_set_column = Callback::new(move |(id, column_id): (i64, i64)| {
-        column_action.dispatch((id, column_id));
-    });
-
-    let on_clear_column = Callback::new(move |id: i64| {
-        clear_column_action.dispatch(id);
     });
 
     let on_set_seq_limit = Callback::new(move |(id, limit): (i64, i16)| {
@@ -247,8 +217,6 @@ pub fn TaskDetailModal(task_ids: Signal<Vec<i64>>, task_store: TaskStore) -> imp
                 on_set_tags=on_set_tags
                 on_set_due_date=on_set_due_date
                 on_clear_due_date=on_clear_due_date
-                on_set_column=on_set_column
-                on_clear_column=on_clear_column
                 on_set_seq_limit=on_set_seq_limit
                 on_refetch_detail=on_refetch_detail
             />

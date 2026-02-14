@@ -22,6 +22,9 @@ pub enum AppError {
 
     #[error(transparent)]
     Service(#[from] north_services::ServiceError),
+
+    #[error(transparent)]
+    CoreService(#[from] north_core::ServiceError),
 }
 
 impl IntoResponse for AppError {
@@ -36,12 +39,29 @@ impl IntoResponse for AppError {
                 (StatusCode::INTERNAL_SERVER_ERROR, msg.clone())
             }
             AppError::Service(err) => match err {
-                north_services::ServiceError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
+                north_services::ServiceError::NotFound(msg) => {
+                    (StatusCode::NOT_FOUND, msg.clone())
+                }
                 north_services::ServiceError::BadRequest(msg) => {
                     (StatusCode::BAD_REQUEST, msg.clone())
                 }
                 _ => {
                     tracing::error!("Service error: {err}");
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Internal server error".to_string(),
+                    )
+                }
+            },
+            AppError::CoreService(err) => match err {
+                north_core::ServiceError::NotFound(msg) => {
+                    (StatusCode::NOT_FOUND, msg.clone())
+                }
+                north_core::ServiceError::BadRequest(msg) => {
+                    (StatusCode::BAD_REQUEST, msg.clone())
+                }
+                _ => {
+                    tracing::error!("Core service error: {err}");
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         "Internal server error".to_string(),

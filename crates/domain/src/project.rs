@@ -1,8 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::Column;
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ProjectStatus {
@@ -26,16 +24,9 @@ pub struct Project {
     pub view_type: ProjectViewType,
     pub position: i32,
     pub color: String,
-    pub archived: bool,
+    pub status: ProjectStatus,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProjectWithColumns {
-    #[serde(flatten)]
-    pub project: Project,
-    pub columns: Vec<Column>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,6 +42,11 @@ pub struct UpdateProject {
     pub description: Option<String>,
     pub view_type: Option<ProjectViewType>,
     pub position: Option<i32>,
-    pub archived: Option<bool>,
+    pub status: Option<ProjectStatus>,
     pub color: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ProjectFilter {
+    pub status: Option<ProjectStatus>,
 }

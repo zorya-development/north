@@ -59,7 +59,7 @@ fn get_suggestions(
             projects
                 .into_iter()
                 .filter(|p| {
-                    !p.archived
+                    p.status == north_domain::ProjectStatus::Active
                         && (query_lower.is_empty()
                             || p.title.to_lowercase().contains(&query_lower))
                 })

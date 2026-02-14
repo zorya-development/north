@@ -90,7 +90,7 @@ pub fn TaskCardView(
                             on:mouseleave=move |_| set_hovered.set(false)
                             class=move || {
                                 let mut classes = format!(
-                                    "border-b border-border/60 px-4 py-3 \
+                                    "px-4 \
                                      hover:bg-hover-overlay transition-colors \
                                      cursor-pointer {indent_class}"
                                 );
@@ -223,14 +223,14 @@ pub fn TaskCardView(
                                 } else {
                                     None
                                 }}
-                                <span on:click=move |ev| ev.stop_propagation()>
+                                <div class="flex items-center" on:click=move |ev| ev.stop_propagation()>
                                     <Checkbox
                                         checked=is_completed
                                         on_toggle=on_toggle
                                         checked_label="Mark task incomplete"
                                         unchecked_label="Complete task"
                                     />
-                                </span>
+                                </div>
                                 <span
                                     class=move || {
                                         if is_completed.get() {

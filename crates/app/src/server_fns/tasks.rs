@@ -209,7 +209,6 @@ pub async fn create_subtask(
         body: None,
         project_id,
         parent_id: Some(parent_id),
-        column_id: None,
         start_at: None,
         due_date: None,
     };
@@ -236,24 +235,6 @@ pub async fn clear_task_due_date(id: i64) -> Result<(), ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
     north_services::TaskService::clear_due_date(&pool, user_id, id)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
-}
-
-#[server(SetTaskColumnFn, "/api")]
-pub async fn set_task_column(id: i64, column_id: i64) -> Result<(), ServerFnError> {
-    let pool = expect_context::<north_services::DbPool>();
-    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
-    north_services::TaskService::set_column(&pool, user_id, id, column_id)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
-}
-
-#[server(ClearTaskColumnFn, "/api")]
-pub async fn clear_task_column(id: i64) -> Result<(), ServerFnError> {
-    let pool = expect_context::<north_services::DbPool>();
-    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
-    north_services::TaskService::clear_column(&pool, user_id, id)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))
 }

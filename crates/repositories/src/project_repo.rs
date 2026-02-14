@@ -1,35 +1,33 @@
 use leptos::prelude::ServerFnError;
-use north_domain::{
-    CreateProject, Project, ProjectStatus, ProjectWithColumns, UpdateProject,
-};
+use north_domain::{CreateProject, Project, ProjectFilter, UpdateProject};
 
 pub struct ProjectRepository;
 
 impl ProjectRepository {
     pub async fn list(
-        status: Option<ProjectStatus>,
-    ) -> Result<Vec<ProjectWithColumns>, ServerFnError> {
-        north_api::projects::list_projects(status).await
+        filter: ProjectFilter,
+    ) -> Result<Vec<Project>, ServerFnError> {
+        north_server_fns::projects::list_projects(filter).await
     }
 
-    pub async fn get(id: i64) -> Result<ProjectWithColumns, ServerFnError> {
-        north_api::projects::get_project(id).await
+    pub async fn get(id: i64) -> Result<Project, ServerFnError> {
+        north_server_fns::projects::get_project(id).await
     }
 
     pub async fn create(
         input: CreateProject,
-    ) -> Result<ProjectWithColumns, ServerFnError> {
-        north_api::projects::create_project(input).await
+    ) -> Result<Project, ServerFnError> {
+        north_server_fns::projects::create_project(input).await
     }
 
     pub async fn update(
         id: i64,
         input: UpdateProject,
     ) -> Result<Project, ServerFnError> {
-        north_api::projects::update_project(id, input).await
+        north_server_fns::projects::update_project(id, input).await
     }
 
     pub async fn delete(id: i64) -> Result<(), ServerFnError> {
-        north_api::projects::delete_project(id).await
+        north_server_fns::projects::delete_project(id).await
     }
 }

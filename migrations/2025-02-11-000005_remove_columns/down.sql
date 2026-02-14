@@ -1,0 +1,10 @@
+CREATE TABLE project_columns (
+    id BIGSERIAL PRIMARY KEY,
+    project_id BIGINT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL DEFAULT '#6b7280',
+    position INTEGER NOT NULL DEFAULT 0,
+    is_done BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE tasks ADD COLUMN column_id BIGINT REFERENCES project_columns(id) ON DELETE SET NULL;

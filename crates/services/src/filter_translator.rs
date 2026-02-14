@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
-use north_db::schema::{project_columns, projects, tags, task_tags, tasks};
+use north_db::schema::{projects, tags, task_tags, tasks};
 use north_db::DbPool;
 use north_domain::{Condition, FilterExpr, FilterField, FilterOp, FilterValue};
 
@@ -58,7 +58,6 @@ async fn eval_condition(
         FilterField::Status => eval_status(pool, user_id, cond).await,
         FilterField::Project => eval_project(pool, user_id, cond).await,
         FilterField::Tags => eval_tags(pool, user_id, cond).await,
-        FilterField::Column => eval_column(pool, user_id, cond).await,
         FilterField::DueDate => eval_date_field(pool, user_id, cond, DateField::DueDate).await,
         FilterField::StartAt => eval_date_field(pool, user_id, cond, DateField::StartAt).await,
         FilterField::Created => eval_date_field(pool, user_id, cond, DateField::Created).await,
@@ -432,103 +431,6 @@ async fn eval_tags(pool: &DbPool, user_id: i64, cond: &Condition) -> ServiceResu
     let all = all_user_task_ids(pool, user_id).await?;
     let tagged: HashSet<i64> = task_ids.into_iter().collect();
     Ok(all.intersection(&tagged).copied().collect())
-}
-
-async fn eval_column(pool: &DbPool, user_id: i64, cond: &Condition) -> ServiceResult<HashSet<i64>> {
-    let mut conn = pool.get().await?;
-
-    match cond.op {
-        FilterOp::Is if cond.value == FilterValue::Null => {
-            let ids: Vec<i64> = tasks::table
-                .filter(tasks::user_id.eq(user_id))
-                .filter(tasks::parent_id.is_null())
-                .filter(tasks::column_id.is_null())
-                .select(tasks::id)
-                .load(&mut conn)
-                .await?;
-            return Ok(ids.into_iter().collect());
-        }
-        FilterOp::IsNot if cond.value == FilterValue::Null => {
-            let ids: Vec<i64> = tasks::table
-                .filter(tasks::user_id.eq(user_id))
-                .filter(tasks::parent_id.is_null())
-                .filter(tasks::column_id.is_not_null())
-                .select(tasks::id)
-                .load(&mut conn)
-                .await?;
-            return Ok(ids.into_iter().collect());
-        }
-        _ => {}
-    }
-
-    let col_name = value_as_str(&cond.value).unwrap_or("");
-
-    // Get user's project IDs to scope column lookup
-    let user_project_ids: Vec<i64> = projects::table
-        .filter(projects::user_id.eq(user_id))
-        .select(projects::id)
-        .load(&mut conn)
-        .await?;
-
-    let column_ids: Vec<i64> = match cond.op {
-        FilterOp::Eq => {
-            project_columns::table
-                .filter(project_columns::project_id.eq_any(&user_project_ids))
-                .filter(project_columns::name.ilike(col_name))
-                .select(project_columns::id)
-                .load(&mut conn)
-                .await?
-        }
-        FilterOp::Ne => {
-            let matching: Vec<i64> = project_columns::table
-                .filter(project_columns::project_id.eq_any(&user_project_ids))
-                .filter(project_columns::name.ilike(col_name))
-                .select(project_columns::id)
-                .load(&mut conn)
-                .await?;
-
-            let ids: Vec<i64> = tasks::table
-                .filter(tasks::user_id.eq(user_id))
-                .filter(tasks::parent_id.is_null())
-                .filter(
-                    tasks::column_id
-                        .is_null()
-                        .or(tasks::column_id.ne_all(&matching)),
-                )
-                .select(tasks::id)
-                .load(&mut conn)
-                .await?;
-            return Ok(ids.into_iter().collect());
-        }
-        FilterOp::GlobMatch => {
-            let pattern = glob_to_sql_like(col_name);
-            project_columns::table
-                .filter(project_columns::project_id.eq_any(&user_project_ids))
-                .filter(project_columns::name.ilike(pattern))
-                .select(project_columns::id)
-                .load(&mut conn)
-                .await?
-        }
-        FilterOp::In => {
-            let names = value_as_strings(&cond.value);
-            project_columns::table
-                .filter(project_columns::project_id.eq_any(&user_project_ids))
-                .filter(project_columns::name.eq_any(&names))
-                .select(project_columns::id)
-                .load(&mut conn)
-                .await?
-        }
-        _ => return Ok(HashSet::new()),
-    };
-
-    let ids: Vec<i64> = tasks::table
-        .filter(tasks::user_id.eq(user_id))
-        .filter(tasks::parent_id.is_null())
-        .filter(tasks::column_id.eq_any(&column_ids))
-        .select(tasks::id)
-        .load(&mut conn)
-        .await?;
-    Ok(ids.into_iter().collect())
 }
 
 enum DateField {

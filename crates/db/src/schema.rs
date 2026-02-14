@@ -2,6 +2,10 @@
 
 pub mod sql_types {
     #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "project_status"))]
+    pub struct ProjectStatus;
+
+    #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "project_view_type"))]
     pub struct ProjectViewType;
 
@@ -24,20 +28,9 @@ diesel::table! {
 }
 
 diesel::table! {
-    project_columns (id) {
-        id -> Int8,
-        project_id -> Int8,
-        name -> Text,
-        color -> Text,
-        position -> Int4,
-        is_done -> Bool,
-        created_at -> Timestamptz,
-    }
-}
-
-diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::ProjectViewType;
+    use super::sql_types::ProjectStatus;
 
     projects (id) {
         id -> Int8,
@@ -47,9 +40,9 @@ diesel::table! {
         color -> Text,
         view_type -> ProjectViewType,
         position -> Int4,
-        archived -> Bool,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
+        status -> ProjectStatus,
     }
 }
 
@@ -86,7 +79,6 @@ diesel::table! {
         id -> Int8,
         project_id -> Nullable<Int8>,
         parent_id -> Nullable<Int8>,
-        column_id -> Nullable<Int8>,
         user_id -> Int8,
         title -> Text,
         body -> Nullable<Text>,
@@ -119,23 +111,13 @@ diesel::table! {
 
 diesel::joinable!(images -> tasks (task_id));
 diesel::joinable!(images -> users (user_id));
-diesel::joinable!(project_columns -> projects (project_id));
 diesel::joinable!(projects -> users (user_id));
 diesel::joinable!(saved_filters -> users (user_id));
 diesel::joinable!(tags -> users (user_id));
 diesel::joinable!(task_tags -> tags (tag_id));
 diesel::joinable!(task_tags -> tasks (task_id));
-diesel::joinable!(tasks -> project_columns (column_id));
 diesel::joinable!(tasks -> projects (project_id));
 diesel::joinable!(tasks -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    images,
-    project_columns,
-    projects,
-    saved_filters,
-    tags,
-    task_tags,
-    tasks,
-    users,
-);
+    images,projects,saved_filters,tags,task_tags,tasks,users,);

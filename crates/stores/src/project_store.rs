@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use north_domain::{CreateProject, Project, ProjectStatus, UpdateProject};
+use north_domain::{CreateProject, Project, ProjectFilter, ProjectStatus, UpdateProject};
 use north_repositories::ProjectRepository;
 
 #[derive(Clone, Copy)]
@@ -20,8 +20,11 @@ impl ProjectStore {
     pub fn refetch(&self) {
         let store = *self;
         spawn_local(async move {
-            if let Ok(list) = ProjectRepository::list(Some(ProjectStatus::Active)).await {
-                store.load(list.into_iter().map(|pwc| pwc.project).collect());
+            let filter = ProjectFilter {
+                status: Some(ProjectStatus::Active),
+            };
+            if let Ok(list) = ProjectRepository::list(filter).await {
+                store.load(list);
             }
         });
     }
@@ -43,8 +46,8 @@ impl ProjectStore {
                 description: None,
                 view_type: None,
             };
-            if let Ok(pwc) = ProjectRepository::create(input).await {
-                store.projects.update(|list| list.push(pwc.project));
+            if let Ok(project) = ProjectRepository::create(input).await {
+                store.projects.update(|list| list.push(project));
             }
         });
     }
@@ -54,7 +57,7 @@ impl ProjectStore {
         store.projects.update(|list| list.retain(|p| p.id != id));
         spawn_local(async move {
             let input = UpdateProject {
-                archived: Some(true),
+                status: Some(ProjectStatus::Archived),
                 ..Default::default()
             };
             let _ = ProjectRepository::update(id, input).await;

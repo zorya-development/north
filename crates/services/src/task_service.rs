@@ -4,10 +4,10 @@ use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use north_db::models::{NewTask, TagRow, TaskChangeset, TaskRow};
-use north_db::schema::{project_columns, projects, tags, task_tags, tasks, users};
+use north_db::schema::{projects, tags, task_tags, tasks, users};
 use north_db::DbPool;
 use north_domain::{
-    CreateTask, MoveTask, TagInfo, Task, TaskFilter, TaskWithMeta, UpdateTask, UserSettings,
+    CreateTask, TagInfo, Task, TaskFilter, TaskWithMeta, UpdateTask, UserSettings,
 };
 
 use crate::tag_service::TagService;
@@ -42,7 +42,7 @@ impl TaskService {
             .filter(tasks::user_id.eq(user_id))
             .filter(tasks::start_at.is_not_null())
             .filter(tasks::completed_at.is_null())
-            .filter(tasks::project_id.is_null().or(projects::archived.eq(false)))
+            .filter(tasks::project_id.is_null().or(projects::status.eq(north_db::sql_types::ProjectStatusMapping::Active)))
             .order(tasks::start_at.asc())
             .select(TaskRow::as_select())
             .load(&mut conn)
@@ -67,7 +67,7 @@ impl TaskService {
             .left_join(projects::table.on(projects::id.nullable().eq(tasks::project_id)))
             .filter(tasks::user_id.eq(user_id))
             .filter(tasks::parent_id.is_null())
-            .filter(tasks::project_id.is_null().or(projects::archived.eq(false)))
+            .filter(tasks::project_id.is_null().or(projects::status.eq(north_db::sql_types::ProjectStatusMapping::Active)))
             .order((tasks::sort_key.asc(), tasks::created_at.desc()))
             .select(TaskRow::as_select())
             .load(&mut conn)
@@ -131,7 +131,7 @@ impl TaskService {
             .filter(tasks::user_id.eq(user_id))
             .filter(tasks::parent_id.is_null())
             .filter(tasks::completed_at.is_null())
-            .filter(tasks::project_id.is_null().or(projects::archived.eq(false)))
+            .filter(tasks::project_id.is_null().or(projects::status.eq(north_db::sql_types::ProjectStatusMapping::Active)))
             .filter(
                 tasks::reviewed_at
                     .is_null()
@@ -159,7 +159,7 @@ impl TaskService {
             .filter(tasks::parent_id.is_null())
             .filter(tasks::completed_at.is_null())
             .filter(tasks::reviewed_at.is_not_null())
-            .filter(tasks::project_id.is_null().or(projects::archived.eq(false)))
+            .filter(tasks::project_id.is_null().or(projects::status.eq(north_db::sql_types::ProjectStatusMapping::Active)))
             .order(tasks::reviewed_at.desc())
             .limit(50)
             .select(TaskRow::as_select())
@@ -208,7 +208,7 @@ impl TaskService {
             .ok_or_else(|| ServiceError::NotFound("Task not found".into()))
     }
 
-    pub async fn get_filtered(
+    pub async fn list(
         pool: &DbPool,
         user_id: i64,
         filter: &TaskFilter,
@@ -225,9 +225,6 @@ impl TaskService {
         }
         if let Some(parent_id) = filter.parent {
             query = query.filter(tasks::parent_id.eq(parent_id));
-        }
-        if let Some(column_id) = filter.column {
-            query = query.filter(tasks::column_id.eq(column_id));
         }
         if filter.inbox == Some(true) {
             query = query.filter(tasks::project_id.is_null());
@@ -395,7 +392,6 @@ impl TaskService {
                 body: clean_body.as_deref(),
                 project_id,
                 parent_id: None,
-                column_id: None,
                 sort_key: &sort_key,
                 start_at: None,
                 due_date: None,
@@ -458,7 +454,6 @@ impl TaskService {
                 body: input.body.as_deref(),
                 project_id: input.project_id,
                 parent_id: input.parent_id,
-                column_id: input.column_id,
                 sort_key: &sort_key,
                 start_at: input.start_at,
                 due_date: input.due_date,
@@ -584,6 +579,52 @@ impl TaskService {
         if let Some(ref sort_key) = input.sort_key {
             changeset.sort_key = Some(sort_key.as_str());
         }
+
+        // When project or parent changes and no explicit sort_key was
+        // provided, reset sort_key so the task lands at the bottom.
+        let new_sort_key;
+        let resolved_project = changeset.project_id.unwrap_or(existing.project_id);
+        let resolved_parent = changeset.parent_id.unwrap_or(existing.parent_id);
+        let project_changed = resolved_project != existing.project_id
+            || resolved_parent != existing.parent_id;
+        if project_changed && input.sort_key.is_none() {
+            let last_key: Option<String> = if let Some(pid) = resolved_parent {
+                tasks::table
+                    .filter(tasks::parent_id.eq(pid))
+                    .filter(tasks::user_id.eq(user_id))
+                    .filter(tasks::id.ne(id))
+                    .order(tasks::sort_key.desc())
+                    .select(tasks::sort_key)
+                    .first(&mut conn)
+                    .await
+                    .optional()?
+            } else if let Some(proj) = resolved_project {
+                tasks::table
+                    .filter(tasks::project_id.eq(proj))
+                    .filter(tasks::parent_id.is_null())
+                    .filter(tasks::user_id.eq(user_id))
+                    .filter(tasks::id.ne(id))
+                    .order(tasks::sort_key.desc())
+                    .select(tasks::sort_key)
+                    .first(&mut conn)
+                    .await
+                    .optional()?
+            } else {
+                tasks::table
+                    .filter(tasks::project_id.is_null())
+                    .filter(tasks::parent_id.is_null())
+                    .filter(tasks::user_id.eq(user_id))
+                    .filter(tasks::id.ne(id))
+                    .order(tasks::sort_key.desc())
+                    .select(tasks::sort_key)
+                    .first(&mut conn)
+                    .await
+                    .optional()?
+            };
+            new_sort_key = north_domain::sort_key_after(last_key.as_deref());
+            changeset.sort_key = Some(&new_sort_key);
+        }
+
         if let Some(sequential_limit) = input.sequential_limit {
             changeset.sequential_limit = Some(sequential_limit);
         }
@@ -597,27 +638,8 @@ impl TaskService {
             changeset.reviewed_at = Some(*reviewed_at);
         }
 
-        // Handle completed_at: explicit input takes precedence, then column-based logic
         if let Some(ref completed_at) = input.completed_at {
             changeset.completed_at = Some(*completed_at);
-        } else if let Some(ref column_id) = input.column_id {
-            // Column changed — derive completed_at from is_done flag
-            let effective_col = column_id.or(existing.column_id);
-            if effective_col != existing.column_id {
-                if let Some(col_id) = effective_col {
-                    let is_done = crate::ColumnService::is_done(pool, col_id).await?;
-                    if is_done == Some(true) {
-                        changeset.completed_at = Some(Some(Utc::now()));
-                    } else {
-                        changeset.completed_at = Some(None);
-                    }
-                }
-            }
-        }
-
-        // Apply column_id to changeset
-        if let Some(ref column_id) = input.column_id {
-            changeset.column_id = Some(*column_id);
         }
 
         let row = diesel::update(
@@ -656,80 +678,6 @@ impl TaskService {
                 }
             }
         }
-
-        Ok(Task::from(row))
-    }
-
-    pub async fn move_task(
-        pool: &DbPool,
-        user_id: i64,
-        id: i64,
-        input: &MoveTask,
-    ) -> ServiceResult<Task> {
-        let mut conn = pool.get().await?;
-
-        let existing = tasks::table
-            .filter(tasks::id.eq(id))
-            .filter(tasks::user_id.eq(user_id))
-            .select(TaskRow::as_select())
-            .first(&mut conn)
-            .await
-            .optional()?
-            .ok_or_else(|| ServiceError::NotFound("Task not found".into()))?;
-
-        let new_column_id = input.column_id.or(existing.column_id);
-        let new_sort_key = input.sort_key.as_deref().unwrap_or(&existing.sort_key);
-        let new_parent_id = match &input.parent_id {
-            Some(pid) => *pid,          // Some(None)=unnest, Some(Some(id))=nest
-            None => existing.parent_id, // no change
-        };
-
-        // When nesting under a new parent, inherit parent's project_id
-        let new_project_id = if input.parent_id.is_some() {
-            if let Some(pid) = new_parent_id {
-                let parent_project: Option<i64> = tasks::table
-                    .filter(tasks::id.eq(pid))
-                    .select(tasks::project_id)
-                    .first(&mut conn)
-                    .await
-                    .optional()?
-                    .flatten();
-                parent_project
-            } else {
-                existing.project_id
-            }
-        } else {
-            existing.project_id
-        };
-
-        // Handle completed_at based on column change
-        let completed_at = if input.column_id.is_some() && input.column_id != existing.column_id {
-            if let Some(col_id) = new_column_id {
-                let is_done = crate::ColumnService::is_done(pool, col_id).await?;
-                if is_done == Some(true) {
-                    Some(Utc::now())
-                } else {
-                    None
-                }
-            } else {
-                existing.completed_at
-            }
-        } else {
-            existing.completed_at
-        };
-
-        let row = diesel::update(tasks::table.filter(tasks::id.eq(id)))
-            .set(&TaskChangeset {
-                column_id: Some(new_column_id),
-                sort_key: Some(new_sort_key),
-                parent_id: Some(new_parent_id),
-                project_id: Some(new_project_id),
-                completed_at: Some(completed_at),
-                ..Default::default()
-            })
-            .returning(TaskRow::as_returning())
-            .get_result(&mut conn)
-            .await?;
 
         Ok(Task::from(row))
     }
@@ -1062,55 +1010,6 @@ impl TaskService {
         Ok(())
     }
 
-    pub async fn set_column(
-        pool: &DbPool,
-        user_id: i64,
-        id: i64,
-        column_id: i64,
-    ) -> ServiceResult<()> {
-        let mut conn = pool.get().await?;
-
-        // Check if column is_done
-        let is_done = crate::ColumnService::is_done(pool, column_id).await?;
-        let completed_at = if is_done == Some(true) {
-            Some(Utc::now())
-        } else {
-            None
-        };
-
-        let affected = diesel::update(
-            tasks::table
-                .filter(tasks::id.eq(id))
-                .filter(tasks::user_id.eq(user_id)),
-        )
-        .set((
-            tasks::column_id.eq(Some(column_id)),
-            tasks::completed_at.eq(completed_at),
-        ))
-        .execute(&mut conn)
-        .await?;
-        if affected == 0 {
-            return Err(ServiceError::NotFound("Task not found".into()));
-        }
-        Ok(())
-    }
-
-    pub async fn clear_column(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<()> {
-        let mut conn = pool.get().await?;
-        let affected = diesel::update(
-            tasks::table
-                .filter(tasks::id.eq(id))
-                .filter(tasks::user_id.eq(user_id)),
-        )
-        .set(tasks::column_id.eq(None::<i64>))
-        .execute(&mut conn)
-        .await?;
-        if affected == 0 {
-            return Err(ServiceError::NotFound("Task not found".into()));
-        }
-        Ok(())
-    }
-
     pub async fn set_sequential_limit(
         pool: &DbPool,
         user_id: i64,
@@ -1331,26 +1230,7 @@ impl TaskService {
             HashMap::new()
         };
 
-        // 2. Batch load column names
-        let column_ids: Vec<i64> = task_rows
-            .iter()
-            .filter_map(|t| t.column_id)
-            .collect::<std::collections::HashSet<_>>()
-            .into_iter()
-            .collect();
-        let col_map: HashMap<i64, String> = if !column_ids.is_empty() {
-            project_columns::table
-                .filter(project_columns::id.eq_any(&column_ids))
-                .select((project_columns::id, project_columns::name))
-                .load::<(i64, String)>(&mut conn)
-                .await?
-                .into_iter()
-                .collect()
-        } else {
-            HashMap::new()
-        };
-
-        // 3. Batch load tags via join table
+        // 2. Batch load tags via join table
         let tag_rows: Vec<(i64, TagRow)> = task_tags::table
             .inner_join(tags::table.on(tags::id.eq(task_tags::tag_id)))
             .filter(task_tags::task_id.eq_any(&task_ids))
@@ -1366,7 +1246,7 @@ impl TaskService {
                 .push(TagInfo::from(&tag));
         }
 
-        // 4. Batch load subtask counts
+        // 3. Batch load subtask counts
         let counts: Vec<(Option<i64>, i64)> = tasks::table
             .filter(tasks::parent_id.eq_any(&task_ids))
             .group_by(tasks::parent_id)
@@ -1378,7 +1258,7 @@ impl TaskService {
             .filter_map(|(pid, cnt)| pid.map(|id| (id, cnt)))
             .collect();
 
-        // 4b. Batch load completed subtask counts
+        // 3b. Batch load completed subtask counts
         let completed_counts: Vec<(Option<i64>, i64)> = tasks::table
             .filter(tasks::parent_id.eq_any(&task_ids))
             .filter(tasks::completed_at.is_not_null())
@@ -1391,14 +1271,13 @@ impl TaskService {
             .filter_map(|(pid, cnt)| pid.map(|id| (id, cnt)))
             .collect();
 
-        // 5. Assemble
+        // 4. Assemble
         Ok(task_rows
             .into_iter()
             .map(|row| {
                 let id = row.id;
                 TaskWithMeta {
                     project_title: row.project_id.and_then(|pid| proj_map.get(&pid).cloned()),
-                    column_name: row.column_id.and_then(|cid| col_map.get(&cid).cloned()),
                     tags: tags_map.remove(&id).unwrap_or_default(),
                     subtask_count: count_map.get(&id).copied().unwrap_or(0),
                     completed_subtask_count: completed_count_map.get(&id).copied().unwrap_or(0),

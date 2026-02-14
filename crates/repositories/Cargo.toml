@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-ssr = ["north-api/ssr"]
-hydrate = ["north-api/hydrate"]
+ssr = ["north-server-fns/ssr"]
+hydrate = ["north-server-fns/hydrate"]
 
 [dependencies]
 north-domain = { workspace = true }
-north-api = { workspace = true }
+north-server-fns = { workspace = true }
 leptos = "0.7"

@@ -728,17 +728,6 @@ mod tests {
     }
 
     #[test]
-    fn test_column_value() {
-        let ctx = detect_completion_context("column = ", 9);
-        assert!(matches!(ctx, DslCompletionContext::FieldValue {
-            field: FilterField::Column,
-            ref partial,
-            ..
-        } if partial.is_empty()
-        ));
-    }
-
-    #[test]
     fn test_order_by_field() {
         let ctx = detect_completion_context("status = 'ACTIVE' ORDER BY ", 27);
         assert!(

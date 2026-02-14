@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use leptos::prelude::*;
 use leptos::wasm_bindgen::JsCast;
 use north_domain::{detect_completion_context, DslCompletionContext, FilterField};
@@ -9,7 +7,7 @@ use crate::stores::lookup_store::LookupStore;
 use north_stores::AppStore;
 
 const FIELD_NAMES: &[&str] = &[
-    "title", "body", "project", "tags", "status", "due_date", "start_at", "column", "created",
+    "title", "body", "project", "tags", "status", "due_date", "start_at", "created",
     "updated",
 ];
 
@@ -56,7 +54,7 @@ fn get_dsl_suggestions(
                     projects
                         .into_iter()
                         .filter(|p| {
-                            !p.archived
+                            p.status == north_domain::ProjectStatus::Active
                                 && (partial_lower.is_empty()
                                     || p.title.to_lowercase().contains(&partial_lower))
                         })
@@ -76,26 +74,6 @@ fn get_dsl_suggestions(
                         color: "#6b7280".into(),
                     })
                     .collect(),
-                FilterField::Column => {
-                    let columns = lookup
-                        .columns
-                        .get()
-                        .and_then(|r| r.ok())
-                        .unwrap_or_default();
-                    let mut seen = HashSet::new();
-                    columns
-                        .into_iter()
-                        .filter(|c| {
-                            let name_lower = c.name.to_lowercase();
-                            (partial_lower.is_empty() || name_lower.contains(&partial_lower))
-                                && seen.insert(name_lower)
-                        })
-                        .map(|c| SuggestionItem {
-                            name: c.name,
-                            color: c.color,
-                        })
-                        .collect()
-                }
                 _ => vec![],
             }
         }
@@ -128,10 +106,10 @@ fn insert_dsl_completion(
         || matches!(
             ctx,
             DslCompletionContext::FieldValue {
-                field: FilterField::Tags | FilterField::Project | FilterField::Column,
+                field: FilterField::Tags | FilterField::Project,
                 ..
             } | DslCompletionContext::ArrayValue {
-                field: FilterField::Tags | FilterField::Project | FilterField::Column,
+                field: FilterField::Tags | FilterField::Project,
                 ..
             }
         );
