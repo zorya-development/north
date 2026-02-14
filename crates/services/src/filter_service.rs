@@ -21,11 +21,7 @@ impl FilterService {
         Ok(rows.into_iter().map(SavedFilter::from).collect())
     }
 
-    pub async fn get_by_id(
-        pool: &DbPool,
-        user_id: i64,
-        id: i64,
-    ) -> ServiceResult<SavedFilter> {
+    pub async fn get_by_id(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<SavedFilter> {
         let mut conn = pool.get().await?;
         let row = saved_filters::table
             .filter(saved_filters::id.eq(id))
@@ -47,7 +43,10 @@ impl FilterService {
         // Validate query parses
         north_domain::parse_filter(query).map_err(|errs| {
             ServiceError::BadRequest(
-                errs.into_iter().map(|e| e.to_string()).collect::<Vec<_>>().join("; "),
+                errs.into_iter()
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>()
+                    .join("; "),
             )
         })?;
 

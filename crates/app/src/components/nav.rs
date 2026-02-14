@@ -1,10 +1,11 @@
 use leptos::prelude::*;
 use leptos_router::hooks::use_location;
 
+use crate::components::drag_drop::DragDropContext;
 use crate::components::theme_toggle::ThemeToggle;
 use crate::server_fns::filters::get_saved_filters;
 use crate::server_fns::projects::{
-    archive_project, create_project, get_projects, update_project_details,
+    archive_project, create_project, get_projects, set_task_project, update_project_details,
 };
 use north_ui::{Icon, IconKind};
 
@@ -229,6 +230,7 @@ fn ProjectItem(
     on_edit: impl Fn(i64, String, String) + Send + Sync + 'static,
 ) -> impl IntoView {
     let (hover, set_hover) = signal(false);
+    let (drag_over, set_drag_over) = signal(false);
     let (editing, set_editing) = signal(false);
     let (edit_title, set_edit_title) = signal(title.clone());
     let (edit_color, set_edit_color) = signal(color.clone());
@@ -237,15 +239,23 @@ fn ProjectItem(
     let href = format!("/projects/{id}");
     let location = use_location();
     let href_cmp = href.clone();
+    let drag_ctx = use_context::<DragDropContext>();
+
+    let set_project_action = Action::new(move |input: &(i64, i64)| {
+        let (task_id, project_id) = *input;
+        set_task_project(task_id, project_id)
+    });
 
     let class = Memo::new(move |_| {
         let base = "group flex items-center gap-2 px-3 py-1.5 rounded-lg \
                     text-sm text-text-primary hover:bg-bg-tertiary \
                     select-none transition-colors";
-        if location.pathname.get() == href_cmp {
-            format!("{base} bg-bg-tertiary font-medium")
-        } else {
-            base.to_string()
+        let active = location.pathname.get() == href_cmp;
+        let dragging = drag_over.get();
+        match (active, dragging) {
+            (_, true) => format!("{base} bg-accent/20 ring-1 ring-accent"),
+            (true, false) => format!("{base} bg-bg-tertiary font-medium"),
+            _ => base.to_string(),
         }
     });
 
@@ -267,6 +277,32 @@ fn ProjectItem(
                             class=class
                             on:mouseenter=move |_| set_hover.set(true)
                             on:mouseleave=move |_| set_hover.set(false)
+                            on:dragover=move |ev: web_sys::DragEvent| {
+                                if drag_ctx
+                                    .and_then(|c| c.dragging_task_id.get_untracked())
+                                    .is_some()
+                                {
+                                    ev.prevent_default();
+                                    set_drag_over.set(true);
+                                }
+                            }
+                            on:dragleave=move |_: web_sys::DragEvent| {
+                                set_drag_over.set(false);
+                            }
+                            on:drop=move |ev: web_sys::DragEvent| {
+                                ev.prevent_default();
+                                set_drag_over.set(false);
+                                if let Some(ctx) = drag_ctx {
+                                    if let Some(task_id) =
+                                        ctx.dragging_task_id.get_untracked()
+                                    {
+                                        set_project_action
+                                            .dispatch((task_id, id));
+                                        ctx.dragging_task_id.set(None);
+                                        ctx.drop_target.set(None);
+                                    }
+                                }
+                            }
                         >
                             <span
                                 class="w-3 h-3 rounded-full flex-shrink-0"

@@ -53,36 +53,16 @@ async fn eval_condition(
     cond: &Condition,
 ) -> ServiceResult<HashSet<i64>> {
     match cond.field {
-        FilterField::Title => {
-            eval_text_field(pool, user_id, cond, TextField::Title).await
-        }
-        FilterField::Body => {
-            eval_text_field(pool, user_id, cond, TextField::Body).await
-        }
-        FilterField::Status => {
-            eval_status(pool, user_id, cond).await
-        }
-        FilterField::Project => {
-            eval_project(pool, user_id, cond).await
-        }
-        FilterField::Tags => {
-            eval_tags(pool, user_id, cond).await
-        }
-        FilterField::Column => {
-            eval_column(pool, user_id, cond).await
-        }
-        FilterField::DueDate => {
-            eval_date_field(pool, user_id, cond, DateField::DueDate).await
-        }
-        FilterField::StartAt => {
-            eval_date_field(pool, user_id, cond, DateField::StartAt).await
-        }
-        FilterField::Created => {
-            eval_date_field(pool, user_id, cond, DateField::Created).await
-        }
-        FilterField::Updated => {
-            eval_date_field(pool, user_id, cond, DateField::Updated).await
-        }
+        FilterField::Title => eval_text_field(pool, user_id, cond, TextField::Title).await,
+        FilterField::Body => eval_text_field(pool, user_id, cond, TextField::Body).await,
+        FilterField::Status => eval_status(pool, user_id, cond).await,
+        FilterField::Project => eval_project(pool, user_id, cond).await,
+        FilterField::Tags => eval_tags(pool, user_id, cond).await,
+        FilterField::Column => eval_column(pool, user_id, cond).await,
+        FilterField::DueDate => eval_date_field(pool, user_id, cond, DateField::DueDate).await,
+        FilterField::StartAt => eval_date_field(pool, user_id, cond, DateField::StartAt).await,
+        FilterField::Created => eval_date_field(pool, user_id, cond, DateField::Created).await,
+        FilterField::Updated => eval_date_field(pool, user_id, cond, DateField::Updated).await,
     }
 }
 
@@ -179,15 +159,9 @@ async fn eval_text_field(
     Ok(ids.into_iter().collect())
 }
 
-async fn eval_status(
-    pool: &DbPool,
-    user_id: i64,
-    cond: &Condition,
-) -> ServiceResult<HashSet<i64>> {
+async fn eval_status(pool: &DbPool, user_id: i64, cond: &Condition) -> ServiceResult<HashSet<i64>> {
     let mut conn = pool.get().await?;
-    let s = value_as_str(&cond.value)
-        .unwrap_or("")
-        .to_uppercase();
+    let s = value_as_str(&cond.value).unwrap_or("").to_uppercase();
 
     let mut query = tasks::table
         .filter(tasks::user_id.eq(user_id))
@@ -354,11 +328,7 @@ async fn eval_project(
     Ok(ids.into_iter().collect())
 }
 
-async fn eval_tags(
-    pool: &DbPool,
-    user_id: i64,
-    cond: &Condition,
-) -> ServiceResult<HashSet<i64>> {
+async fn eval_tags(pool: &DbPool, user_id: i64, cond: &Condition) -> ServiceResult<HashSet<i64>> {
     let mut conn = pool.get().await?;
 
     // Find matching tag IDs
@@ -464,11 +434,7 @@ async fn eval_tags(
     Ok(all.intersection(&tagged).copied().collect())
 }
 
-async fn eval_column(
-    pool: &DbPool,
-    user_id: i64,
-    cond: &Condition,
-) -> ServiceResult<HashSet<i64>> {
+async fn eval_column(pool: &DbPool, user_id: i64, cond: &Condition) -> ServiceResult<HashSet<i64>> {
     let mut conn = pool.get().await?;
 
     match cond.op {
@@ -611,10 +577,9 @@ async fn eval_date_field(
 
     match field {
         DateField::DueDate => {
-            let date = chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
-                .map_err(|_| crate::ServiceError::BadRequest(
-                    format!("Invalid date format: {date_str}")
-                ))?;
+            let date = chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d").map_err(|_| {
+                crate::ServiceError::BadRequest(format!("Invalid date format: {date_str}"))
+            })?;
 
             let mut query = tasks::table
                 .filter(tasks::user_id.eq(user_id))
@@ -623,9 +588,9 @@ async fn eval_date_field(
 
             match cond.op {
                 FilterOp::Eq => query = query.filter(tasks::due_date.eq(date)),
-                FilterOp::Ne => query = query.filter(
-                    tasks::due_date.ne(date).or(tasks::due_date.is_null()),
-                ),
+                FilterOp::Ne => {
+                    query = query.filter(tasks::due_date.ne(date).or(tasks::due_date.is_null()))
+                }
                 FilterOp::Gt => query = query.filter(tasks::due_date.gt(date)),
                 FilterOp::Lt => query = query.filter(tasks::due_date.lt(date)),
                 FilterOp::Gte => query = query.filter(tasks::due_date.ge(date)),
@@ -638,9 +603,7 @@ async fn eval_date_field(
         }
         DateField::StartAt => {
             let dt = parse_datetime(date_str).map_err(|_| {
-                crate::ServiceError::BadRequest(
-                    format!("Invalid datetime format: {date_str}")
-                )
+                crate::ServiceError::BadRequest(format!("Invalid datetime format: {date_str}"))
             })?;
 
             let mut query = tasks::table
@@ -650,9 +613,9 @@ async fn eval_date_field(
 
             match cond.op {
                 FilterOp::Eq => query = query.filter(tasks::start_at.eq(dt)),
-                FilterOp::Ne => query = query.filter(
-                    tasks::start_at.ne(dt).or(tasks::start_at.is_null()),
-                ),
+                FilterOp::Ne => {
+                    query = query.filter(tasks::start_at.ne(dt).or(tasks::start_at.is_null()))
+                }
                 FilterOp::Gt => query = query.filter(tasks::start_at.gt(dt)),
                 FilterOp::Lt => query = query.filter(tasks::start_at.lt(dt)),
                 FilterOp::Gte => query = query.filter(tasks::start_at.ge(dt)),
@@ -665,9 +628,7 @@ async fn eval_date_field(
         }
         DateField::Created => {
             let dt = parse_datetime(date_str).map_err(|_| {
-                crate::ServiceError::BadRequest(
-                    format!("Invalid datetime format: {date_str}")
-                )
+                crate::ServiceError::BadRequest(format!("Invalid datetime format: {date_str}"))
             })?;
 
             let mut query = tasks::table
@@ -688,9 +649,7 @@ async fn eval_date_field(
         }
         DateField::Updated => {
             let dt = parse_datetime(date_str).map_err(|_| {
-                crate::ServiceError::BadRequest(
-                    format!("Invalid datetime format: {date_str}")
-                )
+                crate::ServiceError::BadRequest(format!("Invalid datetime format: {date_str}"))
             })?;
 
             let mut query = tasks::table
@@ -712,21 +671,15 @@ async fn eval_date_field(
     }
 }
 
-fn parse_datetime(
-    s: &str,
-) -> Result<chrono::DateTime<chrono::Utc>, chrono::ParseError> {
+fn parse_datetime(s: &str) -> Result<chrono::DateTime<chrono::Utc>, chrono::ParseError> {
     // Try date-only first (YYYY-MM-DD), convert to start of day UTC
     if let Ok(date) = chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d") {
-        let dt = date
-            .and_hms_opt(0, 0, 0)
-            .unwrap()
-            .and_utc();
+        let dt = date.and_hms_opt(0, 0, 0).unwrap().and_utc();
         return Ok(dt);
     }
     // Try ISO datetime
     if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S") {
         return Ok(dt.and_utc());
     }
-    chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M")
-        .map(|dt| dt.and_utc())
+    chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M").map(|dt| dt.and_utc())
 }

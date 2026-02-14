@@ -188,9 +188,7 @@ pub async fn get_subtasks(parent_id: i64) -> Result<Vec<TaskWithMeta>, ServerFnE
 }
 
 #[server(GetTaskAncestorsFn, "/api")]
-pub async fn get_task_ancestors(
-    id: i64,
-) -> Result<Vec<(i64, String, i64)>, ServerFnError> {
+pub async fn get_task_ancestors(id: i64) -> Result<Vec<(i64, String, i64)>, ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
     north_services::TaskService::get_ancestors(&pool, user_id, id)

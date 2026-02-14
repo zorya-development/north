@@ -35,8 +35,7 @@ pub fn FilterPage() -> impl IntoView {
     let modal_input_ref = NodeRef::<leptos::html::Input>::new();
 
     let is_dirty = Memo::new(move |_| {
-        title_text.get() != original_title.get()
-            || query_text.get() != original_query.get()
+        title_text.get() != original_title.get() || query_text.get() != original_query.get()
     });
 
     // Load existing filter if editing
@@ -110,9 +109,7 @@ pub fn FilterPage() -> impl IntoView {
         let (id, title, query) = input.clone();
         async move {
             match id {
-                Some(id) => {
-                    update_saved_filter(id, Some(title), Some(query)).await
-                }
+                Some(id) => update_saved_filter(id, Some(title), Some(query)).await,
                 None => create_saved_filter(title, query).await,
             }
         }
@@ -126,10 +123,7 @@ pub fn FilterPage() -> impl IntoView {
             set_original_query.set(filter.query.clone());
             set_is_editing_title.set(false);
             if filter_id.get_untracked().is_none() {
-                navigate_save(
-                    &format!("/filters/{}", filter.id),
-                    Default::default(),
-                );
+                navigate_save(&format!("/filters/{}", filter.id), Default::default());
             }
         }
     });

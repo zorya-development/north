@@ -16,7 +16,11 @@ impl LookupStore {
         let tags = Resource::new(|| (), |_| get_tags());
         let projects = Resource::new(|| (), |_| get_projects());
         let columns = Resource::new(|| (), |_| get_all_columns());
-        Self { tags, projects, columns }
+        Self {
+            tags,
+            projects,
+            columns,
+        }
     }
 
     pub fn refetch_tags(&self) {

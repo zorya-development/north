@@ -8,8 +8,8 @@ use north_ui::{AutocompleteDropdown, SuggestionItem};
 use crate::stores::lookup_store::LookupStore;
 
 const FIELD_NAMES: &[&str] = &[
-    "title", "body", "project", "tags", "status",
-    "due_date", "start_at", "column", "created", "updated",
+    "title", "body", "project", "tags", "status", "due_date", "start_at", "column", "created",
+    "updated",
 ];
 
 const STATUS_VALUES: &[&str] = &["ACTIVE", "OPEN", "COMPLETED", "DONE"];
@@ -65,19 +65,16 @@ fn get_dsl_suggestions(lookup: &LookupStore, ctx: &DslCompletionContext) -> Vec<
                         })
                         .collect()
                 }
-                FilterField::Status => {
-                    STATUS_VALUES
-                        .iter()
-                        .filter(|s| {
-                            partial_lower.is_empty()
-                                || s.to_lowercase().starts_with(&partial_lower)
-                        })
-                        .map(|s| SuggestionItem {
-                            name: s.to_string(),
-                            color: "#6b7280".into(),
-                        })
-                        .collect()
-                }
+                FilterField::Status => STATUS_VALUES
+                    .iter()
+                    .filter(|s| {
+                        partial_lower.is_empty() || s.to_lowercase().starts_with(&partial_lower)
+                    })
+                    .map(|s| SuggestionItem {
+                        name: s.to_string(),
+                        color: "#6b7280".into(),
+                    })
+                    .collect(),
                 FilterField::Column => {
                     let columns = lookup
                         .columns
@@ -89,8 +86,7 @@ fn get_dsl_suggestions(lookup: &LookupStore, ctx: &DslCompletionContext) -> Vec<
                         .into_iter()
                         .filter(|c| {
                             let name_lower = c.name.to_lowercase();
-                            (partial_lower.is_empty()
-                                || name_lower.contains(&partial_lower))
+                            (partial_lower.is_empty() || name_lower.contains(&partial_lower))
                                 && seen.insert(name_lower)
                         })
                         .map(|c| SuggestionItem {
@@ -131,14 +127,10 @@ fn insert_dsl_completion(
         || matches!(
             ctx,
             DslCompletionContext::FieldValue {
-                field: FilterField::Tags
-                    | FilterField::Project
-                    | FilterField::Column,
+                field: FilterField::Tags | FilterField::Project | FilterField::Column,
                 ..
             } | DslCompletionContext::ArrayValue {
-                field: FilterField::Tags
-                    | FilterField::Project
-                    | FilterField::Column,
+                field: FilterField::Tags | FilterField::Project | FilterField::Column,
                 ..
             }
         );
@@ -166,8 +158,7 @@ pub fn FilterAutocompleteTextarea(
     let lookup = use_context::<LookupStore>();
     let (highlighted, set_highlighted) = signal(0_usize);
     let (suggestions, set_suggestions) = signal(Vec::<SuggestionItem>::new());
-    let (completion_ctx, set_completion_ctx) =
-        signal(DslCompletionContext::None);
+    let (completion_ctx, set_completion_ctx) = signal(DslCompletionContext::None);
     let textarea_ref = NodeRef::<leptos::html::Textarea>::new();
 
     let update_suggestions = move |val: &str, cursor: usize| {
@@ -194,9 +185,7 @@ pub fn FilterAutocompleteTextarea(
             DslCompletionContext::ArrayValue { start, partial, .. } => {
                 (*start, start + partial.len())
             }
-            DslCompletionContext::Keyword { start, partial, .. } => {
-                (*start, start + partial.len())
-            }
+            DslCompletionContext::Keyword { start, partial, .. } => (*start, start + partial.len()),
             DslCompletionContext::None => return,
         };
 

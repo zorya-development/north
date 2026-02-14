@@ -61,9 +61,7 @@ pub async fn delete_saved_filter(id: i64) -> Result<(), ServerFnError> {
 }
 
 #[server(ExecuteFilterFn, "/api")]
-pub async fn execute_filter(
-    query: String,
-) -> Result<Vec<TaskWithMeta>, ServerFnError> {
+pub async fn execute_filter(query: String) -> Result<Vec<TaskWithMeta>, ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
     north_services::TaskService::execute_dsl_filter(&pool, user_id, &query)

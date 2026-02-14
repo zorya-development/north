@@ -49,7 +49,7 @@ pub fn TaskMeta(
                         <span class="inline-flex items-center gap-0.5 \
                                      text-text-secondary \
                                      hover:text-accent cursor-pointer \
-                                     transition-colors"
+                                     transition-colors pl-2"
                             on:click=move |ev| {
                                 ev.stop_propagation();
                                 if let Some(cb) = on_toggle_subtasks {

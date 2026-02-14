@@ -2,10 +2,24 @@ use crate::filter_dsl::FilterField;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DslCompletionContext {
-    FieldName { partial: String, start: usize },
-    FieldValue { field: FilterField, partial: String, start: usize },
-    ArrayValue { field: FilterField, partial: String, start: usize },
-    Keyword { partial: String, start: usize },
+    FieldName {
+        partial: String,
+        start: usize,
+    },
+    FieldValue {
+        field: FilterField,
+        partial: String,
+        start: usize,
+    },
+    ArrayValue {
+        field: FilterField,
+        partial: String,
+        start: usize,
+    },
+    Keyword {
+        partial: String,
+        start: usize,
+    },
     None,
 }
 
@@ -37,11 +51,26 @@ fn tokenize_for_context(text: &str, cursor: usize) -> Vec<ContextToken> {
         let start = pos;
 
         match chars[pos] {
-            '(' => { tokens.push(ContextToken::LParen); pos += 1; }
-            ')' => { tokens.push(ContextToken::RParen); pos += 1; }
-            '[' => { tokens.push(ContextToken::LBracket(start)); pos += 1; }
-            ']' => { tokens.push(ContextToken::RBracket); pos += 1; }
-            ',' => { tokens.push(ContextToken::Comma); pos += 1; }
+            '(' => {
+                tokens.push(ContextToken::LParen);
+                pos += 1;
+            }
+            ')' => {
+                tokens.push(ContextToken::RParen);
+                pos += 1;
+            }
+            '[' => {
+                tokens.push(ContextToken::LBracket(start));
+                pos += 1;
+            }
+            ']' => {
+                tokens.push(ContextToken::RBracket);
+                pos += 1;
+            }
+            ',' => {
+                tokens.push(ContextToken::Comma);
+                pos += 1;
+            }
             '=' | '!' | '>' | '<' => {
                 tokens.push(ContextToken::Operator);
                 pos += 1;
@@ -66,9 +95,7 @@ fn tokenize_for_context(text: &str, cursor: usize) -> Vec<ContextToken> {
             }
             c if c.is_alphanumeric() || c == '_' => {
                 let mut ident = String::new();
-                while pos < chars.len()
-                    && (chars[pos].is_alphanumeric() || chars[pos] == '_')
-                {
+                while pos < chars.len() && (chars[pos].is_alphanumeric() || chars[pos] == '_') {
                     ident.push(chars[pos]);
                     pos += 1;
                 }
@@ -107,7 +134,9 @@ fn tokenize_for_context(text: &str, cursor: usize) -> Vec<ContextToken> {
                 }
                 tokens.push(ContextToken::Ident("_number".into(), start));
             }
-            _ => { pos += 1; }
+            _ => {
+                pos += 1;
+            }
         }
     }
 
@@ -115,10 +144,7 @@ fn tokenize_for_context(text: &str, cursor: usize) -> Vec<ContextToken> {
 }
 
 fn is_operator_keyword(s: &str) -> bool {
-    matches!(
-        s.to_uppercase().as_str(),
-        "IS" | "IN" | "NOT"
-    )
+    matches!(s.to_uppercase().as_str(), "IS" | "IN" | "NOT")
 }
 
 pub fn detect_completion_context(text: &str, cursor: usize) -> DslCompletionContext {
@@ -173,16 +199,10 @@ pub fn detect_completion_context(text: &str, cursor: usize) -> DslCompletionCont
 
             // After ORDER BY → field name
             if preceding.len() >= 2 {
-                if let (
-                    Some(ContextToken::Ident(s1, _)),
-                    Some(ContextToken::Ident(s2, _)),
-                ) = (
-                    preceding.get(preceding.len() - 2),
-                    preceding.last(),
-                ) {
-                    if s1.eq_ignore_ascii_case("ORDER")
-                        && s2.eq_ignore_ascii_case("BY")
-                    {
+                if let (Some(ContextToken::Ident(s1, _)), Some(ContextToken::Ident(s2, _))) =
+                    (preceding.get(preceding.len() - 2), preceding.last())
+                {
+                    if s1.eq_ignore_ascii_case("ORDER") && s2.eq_ignore_ascii_case("BY") {
                         return DslCompletionContext::FieldName {
                             partial: partial.clone(),
                             start: *start,
@@ -404,7 +424,7 @@ fn find_array_field(tokens: &[ContextToken]) -> Option<FilterField> {
                             i - 2
                         };
                         if let ContextToken::Ident(field_name, _)
-                            | ContextToken::Partial(field_name, _) = &non_bracket[field_idx]
+                        | ContextToken::Partial(field_name, _) = &non_bracket[field_idx]
                         {
                             return FilterField::from_str_ci(field_name);
                         }
@@ -415,7 +435,7 @@ fn find_array_field(tokens: &[ContextToken]) -> Option<FilterField> {
                 if let ContextToken::Ident(kw, _) = &non_bracket[i - 1] {
                     if kw.eq_ignore_ascii_case("in") && i >= 2 {
                         if let ContextToken::Ident(field_name, _)
-                            | ContextToken::Partial(field_name, _) = &non_bracket[i - 2]
+                        | ContextToken::Partial(field_name, _) = &non_bracket[i - 2]
                         {
                             return FilterField::from_str_ci(field_name);
                         }
@@ -436,9 +456,7 @@ fn find_field_before_operator(tokens: &[&ContextToken]) -> Option<FilterField> {
 
     // Last token is operator
     if matches!(tokens[len - 1], ContextToken::Operator) && len >= 2 {
-        if let ContextToken::Ident(name, _) | ContextToken::Partial(name, _) =
-            tokens[len - 2]
-        {
+        if let ContextToken::Ident(name, _) | ContextToken::Partial(name, _) = tokens[len - 2] {
             return FilterField::from_str_ci(name);
         }
     }
@@ -446,9 +464,7 @@ fn find_field_before_operator(tokens: &[&ContextToken]) -> Option<FilterField> {
     // Last token is 'is' or 'in' (keyword operators)
     if let ContextToken::Ident(kw, _) = tokens[len - 1] {
         if (kw.eq_ignore_ascii_case("is") || kw.eq_ignore_ascii_case("in")) && len >= 2 {
-            if let ContextToken::Ident(name, _) | ContextToken::Partial(name, _) =
-                tokens[len - 2]
-            {
+            if let ContextToken::Ident(name, _) | ContextToken::Partial(name, _) = tokens[len - 2] {
                 return FilterField::from_str_ci(name);
             }
         }
@@ -491,12 +507,7 @@ fn is_after_condition(tokens: &[ContextToken]) -> bool {
     // Walk backwards to determine if the last thing is a complete value
     let meaningful: Vec<_> = tokens
         .iter()
-        .filter(|t| {
-            !matches!(
-                t,
-                ContextToken::LParen | ContextToken::RParen
-            )
-        })
+        .filter(|t| !matches!(t, ContextToken::LParen | ContextToken::RParen))
         .collect();
 
     let len = meaningful.len();
@@ -567,33 +578,41 @@ mod tests {
     #[test]
     fn test_empty_input() {
         let ctx = detect_completion_context("", 0);
-        assert!(matches!(ctx, DslCompletionContext::FieldName { ref partial, start }
-            if partial.is_empty() && start == 0
-        ));
+        assert!(
+            matches!(ctx, DslCompletionContext::FieldName { ref partial, start }
+                if partial.is_empty() && start == 0
+            )
+        );
     }
 
     #[test]
     fn test_partial_field_name() {
         let ctx = detect_completion_context("sta", 3);
-        assert!(matches!(ctx, DslCompletionContext::FieldName { ref partial, start }
-            if partial == "sta" && start == 0
-        ));
+        assert!(
+            matches!(ctx, DslCompletionContext::FieldName { ref partial, start }
+                if partial == "sta" && start == 0
+            )
+        );
     }
 
     #[test]
     fn test_field_after_and() {
         let ctx = detect_completion_context("status = 'ACTIVE' AND ", 22);
-        assert!(matches!(ctx, DslCompletionContext::FieldName { ref partial, .. }
-            if partial.is_empty()
-        ));
+        assert!(
+            matches!(ctx, DslCompletionContext::FieldName { ref partial, .. }
+                if partial.is_empty()
+            )
+        );
     }
 
     #[test]
     fn test_field_after_and_partial() {
         let ctx = detect_completion_context("status = 'ACTIVE' AND ti", 24);
-        assert!(matches!(ctx, DslCompletionContext::FieldName { ref partial, .. }
-            if partial == "ti"
-        ));
+        assert!(
+            matches!(ctx, DslCompletionContext::FieldName { ref partial, .. }
+                if partial == "ti"
+            )
+        );
     }
 
     #[test]
@@ -621,17 +640,21 @@ mod tests {
     #[test]
     fn test_keyword_after_condition() {
         let ctx = detect_completion_context("status = 'ACTIVE' ", 18);
-        assert!(matches!(ctx, DslCompletionContext::Keyword { ref partial, .. }
-            if partial.is_empty()
-        ));
+        assert!(
+            matches!(ctx, DslCompletionContext::Keyword { ref partial, .. }
+                if partial.is_empty()
+            )
+        );
     }
 
     #[test]
     fn test_keyword_partial() {
         let ctx = detect_completion_context("status = 'ACTIVE' AN", 20);
-        assert!(matches!(ctx, DslCompletionContext::Keyword { ref partial, .. }
-            if partial == "AN"
-        ));
+        assert!(
+            matches!(ctx, DslCompletionContext::Keyword { ref partial, .. }
+                if partial == "AN"
+            )
+        );
     }
 
     #[test]
@@ -676,17 +699,21 @@ mod tests {
     #[test]
     fn test_field_after_paren() {
         let ctx = detect_completion_context("(", 1);
-        assert!(matches!(ctx, DslCompletionContext::FieldName { ref partial, .. }
-            if partial.is_empty()
-        ));
+        assert!(
+            matches!(ctx, DslCompletionContext::FieldName { ref partial, .. }
+                if partial.is_empty()
+            )
+        );
     }
 
     #[test]
     fn test_field_after_not() {
         let ctx = detect_completion_context("NOT ", 4);
-        assert!(matches!(ctx, DslCompletionContext::FieldName { ref partial, .. }
-            if partial.is_empty()
-        ));
+        assert!(
+            matches!(ctx, DslCompletionContext::FieldName { ref partial, .. }
+                if partial.is_empty()
+            )
+        );
     }
 
     #[test]
@@ -713,23 +740,21 @@ mod tests {
 
     #[test]
     fn test_order_by_field() {
-        let ctx = detect_completion_context(
-            "status = 'ACTIVE' ORDER BY ",
-            27,
+        let ctx = detect_completion_context("status = 'ACTIVE' ORDER BY ", 27);
+        assert!(
+            matches!(ctx, DslCompletionContext::FieldName { ref partial, .. }
+                if partial.is_empty()
+            )
         );
-        assert!(matches!(ctx, DslCompletionContext::FieldName { ref partial, .. }
-            if partial.is_empty()
-        ));
     }
 
     #[test]
     fn test_order_by_partial() {
-        let ctx = detect_completion_context(
-            "status = 'ACTIVE' ORDER BY du",
-            29,
+        let ctx = detect_completion_context("status = 'ACTIVE' ORDER BY du", 29);
+        assert!(
+            matches!(ctx, DslCompletionContext::FieldName { ref partial, .. }
+                if partial == "du"
+            )
         );
-        assert!(matches!(ctx, DslCompletionContext::FieldName { ref partial, .. }
-            if partial == "du"
-        ));
     }
 }

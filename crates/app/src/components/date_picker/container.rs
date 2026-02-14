@@ -12,9 +12,7 @@ pub fn DateTimePicker(
     #[prop(default = false)] icon_only: bool,
 ) -> impl IntoView {
     let has_start_at = start_at.is_some();
-    let is_overdue = start_at
-        .map(|dt| dt < Utc::now())
-        .unwrap_or(false);
+    let is_overdue = start_at.map(|dt| dt < Utc::now()).unwrap_or(false);
     let (popover_open, set_popover_open) = signal(false);
 
     let picked_date = RwSignal::new(String::new());

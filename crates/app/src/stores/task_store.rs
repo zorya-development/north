@@ -71,15 +71,14 @@ impl TaskStore {
             review_task(id)
         });
 
-        let reorder_action =
-            Action::new(|input: &(i64, String, Option<Option<i64>>)| {
-                let (task_id, sort_key, parent_id) = input.clone();
-                let (change_parent, new_parent_id) = match parent_id {
-                    Some(pid) => (true, pid),
-                    None => (false, None),
-                };
-                reorder_task(task_id, sort_key, change_parent, new_parent_id)
-            });
+        let reorder_action = Action::new(|input: &(i64, String, Option<Option<i64>>)| {
+            let (task_id, sort_key, parent_id) = input.clone();
+            let (change_parent, new_parent_id) = match parent_id {
+                Some(pid) => (true, pid),
+                None => (false, None),
+            };
+            reorder_task(task_id, sort_key, change_parent, new_parent_id)
+        });
 
         // Complete/uncomplete: do NOT refetch — task stays in place so the
         // user can undo a misclick. TaskListView handles local list movement.
@@ -171,11 +170,7 @@ impl TaskStore {
                 review_action.dispatch(id);
             }),
             on_reorder: Callback::new(
-                move |(task_id, sort_key, parent_id): (
-                    i64,
-                    String,
-                    Option<Option<i64>>,
-                )| {
+                move |(task_id, sort_key, parent_id): (i64, String, Option<Option<i64>>)| {
                     reorder_action.dispatch((task_id, sort_key, parent_id));
                 },
             ),

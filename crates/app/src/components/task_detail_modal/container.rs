@@ -11,10 +11,7 @@ pub struct TaskDetailContext {
 }
 
 #[component]
-pub fn TaskDetailModal(
-    task_ids: Signal<Vec<i64>>,
-    task_store: TaskStore,
-) -> impl IntoView {
+pub fn TaskDetailModal(task_ids: Signal<Vec<i64>>, task_store: TaskStore) -> impl IntoView {
     let ctx = expect_context::<TaskDetailContext>();
 
     let task_stack: RwSignal<Vec<i64>> = RwSignal::new(vec![]);
@@ -30,27 +27,25 @@ pub fn TaskDetailModal(
 
     let is_open = Memo::new(move |_| current_task_id.get().is_some());
 
-    let task_detail: Resource<Result<Option<TaskWithMeta>, ServerFnError>> =
-        Resource::new(
-            move || current_task_id.get(),
-            |id| async move {
-                match id {
-                    Some(id) => get_task_detail(id).await.map(Some),
-                    None => Ok(None),
-                }
-            },
-        );
+    let task_detail: Resource<Result<Option<TaskWithMeta>, ServerFnError>> = Resource::new(
+        move || current_task_id.get(),
+        |id| async move {
+            match id {
+                Some(id) => get_task_detail(id).await.map(Some),
+                None => Ok(None),
+            }
+        },
+    );
 
-    let ancestors: Resource<Result<Vec<(i64, String, i64)>, ServerFnError>> =
-        Resource::new(
-            move || current_task_id.get(),
-            |id| async move {
-                match id {
-                    Some(id) => get_task_ancestors(id).await,
-                    None => Ok(vec![]),
-                }
-            },
-        );
+    let ancestors: Resource<Result<Vec<(i64, String, i64)>, ServerFnError>> = Resource::new(
+        move || current_task_id.get(),
+        |id| async move {
+            match id {
+                Some(id) => get_task_ancestors(id).await,
+                None => Ok(vec![]),
+            }
+        },
+    );
 
     let on_close = Callback::new(move |()| {
         ctx.open_task_id.set(None);
@@ -198,11 +193,9 @@ pub fn TaskDetailModal(
         on_close.run(());
     });
 
-    let on_update = Callback::new(
-        move |(id, title, body): (i64, String, Option<String>)| {
-            task_store.on_update.run((id, title, body));
-        },
-    );
+    let on_update = Callback::new(move |(id, title, body): (i64, String, Option<String>)| {
+        task_store.on_update.run((id, title, body));
+    });
 
     let on_set_start_at = Callback::new(move |(id, start_at): (i64, String)| {
         task_store.on_set_start_at.run((id, start_at));

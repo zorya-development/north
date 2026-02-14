@@ -3,8 +3,8 @@ use leptos::html;
 use leptos::prelude::*;
 use leptos::wasm_bindgen::JsCast;
 
-use north_ui::{AutocompleteDropdown, SuggestionItem};
 use crate::stores::lookup_store::LookupStore;
+use north_ui::{AutocompleteDropdown, SuggestionItem};
 
 #[derive(Clone)]
 struct TriggerState {

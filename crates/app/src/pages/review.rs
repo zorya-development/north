@@ -2,9 +2,7 @@ use leptos::prelude::*;
 
 use crate::components::task_detail_modal::{TaskDetailContext, TaskDetailModal};
 use crate::components::task_list::TaskList;
-use crate::server_fns::tasks::{
-    get_recently_reviewed_tasks, get_review_tasks, review_all_tasks,
-};
+use crate::server_fns::tasks::{get_recently_reviewed_tasks, get_review_tasks, review_all_tasks};
 use crate::stores::task_store::TaskStore;
 
 #[component]

@@ -204,9 +204,7 @@ fn tokenize(input: &str) -> Result<Vec<Spanned>, Vec<FilterParseError>> {
                 let mut num_str = String::new();
                 num_str.push(chars[pos]);
                 pos += 1;
-                while pos < chars.len()
-                    && (chars[pos].is_ascii_digit() || chars[pos] == '.')
-                {
+                while pos < chars.len() && (chars[pos].is_ascii_digit() || chars[pos] == '.') {
                     num_str.push(chars[pos]);
                     pos += 1;
                 }
@@ -247,9 +245,7 @@ fn tokenize(input: &str) -> Result<Vec<Spanned>, Vec<FilterParseError>> {
             }
             c if c.is_alphanumeric() || c == '_' => {
                 let mut ident = String::new();
-                while pos < chars.len()
-                    && (chars[pos].is_alphanumeric() || chars[pos] == '_')
-                {
+                while pos < chars.len() && (chars[pos].is_alphanumeric() || chars[pos] == '_') {
                     ident.push(chars[pos]);
                     pos += 1;
                 }
@@ -420,10 +416,22 @@ impl<'a> Parser<'a> {
             return Ok(FilterExpr::Not(Box::new(expr)));
         }
 
-        if matches!(self.peek(), Some(Spanned { token: Token::LParen, .. })) {
+        if matches!(
+            self.peek(),
+            Some(Spanned {
+                token: Token::LParen,
+                ..
+            })
+        ) {
             self.advance();
             let expr = self.parse_or_expr()?;
-            if !matches!(self.peek(), Some(Spanned { token: Token::RParen, .. })) {
+            if !matches!(
+                self.peek(),
+                Some(Spanned {
+                    token: Token::RParen,
+                    ..
+                })
+            ) {
                 return Err(self.err("Expected closing ')'"));
             }
             self.advance();
@@ -460,53 +468,70 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_op_and_value(
-        &mut self,
-    ) -> Result<(FilterOp, FilterValue), Vec<FilterParseError>> {
+    fn parse_op_and_value(&mut self) -> Result<(FilterOp, FilterValue), Vec<FilterParseError>> {
         match self.peek() {
-            Some(Spanned { token: Token::Eq, .. }) => {
+            Some(Spanned {
+                token: Token::Eq, ..
+            }) => {
                 self.advance();
                 let val = self.parse_value()?;
                 Ok((FilterOp::Eq, val))
             }
-            Some(Spanned { token: Token::Ne, .. }) => {
+            Some(Spanned {
+                token: Token::Ne, ..
+            }) => {
                 self.advance();
                 let val = self.parse_value()?;
                 Ok((FilterOp::Ne, val))
             }
-            Some(Spanned { token: Token::GlobMatch, .. }) => {
+            Some(Spanned {
+                token: Token::GlobMatch,
+                ..
+            }) => {
                 self.advance();
                 let val = self.parse_value()?;
                 Ok((FilterOp::GlobMatch, val))
             }
-            Some(Spanned { token: Token::GlobNotMatch, .. }) => {
+            Some(Spanned {
+                token: Token::GlobNotMatch,
+                ..
+            }) => {
                 self.advance();
                 let val = self.parse_value()?;
                 Ok((FilterOp::GlobNotMatch, val))
             }
-            Some(Spanned { token: Token::Gt, .. }) => {
+            Some(Spanned {
+                token: Token::Gt, ..
+            }) => {
                 self.advance();
                 let val = self.parse_value()?;
                 Ok((FilterOp::Gt, val))
             }
-            Some(Spanned { token: Token::Lt, .. }) => {
+            Some(Spanned {
+                token: Token::Lt, ..
+            }) => {
                 self.advance();
                 let val = self.parse_value()?;
                 Ok((FilterOp::Lt, val))
             }
-            Some(Spanned { token: Token::Gte, .. }) => {
+            Some(Spanned {
+                token: Token::Gte, ..
+            }) => {
                 self.advance();
                 let val = self.parse_value()?;
                 Ok((FilterOp::Gte, val))
             }
-            Some(Spanned { token: Token::Lte, .. }) => {
+            Some(Spanned {
+                token: Token::Lte, ..
+            }) => {
                 self.advance();
                 let val = self.parse_value()?;
                 Ok((FilterOp::Lte, val))
             }
-            Some(Spanned { token: Token::Ident(s), .. })
-                if s.eq_ignore_ascii_case("is") =>
-            {
+            Some(Spanned {
+                token: Token::Ident(s),
+                ..
+            }) if s.eq_ignore_ascii_case("is") => {
                 self.advance();
                 if self.is_ident_ci("not") {
                     self.advance();
@@ -517,9 +542,10 @@ impl<'a> Parser<'a> {
                     Ok((FilterOp::Is, val))
                 }
             }
-            Some(Spanned { token: Token::Ident(s), .. })
-                if s.eq_ignore_ascii_case("not") =>
-            {
+            Some(Spanned {
+                token: Token::Ident(s),
+                ..
+            }) if s.eq_ignore_ascii_case("not") => {
                 self.advance();
                 if self.is_ident_ci("in") {
                     self.advance();
@@ -529,9 +555,10 @@ impl<'a> Parser<'a> {
                     Err(self.err("Expected 'in' after 'not'"))
                 }
             }
-            Some(Spanned { token: Token::Ident(s), .. })
-                if s.eq_ignore_ascii_case("in") =>
-            {
+            Some(Spanned {
+                token: Token::Ident(s),
+                ..
+            }) if s.eq_ignore_ascii_case("in") => {
                 self.advance();
                 let val = self.parse_value()?;
                 Ok((FilterOp::In, val))
@@ -542,43 +569,56 @@ impl<'a> Parser<'a> {
 
     fn parse_value(&mut self) -> Result<FilterValue, Vec<FilterParseError>> {
         match self.peek() {
-            Some(Spanned { token: Token::StringLit(s), .. }) => {
+            Some(Spanned {
+                token: Token::StringLit(s),
+                ..
+            }) => {
                 let s = s.clone();
                 self.advance();
                 Ok(FilterValue::String(s))
             }
-            Some(Spanned { token: Token::Number(n), .. }) => {
+            Some(Spanned {
+                token: Token::Number(n),
+                ..
+            }) => {
                 let n = *n;
                 self.advance();
                 Ok(FilterValue::Number(n))
             }
-            Some(Spanned { token: Token::Ident(s), .. })
-                if s.eq_ignore_ascii_case("null") =>
-            {
+            Some(Spanned {
+                token: Token::Ident(s),
+                ..
+            }) if s.eq_ignore_ascii_case("null") => {
                 self.advance();
                 Ok(FilterValue::Null)
             }
-            Some(Spanned { token: Token::Ident(s), .. })
-                if s.eq_ignore_ascii_case("true") =>
-            {
+            Some(Spanned {
+                token: Token::Ident(s),
+                ..
+            }) if s.eq_ignore_ascii_case("true") => {
                 self.advance();
                 Ok(FilterValue::Bool(true))
             }
-            Some(Spanned { token: Token::Ident(s), .. })
-                if s.eq_ignore_ascii_case("false") =>
-            {
+            Some(Spanned {
+                token: Token::Ident(s),
+                ..
+            }) if s.eq_ignore_ascii_case("false") => {
                 self.advance();
                 Ok(FilterValue::Bool(false))
             }
             // Bare identifiers as string values (e.g., COMPLETED, ACTIVE)
-            Some(Spanned { token: Token::Ident(s), .. }) => {
+            Some(Spanned {
+                token: Token::Ident(s),
+                ..
+            }) => {
                 let s = s.clone();
                 self.advance();
                 Ok(FilterValue::String(s))
             }
-            Some(Spanned { token: Token::LBracket, .. }) => {
-                self.parse_array()
-            }
+            Some(Spanned {
+                token: Token::LBracket,
+                ..
+            }) => self.parse_array(),
             _ => Err(self.err("Expected value")),
         }
     }
@@ -589,19 +629,37 @@ impl<'a> Parser<'a> {
 
         let mut values = Vec::new();
 
-        if matches!(self.peek(), Some(Spanned { token: Token::RBracket, .. })) {
+        if matches!(
+            self.peek(),
+            Some(Spanned {
+                token: Token::RBracket,
+                ..
+            })
+        ) {
             self.advance();
             return Ok(FilterValue::Array(values));
         }
 
         values.push(self.parse_value()?);
 
-        while matches!(self.peek(), Some(Spanned { token: Token::Comma, .. })) {
+        while matches!(
+            self.peek(),
+            Some(Spanned {
+                token: Token::Comma,
+                ..
+            })
+        ) {
             self.advance();
             values.push(self.parse_value()?);
         }
 
-        if !matches!(self.peek(), Some(Spanned { token: Token::RBracket, .. })) {
+        if !matches!(
+            self.peek(),
+            Some(Spanned {
+                token: Token::RBracket,
+                ..
+            })
+        ) {
             return Err(self.err("Expected ']'"));
         }
         self.advance();
@@ -654,8 +712,7 @@ mod tests {
 
     #[test]
     fn test_and_expression() {
-        let result =
-            parse_filter("status = 'ACTIVE' AND project = 'My Project'").unwrap();
+        let result = parse_filter("status = 'ACTIVE' AND project = 'My Project'").unwrap();
         match result.expression {
             Some(FilterExpr::And(left, right)) => {
                 assert!(matches!(*left, FilterExpr::Condition(_)));
@@ -679,10 +736,9 @@ mod tests {
 
     #[test]
     fn test_parentheses() {
-        let result = parse_filter(
-            "(status = 'ACTIVE' OR status = 'COMPLETED') AND project = 'Work'",
-        )
-        .unwrap();
+        let result =
+            parse_filter("(status = 'ACTIVE' OR status = 'COMPLETED') AND project = 'Work'")
+                .unwrap();
         assert!(matches!(result.expression, Some(FilterExpr::And(_, _))));
     }
 
@@ -714,8 +770,7 @@ mod tests {
 
     #[test]
     fn test_in_array() {
-        let result =
-            parse_filter("tags in ['work', 'personal']").unwrap();
+        let result = parse_filter("tags in ['work', 'personal']").unwrap();
         assert_eq!(
             result.expression,
             Some(FilterExpr::Condition(Condition {
@@ -737,17 +792,14 @@ mod tests {
             Some(FilterExpr::Condition(Condition {
                 field: FilterField::Tags,
                 op: FilterOp::NotIn,
-                value: FilterValue::Array(vec![FilterValue::String(
-                    "archive".into()
-                )]),
+                value: FilterValue::Array(vec![FilterValue::String("archive".into())]),
             }))
         );
     }
 
     #[test]
     fn test_order_by() {
-        let result =
-            parse_filter("status = 'ACTIVE' ORDER BY due_date DESC").unwrap();
+        let result = parse_filter("status = 'ACTIVE' ORDER BY due_date DESC").unwrap();
         assert!(result.expression.is_some());
         assert_eq!(
             result.order_by,
