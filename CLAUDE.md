@@ -170,7 +170,7 @@ north/
     │       │   │   └── view.rs         # Re-exports north_ui::{AutocompleteDropdown, SuggestionItem}
     │       │   ├── task_meta.rs        # Pure view (date, project, tags display)
     │       │   ├── task_form.rs        # Self-contained form widget
-    │       │   ├── layout.rs           # AppLayout (sidebar + main, auth guard)
+    │       │   ├── layout.rs           # AppLayout (purely structural: auth guard, context providers, sidebar + main shell)
     │       │   └── nav.rs              # Sidebar navigation (projects, filters, archive)
     │       ├── stores/
     │       │   ├── task_store.rs       # TaskStore: actions, effects, Callback fields
@@ -254,8 +254,12 @@ Triggers: `update_updated_at()` on users, projects, tasks.
 - **Sequential tasks:** `tasks.sequential_limit` controls how many subtasks are actionable. Computed in Rust via `compute_actionable()`, not SQL window functions.
 - **Custom columns:** Each project has its own columns (statuses). Created from user's `default_columns` setting.
 - **Data access:** Diesel ORM with `diesel-async` for async PostgreSQL. Service layer uses Diesel query builder directly (no repository abstraction). Batch metadata loading via `enrich()` to avoid N+1 queries.
-- **Container/view pattern:** Components with state management are split into directories: `container.rs` (signals, handlers, callback wiring) and `view.rs` (pure rendering). Pure presentational components stay as single files. Containers use concrete `Callback<T>` types, not generic type params. Picker components (date, project, tag) support `icon_only` prop for compact action bar rendering in task cards.
-- **TaskStore:** Centralized controller (`stores/task_store.rs`) that owns actions and effects for task mutations (complete, delete, update, set/clear start_at). Pages create a `TaskStore` from a `Resource` and pass it to `TaskList`.
+- **AppLayout:** Purely structural — auth guard (redirects to `/login`), provides `AppStore` and `LookupStore` contexts, renders sidebar + main shell. No data fetching — each page is responsible for loading its own data.
+- **Context providers:** Use `provide_context()` directly in containers/controllers — no wrapper methods like `.provide()`. Views and child components consume via `expect_context::<T>()` or typed helpers like `use_app_store()`.
+- **Page data ownership:** Each page owns its data loading. Pages call `refetch()` or create their own `Resource` on mount. The layout does not pre-fetch data for pages.
+- **Container/controller/view pattern:** Pages with state management use a three-file pattern: `container.rs` (component entry, wires controller to view via inline `Callback` props), `controller.rs` (business logic, data loading, store interaction), `view.rs` (pure rendering). Simpler components use two-file container/view. Pure presentational components stay as single files. Callbacks are inlined directly into view props — no intermediate variables. Picker components (date, project, tag) support `icon_only` prop for compact action bar rendering in task cards.
+- **Three-layer client architecture:** `api` (server function wrappers) → `repositories` (thin facade over api) → `stores` (reactive state + business logic). Stores call repositories, never api directly. Pages/controllers call stores, never repositories directly.
+- **TaskStore:** Reactive store (`stores/task_store.rs`) that owns task state and mutations (complete, delete, update, set/clear start_at, refetch). `AppStore` wraps `TaskStore` for global context. Inbox uses `AppStore`; other pages create local stores with their own `Resource`.
 - **LookupStore:** Cached projects, tags, and columns loaded once and shared across pickers and autocomplete (`stores/lookup_store.rs`).
 - **Token parsing:** `parse_tokens()` in domain crate extracts `#tags` and `@project` references from task title/body text. Services resolve these to DB records.
 - **Filter DSL:** JQL-like query language parsed by hand-written recursive descent parser in domain crate (`parse_filter()`). Runs in WASM for client-side validation. Supports fields (title, body, project, tags, status, due_date, start_at, column, created, updated), operators (`=`, `!=`, `=~` glob, `>`, `<`, `>=`, `<=`, `is null`, `in [...]`), logical operators (`AND`, `OR`, `NOT`, parentheses), and `ORDER BY`. Two-pass evaluation in services: parse → AST, then recursively evaluate AST → `HashSet<i64>` of matching task IDs (AND=intersection, OR=union, NOT=difference).
@@ -288,12 +292,13 @@ Triggers: `update_updated_at()` on users, projects, tasks.
 7. Add service methods in `crates/services/src/`
 
 ### Add New Page
-1. Create page component in `crates/app/src/pages/`
-2. Export in `crates/app/src/pages/mod.rs`
-3. Add server functions in `crates/app/src/server_fns/`
-4. Register route in `crates/app/src/app.rs`
-5. Add nav item in `crates/app/src/components/nav.rs`
-6. For task-based pages: create `Resource`, `TaskStore`, pass to `TaskList`
+1. Create page directory in `crates/app/src/pages/<name>/` with `container.rs`, `controller.rs`, `view.rs`, `mod.rs`
+2. Controller loads its own data (calls `refetch()` or creates `Resource`) — layout does not pre-fetch
+3. Container wires controller to view with inline `Callback` props
+4. Export in `crates/app/src/pages/mod.rs`
+5. Add server functions in `crates/app/src/server_fns/` if needed
+6. Register route in `crates/app/src/app.rs`
+7. Add nav item in `crates/app/src/components/nav.rs`
 
 ### Add New UI Primitive
 1. Create component file in `crates/ui/src/`
@@ -302,11 +307,12 @@ Triggers: `update_updated_at()` on users, projects, tasks.
 
 ### Add New Component (with state)
 1. Create directory `crates/app/src/components/<name>/`
-2. `container.rs` — signals, handlers, concrete `Callback` props (no generics)
-3. `view.rs` — pure rendering, receives data + handlers as props
-4. `mod.rs` — `pub use container::ComponentName;`
-5. Export in `crates/app/src/components/mod.rs`
-6. Import generic UI primitives from `north_ui` (Icon, Dropdown, Popover, etc.)
+2. `container.rs` — component entry, wires data + inline `Callback` props to view (no intermediate variables)
+3. `controller.rs` — (optional, for complex logic) business logic, data loading, store interaction
+4. `view.rs` — pure rendering, receives data + handlers as props
+5. `mod.rs` — `pub use container::ComponentName;`
+6. Export in `crates/app/src/components/mod.rs`
+7. Import generic UI primitives from `north_ui` (Icon, Dropdown, Popover, etc.)
 
 Pure presentational components (no internal state management) stay as single files.
 

@@ -15,10 +15,6 @@ impl AppStore {
             tasks: TaskStore::new(),
         }
     }
-
-    pub fn provide(self) {
-        provide_context(self);
-    }
 }
 
 pub fn use_app_store() -> AppStore {

@@ -10,6 +10,7 @@ pub struct InboxController {
 
 impl InboxController {
     pub fn new(app_store: AppStore) -> Self {
+        app_store.tasks.refetch();
         let tasks = app_store.tasks.filtered(TaskStoreFilter {
             project_id: IdFilter::IsNull,
             parent_id: IdFilter::IsNull,
