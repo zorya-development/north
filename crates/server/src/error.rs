@@ -39,9 +39,7 @@ impl IntoResponse for AppError {
                 (StatusCode::INTERNAL_SERVER_ERROR, msg.clone())
             }
             AppError::Service(err) => match err {
-                north_services::ServiceError::NotFound(msg) => {
-                    (StatusCode::NOT_FOUND, msg.clone())
-                }
+                north_services::ServiceError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
                 north_services::ServiceError::BadRequest(msg) => {
                     (StatusCode::BAD_REQUEST, msg.clone())
                 }
@@ -54,12 +52,8 @@ impl IntoResponse for AppError {
                 }
             },
             AppError::CoreService(err) => match err {
-                north_core::ServiceError::NotFound(msg) => {
-                    (StatusCode::NOT_FOUND, msg.clone())
-                }
-                north_core::ServiceError::BadRequest(msg) => {
-                    (StatusCode::BAD_REQUEST, msg.clone())
-                }
+                north_core::ServiceError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
+                north_core::ServiceError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
                 _ => {
                     tracing::error!("Core service error: {err}");
                     (

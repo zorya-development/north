@@ -33,8 +33,7 @@ pub fn protected_api_router(state: AppState) -> Router<AppState> {
         )
         .route(
             "/projects/:id",
-            get(projects::get_project)
-                .patch(projects::update_project),
+            get(projects::get_project).patch(projects::update_project),
         )
         // Stats routes
         .route("/stats", get(stats::get_stats))

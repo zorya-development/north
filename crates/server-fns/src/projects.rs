@@ -2,9 +2,7 @@ use leptos::prelude::*;
 use north_domain::{CreateProject, Project, ProjectFilter, UpdateProject};
 
 #[server(ApiListProjectsFn, "/api")]
-pub async fn list_projects(
-    filter: ProjectFilter,
-) -> Result<Vec<Project>, ServerFnError> {
+pub async fn list_projects(filter: ProjectFilter) -> Result<Vec<Project>, ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::auth::get_auth_user_id().await?;
     north_core::ProjectService::list(&pool, user_id, &filter)
@@ -22,9 +20,7 @@ pub async fn get_project(id: i64) -> Result<Project, ServerFnError> {
 }
 
 #[server(ApiCreateProjectFn, "/api")]
-pub async fn create_project(
-    input: CreateProject,
-) -> Result<Project, ServerFnError> {
+pub async fn create_project(input: CreateProject) -> Result<Project, ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::auth::get_auth_user_id().await?;
     north_core::ProjectService::create(&pool, user_id, &input)
@@ -33,10 +29,7 @@ pub async fn create_project(
 }
 
 #[server(ApiUpdateProjectFn, "/api")]
-pub async fn update_project(
-    id: i64,
-    input: UpdateProject,
-) -> Result<Project, ServerFnError> {
+pub async fn update_project(id: i64, input: UpdateProject) -> Result<Project, ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::auth::get_auth_user_id().await?;
     north_core::ProjectService::update(&pool, user_id, id, &input)

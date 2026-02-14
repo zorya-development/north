@@ -1,11 +1,13 @@
 use leptos::prelude::*;
-use north_domain::{CreateTask, TaskWithMeta};
 use north_stores::{AppStore, IdFilter, TaskStoreFilter};
 
 #[derive(Clone, Copy)]
 pub struct InboxController {
     app_store: AppStore,
-    pub tasks: Memo<Vec<TaskWithMeta>>,
+    pub active_task_ids: Memo<Vec<i64>>,
+    pub completed_task_ids: Memo<Vec<i64>>,
+    pub completed_count: Memo<usize>,
+    pub is_new_task_form_open: (ReadSignal<bool>, WriteSignal<bool>),
 }
 
 impl InboxController {
@@ -13,56 +15,44 @@ impl InboxController {
         Effect::new(move |_| {
             app_store.tasks.refetch();
         });
-        let tasks = app_store.tasks.filtered(TaskStoreFilter {
+
+        let active_tasks = app_store.tasks.filtered(TaskStoreFilter {
             project_id: IdFilter::IsNull,
             parent_id: IdFilter::IsNull,
-            ..Default::default()
+            is_completed: Some(false),
         });
-        Self { app_store, tasks }
-    }
 
-    pub fn toggle_complete(&self, id: i64, was_completed: bool) {
-        self.app_store.tasks.toggle_complete(id, was_completed);
-    }
-
-    pub fn delete_task(&self, id: i64) {
-        self.app_store.tasks.delete_task(id);
-    }
-
-    pub fn update_task(&self, id: i64, title: String, body: Option<String>) {
-        self.app_store.tasks.update_task(id, title, body);
-    }
-
-    pub fn create_task(&self, title: String, body: Option<String>) {
-        self.app_store.tasks.create_task(CreateTask {
-            title,
-            body,
-            ..Default::default()
+        let completed_tasks = app_store.tasks.filtered(TaskStoreFilter {
+            project_id: IdFilter::IsNull,
+            parent_id: IdFilter::IsNull,
+            is_completed: Some(true),
         });
+
+        let active_task_ids =
+            Memo::new(move |_| active_tasks.get().iter().map(|t| t.task.id).collect());
+
+        let completed_task_ids =
+            Memo::new(move |_| completed_tasks.get().iter().map(|t| t.task.id).collect());
+
+        let completed_count = Memo::new(move |_| completed_tasks.get().len());
+
+        let is_new_task_form_open = signal(false);
+
+        Self {
+            app_store,
+            active_task_ids,
+            completed_task_ids,
+            completed_count,
+            is_new_task_form_open,
+        }
     }
 
-    pub fn set_start_at(&self, id: i64, start_at: String) {
-        self.app_store.tasks.set_start_at(id, start_at);
-    }
-
-    pub fn clear_start_at(&self, id: i64) {
-        self.app_store.tasks.clear_start_at(id);
-    }
-
-    pub fn set_project(&self, task_id: i64, project_id: i64) {
-        self.app_store.tasks.set_project(task_id, project_id);
-    }
-
-    pub fn clear_project(&self, task_id: i64) {
-        self.app_store.tasks.clear_project(task_id);
-    }
-
-    pub fn set_tags(&self, task_id: i64, tag_names: Vec<String>) {
-        self.app_store.tasks.set_tags(task_id, tag_names);
-    }
-
-    pub fn review_task(&self, id: i64) {
-        self.app_store.tasks.review_task(id);
+    pub fn active_tasks_for_reorder(&self) -> Memo<Vec<north_domain::TaskWithMeta>> {
+        self.app_store.tasks.filtered(TaskStoreFilter {
+            project_id: IdFilter::IsNull,
+            parent_id: IdFilter::IsNull,
+            is_completed: Some(false),
+        })
     }
 
     pub fn reorder_task(&self, task_id: i64, sort_key: String, parent_id: Option<Option<i64>>) {

@@ -4,9 +4,7 @@ use north_domain::{CreateProject, Project, ProjectFilter, UpdateProject};
 pub struct ProjectRepository;
 
 impl ProjectRepository {
-    pub async fn list(
-        filter: ProjectFilter,
-    ) -> Result<Vec<Project>, ServerFnError> {
+    pub async fn list(filter: ProjectFilter) -> Result<Vec<Project>, ServerFnError> {
         north_server_fns::projects::list_projects(filter).await
     }
 
@@ -14,16 +12,11 @@ impl ProjectRepository {
         north_server_fns::projects::get_project(id).await
     }
 
-    pub async fn create(
-        input: CreateProject,
-    ) -> Result<Project, ServerFnError> {
+    pub async fn create(input: CreateProject) -> Result<Project, ServerFnError> {
         north_server_fns::projects::create_project(input).await
     }
 
-    pub async fn update(
-        id: i64,
-        input: UpdateProject,
-    ) -> Result<Project, ServerFnError> {
+    pub async fn update(id: i64, input: UpdateProject) -> Result<Project, ServerFnError> {
         north_server_fns::projects::update_project(id, input).await
     }
 

@@ -23,9 +23,7 @@ impl ProjectService {
             .select(ProjectRow::as_select())
             .into_boxed();
         if let Some(ref status) = filter.status {
-            query = query.filter(
-                projects::status.eq(ProjectStatusMapping::from(status.clone())),
-            );
+            query = query.filter(projects::status.eq(ProjectStatusMapping::from(status.clone())));
         }
         query = query.order((projects::position.asc(), projects::created_at.asc()));
         let rows = query.load(&mut conn).await?;
@@ -178,9 +176,7 @@ impl ProjectService {
         let mut conn = pool.get().await?;
         let id: Option<i64> = projects::table
             .filter(projects::user_id.eq(user_id))
-            .filter(
-                projects::status.eq(ProjectStatusMapping::Active),
-            )
+            .filter(projects::status.eq(ProjectStatusMapping::Active))
             .filter(
                 sql::<diesel::sql_types::Bool>("lower(title) = lower(")
                     .bind::<Text, _>(title)

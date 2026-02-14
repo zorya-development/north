@@ -60,8 +60,7 @@ fn get_suggestions(
                 .into_iter()
                 .filter(|p| {
                     p.status == north_domain::ProjectStatus::Active
-                        && (query_lower.is_empty()
-                            || p.title.to_lowercase().contains(&query_lower))
+                        && (query_lower.is_empty() || p.title.to_lowercase().contains(&query_lower))
                 })
                 .map(|p| SuggestionItem {
                     name: p.title,

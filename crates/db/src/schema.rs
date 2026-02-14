@@ -120,4 +120,11 @@ diesel::joinable!(tasks -> projects (project_id));
 diesel::joinable!(tasks -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    images,projects,saved_filters,tags,task_tags,tasks,users,);
+    images,
+    projects,
+    saved_filters,
+    tags,
+    task_tags,
+    tasks,
+    users,
+);

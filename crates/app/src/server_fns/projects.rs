@@ -126,4 +126,3 @@ pub async fn get_archived_projects() -> Result<Vec<Project>, ServerFnError> {
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))
 }
-

@@ -1,61 +1,52 @@
 use leptos::prelude::*;
 use north_domain::TaskWithMeta;
 
+use super::controller::InboxController;
 use crate::components::drag_drop::{DragDropContext, DropZone};
-use crate::components::task_card::TaskCard;
-use crate::components::task_form::InlineTaskForm;
+use crate::containers::task_inline_form::TaskInlineForm;
+use crate::containers::task_list_item::TaskListItem;
 
 #[component]
-pub fn InboxView(
-    tasks: Memo<Vec<TaskWithMeta>>,
-    on_toggle_complete: Callback<(i64, bool)>,
-    on_delete: Callback<i64>,
-    on_update: Callback<(i64, String, Option<String>)>,
-    on_create: Callback<(String, Option<String>)>,
-    on_set_start_at: Callback<(i64, String)>,
-    on_clear_start_at: Callback<i64>,
-    on_set_project: Callback<(i64, i64)>,
-    on_clear_project: Callback<i64>,
-    on_set_tags: Callback<(i64, Vec<String>)>,
-    on_review: Callback<i64>,
-    on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
-) -> impl IntoView {
+pub fn InboxView(ctrl: InboxController) -> impl IntoView {
     let (showing_completed, set_showing_completed) = signal(false);
+    let (is_form_open, set_form_open) = ctrl.is_new_task_form_open;
     let drag_ctx = use_context::<DragDropContext>();
-
-    let active_tasks = Memo::new(move |_| {
-        tasks
-            .get()
-            .into_iter()
-            .filter(|t| t.task.completed_at.is_none())
-            .collect::<Vec<_>>()
-    });
-
-    let completed_tasks = Memo::new(move |_| {
-        tasks
-            .get()
-            .into_iter()
-            .filter(|t| t.task.completed_at.is_some())
-            .collect::<Vec<_>>()
-    });
-
-    let completed_count = Memo::new(move |_| completed_tasks.get().len());
-
-    let on_form_submit = move |title: String, body: Option<String>| {
-        on_create.run((title, body));
-    };
+    let active_tasks_for_reorder = ctrl.active_tasks_for_reorder();
 
     view! {
         <div class="space-y-4">
             <h1 class="text-2xl font-semibold tracking-tight text-text-primary">
                 "Inbox"
             </h1>
-            <InlineTaskForm on_submit=on_form_submit/>
+
+            <Show
+                when=move || is_form_open.get()
+                fallback=move || {
+                    view! {
+                        <button
+                            on:click=move |_| set_form_open.set(true)
+                            class="flex items-center gap-2 p-4 w-full text-left \
+                                   cursor-pointer border-2 border-border rounded-xl \
+                                   hover:border-accent transition-colors"
+                        >
+                            <span class="text-accent text-lg font-medium">"+"</span>
+                            <span class="text-sm text-text-secondary">
+                                "Add a task..."
+                            </span>
+                        </button>
+                    }
+                }
+            >
+                <TaskInlineForm on_done=Callback::new(move |()| {
+                    set_form_open.set(false)
+                })/>
+            </Show>
+
             <div
                 on:drop=move |ev: web_sys::DragEvent| {
                     ev.prevent_default();
-                    let current_tasks = active_tasks.get_untracked();
-                    handle_drop(&ev, drag_ctx, &current_tasks, on_reorder);
+                    let current_tasks = active_tasks_for_reorder.get_untracked();
+                    handle_drop(&ev, drag_ctx, &current_tasks, &ctrl);
                 }
                 on:dragover=move |ev: web_sys::DragEvent| {
                     if drag_ctx.is_some() {
@@ -64,8 +55,8 @@ pub fn InboxView(
                 }
             >
                 {move || {
-                    let current = active_tasks.get();
-                    if current.is_empty() {
+                    let ids = ctrl.active_task_ids.get();
+                    if ids.is_empty() {
                         view! {
                             <div class="text-sm text-text-secondary py-8 text-center">
                                 "No tasks in your inbox. Add one above."
@@ -73,23 +64,10 @@ pub fn InboxView(
                         }
                             .into_any()
                     } else {
-                        current
-                            .into_iter()
-                            .map(|task| {
+                        ids.into_iter()
+                            .map(|id| {
                                 view! {
-                                    <TaskCard
-                                        task=task
-                                        on_toggle_complete=on_toggle_complete
-                                        on_delete=on_delete
-                                        on_update=on_update
-                                        on_set_start_at=on_set_start_at
-                                        on_clear_start_at=on_clear_start_at
-                                        on_set_project=on_set_project
-                                        on_clear_project=on_clear_project
-                                        on_set_tags=on_set_tags
-                                        on_review=on_review
-                                        draggable=true
-                                    />
+                                    <TaskListItem task_id=id draggable=true/>
                                 }
                             })
                             .collect_view()
@@ -100,7 +78,7 @@ pub fn InboxView(
 
             // Completed section
             {move || {
-                let count = completed_count.get();
+                let count = ctrl.completed_count.get();
                 if count == 0 {
                     None
                 } else {
@@ -110,8 +88,7 @@ pub fn InboxView(
                                 class="text-xs text-text-secondary \
                                        hover:text-text-primary transition-colors"
                                 on:click=move |_| {
-                                    set_showing_completed
-                                        .update(|v| *v = !*v);
+                                    set_showing_completed.update(|v| *v = !*v);
                                 }
                             >
                                 {move || {
@@ -125,23 +102,12 @@ pub fn InboxView(
                             <Show when=move || showing_completed.get()>
                                 <div class="mt-2 opacity-60">
                                     {move || {
-                                        completed_tasks
+                                        ctrl.completed_task_ids
                                             .get()
                                             .into_iter()
-                                            .map(|task| {
+                                            .map(|id| {
                                                 view! {
-                                                    <TaskCard
-                                                        task=task
-                                                        on_toggle_complete=on_toggle_complete
-                                                        on_delete=on_delete
-                                                        on_update=on_update
-                                                        on_set_start_at=on_set_start_at
-                                                        on_clear_start_at=on_clear_start_at
-                                                        on_set_project=on_set_project
-                                                        on_clear_project=on_clear_project
-                                                        on_set_tags=on_set_tags
-                                                        on_review=on_review
-                                                    />
+                                                    <TaskListItem task_id=id/>
                                                 }
                                             })
                                             .collect_view()
@@ -160,7 +126,7 @@ fn handle_drop(
     _ev: &web_sys::DragEvent,
     drag_ctx: Option<DragDropContext>,
     tasks: &[TaskWithMeta],
-    on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
+    ctrl: &InboxController,
 ) {
     let Some(ctx) = drag_ctx else { return };
     let Some(dragging_id) = ctx.dragging_task_id.get_untracked() else {
@@ -192,7 +158,7 @@ fn handle_drop(
             };
             let below_key = Some(tasks[target_idx].task.sort_key.as_str());
             let new_key = north_domain::sort_key_between(above_key, below_key);
-            on_reorder.run((dragging_id, new_key, Some(None)));
+            ctrl.reorder_task(dragging_id, new_key, Some(None));
         }
         DropZone::Below => {
             let above_key = Some(tasks[target_idx].task.sort_key.as_str());
@@ -202,11 +168,11 @@ fn handle_drop(
                 None
             };
             let new_key = north_domain::sort_key_between(above_key, below_key);
-            on_reorder.run((dragging_id, new_key, Some(None)));
+            ctrl.reorder_task(dragging_id, new_key, Some(None));
         }
         DropZone::Nest => {
             let new_key = north_domain::sort_key_after(None);
-            on_reorder.run((dragging_id, new_key, Some(Some(target_id))));
+            ctrl.reorder_task(dragging_id, new_key, Some(Some(target_id)));
         }
     }
 

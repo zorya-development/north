@@ -7,8 +7,7 @@ use crate::stores::lookup_store::LookupStore;
 use north_stores::AppStore;
 
 const FIELD_NAMES: &[&str] = &[
-    "title", "body", "project", "tags", "status", "due_date", "start_at", "created",
-    "updated",
+    "title", "body", "project", "tags", "status", "due_date", "start_at", "created", "updated",
 ];
 
 const STATUS_VALUES: &[&str] = &["ACTIVE", "OPEN", "COMPLETED", "DONE"];

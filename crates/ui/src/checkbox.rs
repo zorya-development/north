@@ -4,7 +4,7 @@ use crate::icon::{Icon, IconKind};
 
 #[component]
 pub fn Checkbox(
-    checked: ReadSignal<bool>,
+    #[prop(into)] checked: Signal<bool>,
     on_toggle: Callback<()>,
     #[prop(optional, default = "Uncheck")] checked_label: &'static str,
     #[prop(optional, default = "Check")] unchecked_label: &'static str,
