@@ -35,29 +35,85 @@ For non-interactive / CI use: `docker compose exec app just <command>`
 
 GTD-inspired task management system. Single Rust binary serving SSR + WASM via Leptos 0.7 + Axum.
 
-### Dependency Graph
+### Dependency Graph (crates)
 
 ```
-domain  (pure data types, no IO)
+domain        (pure data types, no IO — compiled for both server and WASM)
   ↑
-  db    (Diesel schema, models, pool type — depends on domain)
+  db          (Diesel schema, models, pool type)
   ↑
-services (business logic — depends on db + domain)
-  ↑        ↑
-  app      server  (both depend on services)
+services      (business logic, Diesel queries)
   ↑
-  ui    (generic UI components — depends on leptos only)
+server-fns    (Leptos #[server] functions — RPC boundary)
+  ↑
+repositories  (thin async facade, hides transport)
+  ↑
+stores        (reactive state, optimistic updates)
+  ↑
+  app         (pages, components, views)
+  ↑
+  ui          (generic UI components — leptos only, no domain deps)
+
+server        (Axum binary, REST API routes — also calls services directly)
 ```
+
+### Client-Server Architecture
+
+```
+┌──────────┐    ┌────────────┐    ┌──────────────┐    ┌──────────────┐  ║  ┌──────────────┐    ┌──────────┐    ┌──────────┐
+│          │    │            │    │              │    │  Server Fn   │  ║  │  Server Fn   │    │          │    │          │
+│   Page   │───▶│   Store    │───▶│  Repository  │───▶│  (client)    │══RPC═▶│  (server)    │───▶│  Service │───▶│ DB/Diesel│──▶ PG
+│          │    │            │    │              │    │              │  ║  │              │    │          │    │          │
+└──────────┘    └────────────┘    └──────────────┘    └──────────────┘  ║  └──────────────┘    └──────────┘    └──────────┘
+                                                                       ║
+ container/      reactive state,   thin facade,        #[server] macro ║   auth extraction,    business        models,
+ controller/     optimistic        hides transport     generates HTTP   ║   context wiring      logic,          schema,
+ view            updates,          details             POST stub        ║                       queries,        mappings
+                 client-side                                            ║                       enrichment
+                 filtering                             ◄── WASM ───────║────── Server ──►
+
+        ◄──────────────────── Domain types (pure data, no IO) shared across all layers ──────────────────────►
+```
+
+Layer rules:
+- Pages talk to Stores, never deeper
+- Stores talk to Repositories, never server functions directly
+- Repositories talk to Server Functions, nothing else
+- Services are reused by both Server Functions and REST API routes
+- Domain types are the shared language across every layer and both runtimes
+
+Why each layer exists:
+
+| Layer | Why |
+|---|---|
+| **Page** | UI composition — wires store to view via callbacks |
+| **Store** | Reactive state (RwSignal) so UI updates automatically. Optimistic updates for instant feedback. Client-side filtered Memos let multiple pages share one dataset. |
+| **Repository** | Decouples stores from transport. Stores don't know #[server] exists. Swappable for testing. |
+| **Server Fn** | Leptos RPC boundary — #[server] macro generates a client stub (serializes args, HTTP POST) and a server handler (deserializes, executes). Neither side sees HTTP directly. |
+| **Service** | Single home for business logic. Reused by server fns AND REST API routes. No duplication. |
+| **DB Layer** | Type-safe Diesel schema, model structs, enum mappings. Services build queries against these types. |
+| **Domain** | Pure data types compiled to both WASM and server. The contract everyone agrees on. |
 
 ### Data Flow
 
+Read (e.g. loading inbox):
 ```
-Browser → Axum Router
-  ├── /api/*  → REST API handlers (server crate, auth via JWT middleware)
-  │              → calls services → Diesel queries → DB
-  └── /*      → Leptos SSR → server functions (app crate)
-                             → calls services → Diesel queries → DB
-                           → hydrated WASM on client
+Page → Controller → Store.refetch() → Repository → ServerFn ──RPC──→ Service → Diesel → PG
+                                                                          │
+View ← Memo(filter) ← RwSignal ← store.load() ←──────────────────────────┘
+```
+
+Write (e.g. updating a task):
+```
+View → Callback → Store.update_task()
+                    ├─→ update_in_place()  (optimistic UI update)
+                    └─→ Repository → ServerFn ──RPC──→ Service → Diesel → PG
+                          └─→ refetch_async()  (full reload to sync)
+```
+
+REST API (used by external clients):
+```
+HTTP Request → Axum Router → Auth Middleware → Route Handler → Service → Diesel → PG
 ```
 
 ## Project Structure
@@ -120,6 +176,28 @@ north/
     │       ├── filter_service.rs # SavedFilter CRUD with query validation
     │       └── filter_translator.rs # AST → HashSet<i64> two-pass filter evaluation
     │
+    ├── stores/                 # Reactive client state (north-stores)
+    │   └── src/
+    │       ├── lib.rs          # Re-exports AppStore, TaskStore, etc.
+    │       ├── app_store.rs    # AppStore { tasks: TaskStore, projects: ProjectStore }
+    │       ├── task_store.rs   # TaskStore: RwSignal<Vec<TaskWithMeta>>, optimistic updates
+    │       ├── project_store.rs # ProjectStore: reactive project state
+    │       ├── lookup_store.rs # LookupStore: cached projects, tags, columns for pickers
+    │       └── hooks.rs        # use_app_store() and other context hooks
+    │
+    ├── repositories/           # Thin async facade over server functions (north-repositories)
+    │   └── src/
+    │       ├── lib.rs          # Re-exports TaskRepository, ProjectRepository
+    │       ├── task_repo.rs    # TaskRepository: list, get, create, update, delete, set_tags
+    │       └── project_repo.rs # ProjectRepository: list, get, create, update, delete
+    │
+    ├── server-fns/             # Leptos #[server] functions — RPC boundary (north-server-fns)
+    │   └── src/
+    │       ├── lib.rs          # Re-exports
+    │       ├── auth.rs         # get_auth_user_id() — JWT extraction
+    │       ├── tasks.rs        # list_tasks, get_task, create_task, update_task, delete_task
+    │       └── projects.rs     # list_projects, get_project, create_project, update_project
+    │
     ├── ui/                     # Generic UI component library (north-ui)
     │   └── src/
     │       ├── lib.rs              # Re-exports all components
@@ -172,9 +250,6 @@ north/
     │       │   ├── task_form.rs        # Self-contained form widget
     │       │   ├── layout.rs           # AppLayout (purely structural: auth guard, context providers, sidebar + main shell)
     │       │   └── nav.rs              # Sidebar navigation (projects, filters, archive)
-    │       ├── stores/
-    │       │   ├── task_store.rs       # TaskStore: actions, effects, Callback fields
-    │       │   └── lookup_store.rs     # LookupStore: cached projects, tags + columns for pickers
     │       └── server_fns/
     │           ├── auth.rs     # check_auth(), get_auth_user_id()
     │           ├── tasks.rs    # Task CRUD → calls north_services::TaskService
@@ -204,8 +279,11 @@ north/
 - **`domain`** — Pure data types with serde + chrono, no IO. Compiled for both server and WASM. Key types: `TaskFilter` (complex query object), `TaskWithMeta` (task + project_title, column_name, tags, subtask_count, actionable), `UserSettings` (review_interval_days, default_sequential_limit, default_columns), `FilterQuery`/`FilterExpr` (filter DSL AST), `SavedFilter`. Includes `parse_filter()` recursive descent parser for the filter DSL (runs in WASM for client-side validation). Also includes `detect_completion_context()` for DSL autocomplete — tokenizes text up to cursor position and returns `DslCompletionContext` (FieldName, FieldValue, ArrayValue, Keyword, None) to drive autocomplete suggestions.
 - **`db`** — Diesel infrastructure: `schema.rs` (auto-generated by `diesel print-schema`), model structs (`XxxRow` for reading, `NewXxx` for inserting, `XxxChangeset` for updating), PG enum mappings via `diesel-derive-enum`, `DbPool` type alias for `diesel_async::deadpool::Pool<AsyncPgConnection>`.
 - **`services`** — Business logic layer. Each service is a struct with static async methods that use Diesel's query builder directly. Key patterns: `TaskService::enrich()` for batch metadata loading (projects, columns, tags, subtask counts), `compute_actionable()` for sequential task logic in Rust, `into_boxed()` for dynamic filtering, `execute_dsl_filter()` for filter DSL evaluation via `filter_translator`. `FilterService` for saved filter CRUD. Re-exports `DbPool` so consumers only depend on `north-services`.
+- **`stores`** — Reactive client state (`north-stores`). `AppStore` wraps `TaskStore` + `ProjectStore`, provided globally via context. `TaskStore` holds all tasks in a single `RwSignal<Vec<TaskWithMeta>>` — pages create filtered `Memo`s over the shared data. Supports optimistic updates (immediate UI, async sync). `LookupStore` caches projects/tags/columns for pickers.
+- **`repositories`** — Thin async facade (`north-repositories`). Decouples stores from server function details. No business logic — pure pass-through. Makes transport swappable for testing.
+- **`server-fns`** — Leptos `#[server]` RPC boundary (`north-server-fns`). Each function extracts `DbPool` from context and `user_id` from JWT, then delegates to services. The `#[server]` macro generates client stubs (HTTP POST) and server handlers automatically.
 - **`ui`** — Generic UI component library (`north-ui`). No domain dependencies — only `leptos`, `pulldown-cmark`, `ammonia`. Components: `Icon`/`IconKind`, `DropdownMenu`/`DropdownItem`, `Popover`, `Modal`, `Checkbox`, `MarkdownView`/`render_markdown()`, `AutocompleteDropdown`/`SuggestionItem`. Used by `app` crate for reusable UI primitives.
-- **`app`** — Leptos library crate. Features: `hydrate` (WASM client), `ssr` (server-side, pulls in north-services/argon2/jsonwebtoken). Server functions use `#[server]` macro with DB access via `expect_context::<north_services::DbPool>()`, then delegate to service methods. Domain-specific components import generic UI primitives from `north-ui`.
+- **`app`** — Leptos library crate. Features: `hydrate` (WASM client), `ssr` (server-side, pulls in north-services/argon2/jsonwebtoken). Pages follow container/controller/view pattern and interact with stores for data. Legacy server functions in `app/server_fns/` still exist for tags, settings, filters — being migrated to `server-fns` crate. Domain-specific components import generic UI primitives from `north-ui`.
 - **`server`** — Axum binary. Depends on `north-app` with `ssr` feature. Auth middleware injects `AuthUser { id, role }` into request extensions. Route handlers delegate to service methods.
 
 ### REST API Routes

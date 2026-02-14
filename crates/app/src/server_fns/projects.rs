@@ -1,11 +1,16 @@
 use leptos::prelude::*;
-use north_domain::{Column, Project, TaskWithMeta};
+use north_domain::{Project, TaskWithMeta};
+#[cfg(feature = "ssr")]
+use north_domain::{ProjectFilter, ProjectStatus, UpdateProject};
 
 #[server(GetProjectsFn, "/api")]
 pub async fn get_projects() -> Result<Vec<Project>, ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
-    north_services::ProjectService::get_active(&pool, user_id)
+    let filter = ProjectFilter {
+        status: Some(ProjectStatus::Active),
+    };
+    north_services::ProjectService::list(&pool, user_id, &filter)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))
 }
@@ -19,10 +24,9 @@ pub async fn create_project(title: String) -> Result<Project, ServerFnError> {
         description: None,
         view_type: None,
     };
-    let result = north_services::ProjectService::create(&pool, user_id, &input)
+    north_services::ProjectService::create(&pool, user_id, &input)
         .await
-        .map_err(|e| ServerFnError::new(e.to_string()))?;
-    Ok(result.project)
+        .map_err(|e| ServerFnError::new(e.to_string()))
 }
 
 #[server(SetTaskProjectFn, "/api")]
@@ -47,18 +51,28 @@ pub async fn clear_task_project(task_id: i64) -> Result<(), ServerFnError> {
 pub async fn archive_project(project_id: i64) -> Result<(), ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
-    north_services::ProjectService::archive(&pool, user_id, project_id)
+    let input = UpdateProject {
+        status: Some(ProjectStatus::Archived),
+        ..Default::default()
+    };
+    north_services::ProjectService::update(&pool, user_id, project_id, &input)
         .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+    Ok(())
 }
 
 #[server(UnarchiveProjectFn, "/api")]
 pub async fn unarchive_project(project_id: i64) -> Result<(), ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
-    north_services::ProjectService::unarchive(&pool, user_id, project_id)
+    let input = UpdateProject {
+        status: Some(ProjectStatus::Active),
+        ..Default::default()
+    };
+    north_services::ProjectService::update(&pool, user_id, project_id, &input)
         .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+    Ok(())
 }
 
 #[server(GetProjectFn, "/api")]
@@ -105,16 +119,11 @@ pub async fn delete_project(project_id: i64) -> Result<(), ServerFnError> {
 pub async fn get_archived_projects() -> Result<Vec<Project>, ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
-    north_services::ProjectService::get_archived(&pool, user_id)
+    let filter = ProjectFilter {
+        status: Some(ProjectStatus::Archived),
+    };
+    north_services::ProjectService::list(&pool, user_id, &filter)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))
 }
 
-#[server(GetAllColumnsFn, "/api")]
-pub async fn get_all_columns() -> Result<Vec<Column>, ServerFnError> {
-    let pool = expect_context::<north_services::DbPool>();
-    let user_id = crate::server_fns::auth::get_auth_user_id().await?;
-    north_services::ColumnService::get_all_for_user(&pool, user_id)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
-}
