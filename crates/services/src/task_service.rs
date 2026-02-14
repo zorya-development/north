@@ -6,9 +6,7 @@ use diesel_async::RunQueryDsl;
 use north_db::models::{NewTask, TagRow, TaskChangeset, TaskRow};
 use north_db::schema::{projects, tags, task_tags, tasks, users};
 use north_db::DbPool;
-use north_domain::{
-    CreateTask, TagInfo, Task, TaskFilter, TaskWithMeta, UpdateTask, UserSettings,
-};
+use north_domain::{CreateTask, TagInfo, Task, TaskFilter, TaskWithMeta, UpdateTask, UserSettings};
 
 use crate::tag_service::TagService;
 use crate::{ServiceError, ServiceResult};
@@ -42,7 +40,11 @@ impl TaskService {
             .filter(tasks::user_id.eq(user_id))
             .filter(tasks::start_at.is_not_null())
             .filter(tasks::completed_at.is_null())
-            .filter(tasks::project_id.is_null().or(projects::status.eq(north_db::sql_types::ProjectStatusMapping::Active)))
+            .filter(
+                tasks::project_id
+                    .is_null()
+                    .or(projects::status.eq(north_db::sql_types::ProjectStatusMapping::Active)),
+            )
             .order(tasks::start_at.asc())
             .select(TaskRow::as_select())
             .load(&mut conn)
@@ -67,7 +69,11 @@ impl TaskService {
             .left_join(projects::table.on(projects::id.nullable().eq(tasks::project_id)))
             .filter(tasks::user_id.eq(user_id))
             .filter(tasks::parent_id.is_null())
-            .filter(tasks::project_id.is_null().or(projects::status.eq(north_db::sql_types::ProjectStatusMapping::Active)))
+            .filter(
+                tasks::project_id
+                    .is_null()
+                    .or(projects::status.eq(north_db::sql_types::ProjectStatusMapping::Active)),
+            )
             .order((tasks::sort_key.asc(), tasks::created_at.desc()))
             .select(TaskRow::as_select())
             .load(&mut conn)
@@ -131,7 +137,11 @@ impl TaskService {
             .filter(tasks::user_id.eq(user_id))
             .filter(tasks::parent_id.is_null())
             .filter(tasks::completed_at.is_null())
-            .filter(tasks::project_id.is_null().or(projects::status.eq(north_db::sql_types::ProjectStatusMapping::Active)))
+            .filter(
+                tasks::project_id
+                    .is_null()
+                    .or(projects::status.eq(north_db::sql_types::ProjectStatusMapping::Active)),
+            )
             .filter(
                 tasks::reviewed_at
                     .is_null()
@@ -159,7 +169,11 @@ impl TaskService {
             .filter(tasks::parent_id.is_null())
             .filter(tasks::completed_at.is_null())
             .filter(tasks::reviewed_at.is_not_null())
-            .filter(tasks::project_id.is_null().or(projects::status.eq(north_db::sql_types::ProjectStatusMapping::Active)))
+            .filter(
+                tasks::project_id
+                    .is_null()
+                    .or(projects::status.eq(north_db::sql_types::ProjectStatusMapping::Active)),
+            )
             .order(tasks::reviewed_at.desc())
             .limit(50)
             .select(TaskRow::as_select())
@@ -585,8 +599,8 @@ impl TaskService {
         let new_sort_key;
         let resolved_project = changeset.project_id.unwrap_or(existing.project_id);
         let resolved_parent = changeset.parent_id.unwrap_or(existing.parent_id);
-        let project_changed = resolved_project != existing.project_id
-            || resolved_parent != existing.parent_id;
+        let project_changed =
+            resolved_project != existing.project_id || resolved_parent != existing.parent_id;
         if project_changed && input.sort_key.is_none() {
             let last_key: Option<String> = if let Some(pid) = resolved_parent {
                 tasks::table
@@ -744,7 +758,10 @@ impl TaskService {
                 .filter(tasks::user_id.eq(user_id))
                 .filter(tasks::completed_at.is_null()),
         )
-        .set(tasks::completed_at.eq(Some(now)))
+        .set((
+            tasks::completed_at.eq(Some(now)),
+            tasks::sort_key.eq(""),
+        ))
         .execute(&mut conn)
         .await?;
         if affected == 0 {
@@ -767,7 +784,10 @@ impl TaskService {
                 break;
             }
             diesel::update(tasks::table.filter(tasks::id.eq_any(&child_ids)))
-                .set(tasks::completed_at.eq(Some(now)))
+                .set((
+                    tasks::completed_at.eq(Some(now)),
+                    tasks::sort_key.eq(""),
+                ))
                 .execute(&mut conn)
                 .await?;
             parent_ids = child_ids;
@@ -778,18 +798,67 @@ impl TaskService {
 
     pub async fn uncomplete_task(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<()> {
         let mut conn = pool.get().await?;
-        let affected = diesel::update(
+
+        let existing = tasks::table
+            .filter(tasks::id.eq(id))
+            .filter(tasks::user_id.eq(user_id))
+            .filter(tasks::completed_at.is_not_null())
+            .select(TaskRow::as_select())
+            .first(&mut conn)
+            .await
+            .optional()?
+            .ok_or_else(|| ServiceError::NotFound("Task not found".into()))?;
+
+        let last_key: Option<String> = if let Some(pid) = existing.parent_id {
+            tasks::table
+                .filter(tasks::parent_id.eq(pid))
+                .filter(tasks::user_id.eq(user_id))
+                .filter(tasks::completed_at.is_null())
+                .filter(tasks::id.ne(id))
+                .order(tasks::sort_key.desc())
+                .select(tasks::sort_key)
+                .first(&mut conn)
+                .await
+                .optional()?
+        } else if let Some(proj) = existing.project_id {
+            tasks::table
+                .filter(tasks::project_id.eq(proj))
+                .filter(tasks::parent_id.is_null())
+                .filter(tasks::user_id.eq(user_id))
+                .filter(tasks::completed_at.is_null())
+                .filter(tasks::id.ne(id))
+                .order(tasks::sort_key.desc())
+                .select(tasks::sort_key)
+                .first(&mut conn)
+                .await
+                .optional()?
+        } else {
+            tasks::table
+                .filter(tasks::project_id.is_null())
+                .filter(tasks::parent_id.is_null())
+                .filter(tasks::user_id.eq(user_id))
+                .filter(tasks::completed_at.is_null())
+                .filter(tasks::id.ne(id))
+                .order(tasks::sort_key.desc())
+                .select(tasks::sort_key)
+                .first(&mut conn)
+                .await
+                .optional()?
+        };
+        let new_sort_key = north_domain::sort_key_after(last_key.as_deref());
+
+        diesel::update(
             tasks::table
                 .filter(tasks::id.eq(id))
-                .filter(tasks::user_id.eq(user_id))
-                .filter(tasks::completed_at.is_not_null()),
+                .filter(tasks::user_id.eq(user_id)),
         )
-        .set(tasks::completed_at.eq(None::<DateTime<Utc>>))
+        .set((
+            tasks::completed_at.eq(None::<DateTime<Utc>>),
+            tasks::sort_key.eq(&new_sort_key),
+        ))
         .execute(&mut conn)
         .await?;
-        if affected == 0 {
-            return Err(ServiceError::NotFound("Task not found".into()));
-        }
+
         Ok(())
     }
 

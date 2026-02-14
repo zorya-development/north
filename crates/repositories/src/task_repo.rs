@@ -20,6 +20,14 @@ impl TaskRepository {
         north_server_fns::tasks::update_task(id, input).await
     }
 
+    pub async fn complete(id: i64) -> Result<(), ServerFnError> {
+        north_server_fns::tasks::complete_task(id).await
+    }
+
+    pub async fn uncomplete(id: i64) -> Result<(), ServerFnError> {
+        north_server_fns::tasks::uncomplete_task(id).await
+    }
+
     pub async fn delete(id: i64) -> Result<(), ServerFnError> {
         north_server_fns::tasks::delete_task(id).await
     }

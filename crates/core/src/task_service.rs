@@ -6,9 +6,7 @@ use diesel_async::RunQueryDsl;
 use north_db::models::{NewTask, TagRow, TaskChangeset, TaskRow};
 use north_db::schema::{projects, tags, task_tags, tasks, users};
 use north_db::DbPool;
-use north_domain::{
-    CreateTask, TagInfo, Task, TaskFilter, TaskWithMeta, UpdateTask, UserSettings,
-};
+use north_domain::{CreateTask, TagInfo, Task, TaskFilter, TaskWithMeta, UpdateTask, UserSettings};
 
 use crate::{ServiceError, ServiceResult};
 
@@ -56,8 +54,7 @@ impl TaskService {
                 .select(users::settings)
                 .first(&mut conn)
                 .await?;
-            let settings: UserSettings =
-                serde_json::from_value(settings_val).unwrap_or_default();
+            let settings: UserSettings = serde_json::from_value(settings_val).unwrap_or_default();
             let cutoff = Utc::now().date_naive()
                 - chrono::Duration::days(settings.review_interval_days as i64);
             query = query.filter(
@@ -135,11 +132,7 @@ impl TaskService {
         Ok(results)
     }
 
-    pub async fn get_by_id(
-        pool: &DbPool,
-        user_id: i64,
-        id: i64,
-    ) -> ServiceResult<TaskWithMeta> {
+    pub async fn get_by_id(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<TaskWithMeta> {
         let mut conn = pool.get().await?;
         let row = tasks::table
             .filter(tasks::id.eq(id))
@@ -161,11 +154,7 @@ impl TaskService {
             .ok_or_else(|| ServiceError::NotFound("Task not found".into()))
     }
 
-    pub async fn create(
-        pool: &DbPool,
-        user_id: i64,
-        input: &CreateTask,
-    ) -> ServiceResult<Task> {
+    pub async fn create(pool: &DbPool, user_id: i64, input: &CreateTask) -> ServiceResult<Task> {
         let mut conn = pool.get().await?;
 
         let last_key: Option<String> = if input.parent_id.is_some() {
@@ -268,8 +257,8 @@ impl TaskService {
         let new_sort_key;
         let resolved_project = changeset.project_id.unwrap_or(existing.project_id);
         let resolved_parent = changeset.parent_id.unwrap_or(existing.parent_id);
-        let project_changed = resolved_project != existing.project_id
-            || resolved_parent != existing.parent_id;
+        let project_changed =
+            resolved_project != existing.project_id || resolved_parent != existing.parent_id;
         if project_changed && input.sort_key.is_none() {
             let last_key: Option<String> = if let Some(pid) = resolved_parent {
                 tasks::table
@@ -321,6 +310,60 @@ impl TaskService {
         }
         if let Some(ref completed_at) = input.completed_at {
             changeset.completed_at = Some(*completed_at);
+        }
+
+        // When completing and no explicit sort_key, reset to empty.
+        // When uncompleting and no explicit sort_key, place at end of list.
+        let uncomplete_sort_key: String;
+        if input.sort_key.is_none() && changeset.sort_key.is_none() {
+            if let Some(Some(_)) = input.completed_at {
+                if existing.completed_at.is_none() {
+                    changeset.sort_key = Some("");
+                }
+            } else if let Some(None) = input.completed_at {
+                if existing.completed_at.is_some() {
+                    let last_key: Option<String> =
+                        if let Some(pid) = resolved_parent {
+                            tasks::table
+                                .filter(tasks::parent_id.eq(pid))
+                                .filter(tasks::user_id.eq(user_id))
+                                .filter(tasks::completed_at.is_null())
+                                .filter(tasks::id.ne(id))
+                                .order(tasks::sort_key.desc())
+                                .select(tasks::sort_key)
+                                .first(&mut conn)
+                                .await
+                                .optional()?
+                        } else if let Some(proj) = resolved_project {
+                            tasks::table
+                                .filter(tasks::project_id.eq(proj))
+                                .filter(tasks::parent_id.is_null())
+                                .filter(tasks::user_id.eq(user_id))
+                                .filter(tasks::completed_at.is_null())
+                                .filter(tasks::id.ne(id))
+                                .order(tasks::sort_key.desc())
+                                .select(tasks::sort_key)
+                                .first(&mut conn)
+                                .await
+                                .optional()?
+                        } else {
+                            tasks::table
+                                .filter(tasks::project_id.is_null())
+                                .filter(tasks::parent_id.is_null())
+                                .filter(tasks::user_id.eq(user_id))
+                                .filter(tasks::completed_at.is_null())
+                                .filter(tasks::id.ne(id))
+                                .order(tasks::sort_key.desc())
+                                .select(tasks::sort_key)
+                                .first(&mut conn)
+                                .await
+                                .optional()?
+                        };
+                    uncomplete_sort_key =
+                        north_domain::sort_key_after(last_key.as_deref());
+                    changeset.sort_key = Some(&uncomplete_sort_key);
+                }
+            }
         }
 
         let row = diesel::update(
@@ -473,15 +516,10 @@ impl TaskService {
             .map(|row| {
                 let id = row.id;
                 TaskWithMeta {
-                    project_title: row
-                        .project_id
-                        .and_then(|pid| proj_map.get(&pid).cloned()),
+                    project_title: row.project_id.and_then(|pid| proj_map.get(&pid).cloned()),
                     tags: tags_map.remove(&id).unwrap_or_default(),
                     subtask_count: count_map.get(&id).copied().unwrap_or(0),
-                    completed_subtask_count: completed_count_map
-                        .get(&id)
-                        .copied()
-                        .unwrap_or(0),
+                    completed_subtask_count: completed_count_map.get(&id).copied().unwrap_or(0),
                     actionable: row.completed_at.is_none(),
                     task: Task::from(row),
                 }
@@ -489,10 +527,7 @@ impl TaskService {
             .collect())
     }
 
-    async fn compute_actionable_single(
-        pool: &DbPool,
-        task: &Task,
-    ) -> ServiceResult<bool> {
+    async fn compute_actionable_single(pool: &DbPool, task: &Task) -> ServiceResult<bool> {
         if task.completed_at.is_some() {
             return Ok(false);
         }

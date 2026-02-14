@@ -38,6 +38,24 @@ pub async fn update_task(id: i64, input: UpdateTask) -> Result<Task, ServerFnErr
         .map_err(|e| ServerFnError::new(e.to_string()))
 }
 
+#[server(ApiCompleteTaskFn, "/api")]
+pub async fn complete_task(id: i64) -> Result<(), ServerFnError> {
+    let pool = expect_context::<north_services::DbPool>();
+    let user_id = crate::auth::get_auth_user_id().await?;
+    north_services::TaskService::complete_task(&pool, user_id, id)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
+#[server(ApiUncompleteTaskFn, "/api")]
+pub async fn uncomplete_task(id: i64) -> Result<(), ServerFnError> {
+    let pool = expect_context::<north_services::DbPool>();
+    let user_id = crate::auth::get_auth_user_id().await?;
+    north_services::TaskService::uncomplete_task(&pool, user_id, id)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
 #[server(ApiDeleteTaskFn, "/api")]
 pub async fn delete_task(id: i64) -> Result<(), ServerFnError> {
     let pool = expect_context::<north_core::DbPool>();

@@ -44,6 +44,11 @@ impl TaskStore {
         self.loaded.get_untracked()
     }
 
+    pub fn get_by_id(&self, id: i64) -> Memo<Option<TaskWithMeta>> {
+        let tasks = self.tasks;
+        Memo::new(move |_| tasks.get().into_iter().find(|t| t.task.id == id))
+    }
+
     pub fn filtered(&self, filter: TaskStoreFilter) -> Memo<Vec<TaskWithMeta>> {
         let tasks = self.tasks;
         Memo::new(move |_| {
@@ -105,11 +110,7 @@ impl TaskStore {
         if was_completed {
             store.update_in_place(id, |t| t.task.completed_at = None);
             spawn_local(async move {
-                let input = UpdateTask {
-                    completed_at: Some(None),
-                    ..Default::default()
-                };
-                if TaskRepository::update(id, input).await.is_ok() {
+                if TaskRepository::uncomplete(id).await.is_ok() {
                     store.refetch_async().await;
                 }
             });
@@ -119,11 +120,7 @@ impl TaskStore {
                 t.task.completed_at = Some(now);
             });
             spawn_local(async move {
-                let input = UpdateTask {
-                    completed_at: Some(Some(now)),
-                    ..Default::default()
-                };
-                if TaskRepository::update(id, input).await.is_ok() {
+                if TaskRepository::complete(id).await.is_ok() {
                     store.refetch_async().await;
                 }
             });
