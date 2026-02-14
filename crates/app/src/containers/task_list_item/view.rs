@@ -19,6 +19,7 @@ pub fn TaskListItemView(
     #[prop(default = true)] show_project: bool,
     #[prop(default = false)] draggable: bool,
     #[prop(default = 0)] depth: u8,
+    on_click: Option<Callback<i64>>,
 ) -> impl IntoView {
     let task = ctrl.task;
     let (editing, set_editing) = ctrl.editing;
@@ -81,6 +82,11 @@ pub fn TaskListItemView(
                                 <div
                                     on:mouseenter=move |_| set_hovered.set(true)
                                     on:mouseleave=move |_| set_hovered.set(false)
+                                    on:click=move |_| {
+                                        if let Some(cb) = on_click {
+                                            cb.run(task_id);
+                                        }
+                                    }
                                     class=move || {
                                         let mut classes = format!(
                                             "px-4 \

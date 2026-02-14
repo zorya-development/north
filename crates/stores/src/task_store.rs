@@ -49,6 +49,35 @@ impl TaskStore {
         Memo::new(move |_| tasks.get().into_iter().find(|t| t.task.id == id))
     }
 
+    /// Walk parent_id chain from the store. Returns `(id, title, subtask_count)` list
+    /// from root down to the immediate parent (excludes the task itself).
+    pub fn get_ancestors(&self, id: i64) -> Vec<(i64, String, i64)> {
+        let all = self.tasks.get_untracked();
+        let mut ancestors = Vec::new();
+        let mut current_id = id;
+
+        for _ in 0..10 {
+            let Some(task) = all.iter().find(|t| t.task.id == current_id) else {
+                break;
+            };
+            let Some(parent_id) = task.task.parent_id else {
+                break;
+            };
+            let Some(parent) = all.iter().find(|t| t.task.id == parent_id) else {
+                break;
+            };
+            ancestors.push((
+                parent.task.id,
+                parent.task.title.clone(),
+                parent.subtask_count,
+            ));
+            current_id = parent_id;
+        }
+
+        ancestors.reverse();
+        ancestors
+    }
+
     pub fn filtered(&self, filter: TaskStoreFilter) -> Memo<Vec<TaskWithMeta>> {
         let tasks = self.tasks;
         Memo::new(move |_| {
@@ -231,6 +260,48 @@ impl TaskStore {
         spawn_local(async move {
             let input = UpdateTask {
                 reviewed_at: Some(Some(today)),
+                ..Default::default()
+            };
+            if TaskRepository::update(id, input).await.is_ok() {
+                store.refetch_async().await;
+            }
+        });
+    }
+
+    pub fn set_due_date(&self, id: i64, due_date: String) {
+        let store = *self;
+        spawn_local(async move {
+            let date = chrono::NaiveDate::parse_from_str(&due_date, "%Y-%m-%d");
+            if let Ok(date) = date {
+                let input = UpdateTask {
+                    due_date: Some(Some(date)),
+                    ..Default::default()
+                };
+                if TaskRepository::update(id, input).await.is_ok() {
+                    store.refetch_async().await;
+                }
+            }
+        });
+    }
+
+    pub fn clear_due_date(&self, id: i64) {
+        let store = *self;
+        spawn_local(async move {
+            let input = UpdateTask {
+                due_date: Some(None),
+                ..Default::default()
+            };
+            if TaskRepository::update(id, input).await.is_ok() {
+                store.refetch_async().await;
+            }
+        });
+    }
+
+    pub fn set_sequential_limit(&self, id: i64, limit: i16) {
+        let store = *self;
+        spawn_local(async move {
+            let input = UpdateTask {
+                sequential_limit: Some(limit),
                 ..Default::default()
             };
             if TaskRepository::update(id, input).await.is_ok() {

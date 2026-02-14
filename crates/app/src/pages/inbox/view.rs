@@ -67,7 +67,13 @@ pub fn InboxView(ctrl: InboxController) -> impl IntoView {
                         ids.into_iter()
                             .map(|id| {
                                 view! {
-                                    <TaskListItem task_id=id draggable=true/>
+                                    <TaskListItem
+                                        task_id=id
+                                        draggable=true
+                                        on_click=Callback::new(move |id| {
+                                            ctrl.open_detail(id)
+                                        })
+                                    />
                                 }
                             })
                             .collect_view()

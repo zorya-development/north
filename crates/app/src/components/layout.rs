@@ -1,8 +1,9 @@
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
-use north_stores::AppStore;
+use north_stores::{AppStore, TaskDetailModalStore};
 
 use crate::components::nav::Sidebar;
+use crate::containers::task_detail_modal::TaskDetailModal;
 use crate::server_fns::auth::check_auth;
 use crate::stores::lookup_store::LookupStore;
 
@@ -13,6 +14,9 @@ pub fn AppLayout(children: Children) -> impl IntoView {
 
     let app_store = AppStore::new();
     provide_context(app_store);
+
+    let task_detail_modal_store = TaskDetailModalStore::new(app_store);
+    provide_context(task_detail_modal_store);
 
     provide_context(LookupStore::new());
 
@@ -33,5 +37,6 @@ pub fn AppLayout(children: Children) -> impl IntoView {
                 <div class="max-w-4xl mx-auto px-8 py-10">{children()}</div>
             </main>
         </div>
+        <TaskDetailModal/>
     }
 }

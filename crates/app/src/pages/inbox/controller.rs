@@ -1,9 +1,10 @@
 use leptos::prelude::*;
-use north_stores::{AppStore, IdFilter, TaskStoreFilter};
+use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskStoreFilter};
 
 #[derive(Clone, Copy)]
 pub struct InboxController {
     app_store: AppStore,
+    task_detail_modal_store: TaskDetailModalStore,
     pub active_task_ids: Memo<Vec<i64>>,
     pub completed_task_ids: Memo<Vec<i64>>,
     pub completed_count: Memo<usize>,
@@ -12,6 +13,8 @@ pub struct InboxController {
 
 impl InboxController {
     pub fn new(app_store: AppStore) -> Self {
+        let task_detail_modal_store = expect_context::<TaskDetailModalStore>();
+
         Effect::new(move |_| {
             app_store.tasks.refetch();
         });
@@ -40,11 +43,17 @@ impl InboxController {
 
         Self {
             app_store,
+            task_detail_modal_store,
             active_task_ids,
             completed_task_ids,
             completed_count,
             is_new_task_form_open,
         }
+    }
+
+    pub fn open_detail(&self, task_id: i64) {
+        let task_ids = self.active_task_ids.get_untracked();
+        self.task_detail_modal_store.open(task_id, task_ids);
     }
 
     pub fn active_tasks_for_reorder(&self) -> Memo<Vec<north_domain::TaskWithMeta>> {
