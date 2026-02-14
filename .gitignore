@@ -5,3 +5,5 @@ uploads/
 *.swo
 *~
 .DS_Store
+.playwright-mcp/
+.docs/

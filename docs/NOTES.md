@@ -1,9 +1,0 @@
-- [ ] Tags REST endpoints — CRUD so they're usable from the UI
-- [ ] Global task creation modal — header "+" button
-- [ ] Subtasks, sequence tasks
-- [ ] Extract UI kit
-- [ ] Favorite projects, filter/search for tags and projects
-- [x] Review page UI — the API is already there
-- [x] Today page — actionable tasks grouped by project (server function + component)
-- [x] Project page — list view with subtask expansion and inline edit
-- [x] All Tasks page — flat filterable list
