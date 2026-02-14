@@ -5,6 +5,13 @@ use crate::Column;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
+pub enum ProjectStatus {
+    Active,
+    Archived,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub enum ProjectViewType {
     List,
     Kanban,
@@ -31,14 +38,14 @@ pub struct ProjectWithColumns {
     pub columns: Vec<Column>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateProject {
     pub title: String,
     pub description: Option<String>,
     pub view_type: Option<ProjectViewType>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct UpdateProject {
     pub title: Option<String>,
     pub description: Option<String>,

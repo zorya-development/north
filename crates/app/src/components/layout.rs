@@ -22,6 +22,10 @@ pub fn AppLayout(children: Children) -> impl IntoView {
         }
     });
 
+    Effect::new(move || {
+        app_store.projects.refetch();
+    });
+
     view! {
         <div class="flex h-screen">
             <Sidebar/>

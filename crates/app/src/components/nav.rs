@@ -4,9 +4,7 @@ use leptos_router::hooks::use_location;
 use crate::components::drag_drop::DragDropContext;
 use crate::components::theme_toggle::ThemeToggle;
 use crate::server_fns::filters::get_saved_filters;
-use crate::server_fns::projects::{
-    archive_project, create_project, get_projects, set_task_project, update_project_details,
-};
+use north_stores::use_app_store;
 use north_ui::{Icon, IconKind};
 
 const PRESET_COLORS: &[&str] = &[
@@ -16,45 +14,10 @@ const PRESET_COLORS: &[&str] = &[
 
 #[component]
 pub fn Sidebar() -> impl IntoView {
-    let projects = Resource::new(|| (), |_| get_projects());
+    let app_store = use_app_store();
     let filters = Resource::new(|| (), |_| get_saved_filters());
     let (creating, set_creating) = signal(false);
     let (new_title, set_new_title) = signal(String::new());
-
-    let create_action = Action::new(move |title: &String| {
-        let title = title.clone();
-        create_project(title)
-    });
-
-    let archive_action = Action::new(move |id: &i64| {
-        let id = *id;
-        archive_project(id)
-    });
-
-    let edit_action = Action::new(move |input: &(i64, String, String)| {
-        let (id, title, color) = input.clone();
-        update_project_details(id, title, color)
-    });
-
-    Effect::new(move || {
-        if let Some(Ok(_)) = create_action.value().get() {
-            set_creating.set(false);
-            set_new_title.set(String::new());
-            projects.refetch();
-        }
-    });
-
-    Effect::new(move || {
-        if let Some(Ok(_)) = archive_action.value().get() {
-            projects.refetch();
-        }
-    });
-
-    Effect::new(move || {
-        if let Some(Ok(_)) = edit_action.value().get() {
-            projects.refetch();
-        }
-    });
 
     view! {
         <aside class="w-60 bg-sidebar border-r border-border flex flex-col h-full">
@@ -92,7 +55,11 @@ pub fn Sidebar() -> impl IntoView {
                                 ev.prevent_default();
                                 let title = new_title.get_untracked();
                                 if !title.trim().is_empty() {
-                                    create_action.dispatch(title.trim().to_string());
+                                    app_store.projects.create(
+                                        title.trim().to_string(),
+                                    );
+                                    set_creating.set(false);
+                                    set_new_title.set(String::new());
                                 }
                             }
                         >
@@ -115,45 +82,35 @@ pub fn Sidebar() -> impl IntoView {
                         </form>
                     </Show>
 
-                    <Suspense fallback=|| ()>
+                    <div class="mt-1 space-y-0.5">
                         {move || {
-                            Suspend::new(async move {
-                                match projects.await {
-                                    Ok(list) => {
-                                        view! {
-                                            <div class="mt-1 space-y-0.5">
-                                                {list
-                                                    .into_iter()
-                                                    .map(|p| {
-                                                        let pid = p.id;
-                                                        let title = p.title.clone();
-                                                        let color = p.color.clone();
-                                                        view! {
-                                                            <ProjectItem
-                                                                id=pid
-                                                                title=title
-                                                                color=color
-                                                                on_archive=move || {
-                                                                    archive_action
-                                                                        .dispatch(pid);
-                                                                }
-                                                                on_edit=move |id, t, c| {
-                                                                    edit_action
-                                                                        .dispatch((id, t, c));
-                                                                }
-                                                            />
-                                                        }
-                                                    })
-                                                    .collect::<Vec<_>>()}
-                                            </div>
-                                        }
-                                        .into_any()
+                            app_store
+                                .projects
+                                .get()
+                                .into_iter()
+                                .map(|p| {
+                                    let pid = p.id;
+                                    let title = p.title.clone();
+                                    let color = p.color.clone();
+                                    view! {
+                                        <ProjectItem
+                                            id=pid
+                                            title=title
+                                            color=color
+                                            on_archive=move || {
+                                                app_store.projects.archive(pid);
+                                            }
+                                            on_edit=move |id, t, c| {
+                                                app_store
+                                                    .projects
+                                                    .update_details(id, t, c);
+                                            }
+                                        />
                                     }
-                                    Err(_) => view! { <div/> }.into_any(),
-                                }
-                            })
+                                })
+                                .collect::<Vec<_>>()
                         }}
-                    </Suspense>
+                    </div>
 
                     <div class="mt-1">
                         <NavItem href="/archive" label="Archive" icon=IconKind::Archive/>
@@ -229,6 +186,7 @@ fn ProjectItem(
     on_archive: impl Fn() + Send + Sync + 'static,
     on_edit: impl Fn(i64, String, String) + Send + Sync + 'static,
 ) -> impl IntoView {
+    let app_store = use_app_store();
     let (hover, set_hover) = signal(false);
     let (drag_over, set_drag_over) = signal(false);
     let (editing, set_editing) = signal(false);
@@ -240,11 +198,6 @@ fn ProjectItem(
     let location = use_location();
     let href_cmp = href.clone();
     let drag_ctx = use_context::<DragDropContext>();
-
-    let set_project_action = Action::new(move |input: &(i64, i64)| {
-        let (task_id, project_id) = *input;
-        set_task_project(task_id, project_id)
-    });
 
     let class = Memo::new(move |_| {
         let base = "group flex items-center gap-2 px-3 py-1.5 rounded-lg \
@@ -296,8 +249,7 @@ fn ProjectItem(
                                     if let Some(task_id) =
                                         ctx.dragging_task_id.get_untracked()
                                     {
-                                        set_project_action
-                                            .dispatch((task_id, id));
+                                        app_store.tasks.set_project(task_id, id);
                                         ctx.dragging_task_id.set(None);
                                         ctx.drop_target.set(None);
                                     }

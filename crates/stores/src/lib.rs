@@ -1,22 +1,9 @@
+pub mod app_store;
+pub mod hooks;
+pub mod project_store;
 pub mod task_store;
 
+pub use app_store::AppStore;
+pub use hooks::use_app_store;
+pub use project_store::ProjectStore;
 pub use task_store::{IdFilter, TaskStore, TaskStoreFilter};
-
-use leptos::prelude::*;
-
-#[derive(Clone, Copy)]
-pub struct AppStore {
-    pub tasks: TaskStore,
-}
-
-impl AppStore {
-    pub fn new() -> Self {
-        Self {
-            tasks: TaskStore::new(),
-        }
-    }
-}
-
-pub fn use_app_store() -> AppStore {
-    expect_context::<AppStore>()
-}
