@@ -16,7 +16,7 @@ pub fn SubtaskList(
     let subtasks: Resource<Result<Vec<TaskWithMeta>, ServerFnError>> =
         Resource::new(move || parent_id, |pid| get_subtasks(pid));
 
-    let (hide_completed, set_hide_completed) = signal(false);
+    let (hide_completed, set_hide_completed) = signal(true);
 
     let complete_action = Action::new(|id: &i64| {
         let id = *id;

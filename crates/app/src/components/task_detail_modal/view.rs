@@ -476,37 +476,115 @@ pub fn TaskDetailModalView(
                                     </div>
 
                                     // Right sidebar
-                                    <div class="w-56 border-l border-border p-4 \
-                                                space-y-3 overflow-y-auto \
-                                                flex-shrink-0">
+                                    <div class="w-52 border-l border-border \
+                                                px-3 py-3 space-y-2 \
+                                                overflow-y-auto flex-shrink-0">
                                         // Project
                                         <SidebarRow label="Project">
-                                            <ProjectPicker
-                                                task_id=task_id
-                                                project_id=project_id
-                                                project_title=project_title
-                                                on_set_project=on_set_project
-                                                on_clear_project=on_clear_project
-                                            />
+                                            <div class="flex items-center gap-1.5">
+                                                <ProjectPicker
+                                                    task_id=task_id
+                                                    project_id=project_id
+                                                    project_title=project_title.clone()
+                                                    on_set_project=on_set_project
+                                                    on_clear_project=on_clear_project
+                                                    icon_only=true
+                                                />
+                                                <span class="text-xs text-text-secondary \
+                                                             truncate flex-1">
+                                                    {project_title
+                                                        .unwrap_or_else(
+                                                            || "None".to_string(),
+                                                        )}
+                                                </span>
+                                                {project_id.map(|_| {
+                                                    view! {
+                                                        <button
+                                                            class="p-0.5 text-text-tertiary \
+                                                                   hover:text-text-primary \
+                                                                   transition-colors \
+                                                                   flex-shrink-0"
+                                                            on:click=move |_| {
+                                                                on_clear_project
+                                                                    .run(task_id)
+                                                            }
+                                                            title="Clear project"
+                                                        >
+                                                            <Icon
+                                                                kind=IconKind::Close
+                                                                class="w-3 h-3"
+                                                            />
+                                                        </button>
+                                                    }
+                                                })}
+                                            </div>
                                         </SidebarRow>
 
                                         // Tags
                                         <SidebarRow label="Tags">
-                                            <TagPicker
-                                                task_id=task_id
-                                                tags=tags
-                                                on_set_tags=on_set_tags
-                                            />
+                                            <div class="flex items-center gap-1.5">
+                                                <TagPicker
+                                                    task_id=task_id
+                                                    tags=tags.clone()
+                                                    on_set_tags=on_set_tags
+                                                    icon_only=true
+                                                />
+                                                <span class="text-xs text-text-secondary \
+                                                             truncate flex-1">
+                                                    {if tags.is_empty() {
+                                                        "None".to_string()
+                                                    } else {
+                                                        tags.iter()
+                                                            .map(|t| t.name.as_str())
+                                                            .collect::<Vec<_>>()
+                                                            .join(", ")
+                                                    }}
+                                                </span>
+                                            </div>
                                         </SidebarRow>
 
                                         // Start date
                                         <SidebarRow label="Start date">
-                                            <DateTimePicker
-                                                task_id=task_id
-                                                start_at=start_at
-                                                on_set_start_at=on_set_start_at
-                                                on_clear_start_at=on_clear_start_at
-                                            />
+                                            <div class="flex items-center gap-1.5">
+                                                <DateTimePicker
+                                                    task_id=task_id
+                                                    start_at=start_at
+                                                    on_set_start_at=on_set_start_at
+                                                    on_clear_start_at=on_clear_start_at
+                                                    icon_only=true
+                                                />
+                                                <span class="text-xs text-text-secondary \
+                                                             truncate flex-1">
+                                                    {start_at
+                                                        .map(|dt| {
+                                                            dt.format("%b %d, %l:%M %p")
+                                                                .to_string()
+                                                        })
+                                                        .unwrap_or_else(
+                                                            || "Not set".to_string(),
+                                                        )}
+                                                </span>
+                                                {start_at.map(|_| {
+                                                    view! {
+                                                        <button
+                                                            class="p-0.5 text-text-tertiary \
+                                                                   hover:text-text-primary \
+                                                                   transition-colors \
+                                                                   flex-shrink-0"
+                                                            on:click=move |_| {
+                                                                on_clear_start_at
+                                                                    .run(task_id)
+                                                            }
+                                                            title="Clear start date"
+                                                        >
+                                                            <Icon
+                                                                kind=IconKind::Close
+                                                                class="w-3 h-3"
+                                                            />
+                                                        </button>
+                                                    }
+                                                })}
+                                            </div>
                                         </SidebarRow>
 
                                         // Due date
@@ -541,8 +619,11 @@ pub fn TaskDetailModalView(
 #[component]
 fn SidebarRow(label: &'static str, children: Children) -> impl IntoView {
     view! {
-        <div class="group">
-            <div class="text-xs text-text-tertiary mb-1">{label}</div>
+        <div>
+            <div class="text-[11px] text-text-tertiary mb-0.5 \
+                        uppercase tracking-wide">
+                {label}
+            </div>
             {children()}
         </div>
     }

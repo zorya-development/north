@@ -62,9 +62,6 @@ pub fn SubtaskListView(
                         .filter(|t| t.task.completed_at.is_some())
                         .count();
 
-                    let _sibling_ids: Vec<i64> =
-                        tasks.iter().map(|t| t.task.id).collect();
-
                     view! {
                         <div class="space-y-0.5">
                             // Header
