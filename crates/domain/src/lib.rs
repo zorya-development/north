@@ -4,6 +4,7 @@ pub mod filter_dsl;
 pub mod filter_parser;
 pub mod project;
 pub mod saved_filter;
+pub mod serde_helpers;
 pub mod sort_key;
 pub mod tag;
 pub mod task;

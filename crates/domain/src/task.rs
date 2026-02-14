@@ -1,7 +1,7 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Task {
     pub id: i64,
     pub project_id: Option<i64>,
@@ -20,7 +20,7 @@ pub struct Task {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TaskWithMeta {
     #[serde(flatten)]
     pub task: Task,
@@ -32,7 +32,7 @@ pub struct TaskWithMeta {
     pub actionable: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CreateTask {
     pub title: String,
     pub body: Option<String>,
@@ -43,17 +43,68 @@ pub struct CreateTask {
     pub due_date: Option<NaiveDate>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct UpdateTask {
     pub title: Option<String>,
-    pub body: Option<String>,
-    pub project_id: Option<i64>,
-    pub parent_id: Option<i64>,
-    pub column_id: Option<i64>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "crate::serde_helpers::is_none_outer",
+        with = "crate::serde_helpers::double_option"
+    )]
+    pub body: Option<Option<String>>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "crate::serde_helpers::is_none_outer",
+        with = "crate::serde_helpers::double_option"
+    )]
+    pub project_id: Option<Option<i64>>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "crate::serde_helpers::is_none_outer",
+        with = "crate::serde_helpers::double_option"
+    )]
+    pub parent_id: Option<Option<i64>>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "crate::serde_helpers::is_none_outer",
+        with = "crate::serde_helpers::double_option"
+    )]
+    pub column_id: Option<Option<i64>>,
+
     pub sort_key: Option<String>,
     pub sequential_limit: Option<i16>,
-    pub start_at: Option<DateTime<Utc>>,
-    pub due_date: Option<NaiveDate>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "crate::serde_helpers::is_none_outer",
+        with = "crate::serde_helpers::double_option"
+    )]
+    pub start_at: Option<Option<DateTime<Utc>>>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "crate::serde_helpers::is_none_outer",
+        with = "crate::serde_helpers::double_option"
+    )]
+    pub due_date: Option<Option<NaiveDate>>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "crate::serde_helpers::is_none_outer",
+        with = "crate::serde_helpers::double_option"
+    )]
+    pub completed_at: Option<Option<DateTime<Utc>>>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "crate::serde_helpers::is_none_outer",
+        with = "crate::serde_helpers::double_option"
+    )]
+    pub reviewed_at: Option<Option<NaiveDate>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

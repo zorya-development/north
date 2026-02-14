@@ -1723,6 +1723,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60993920e071b0c9b66f14e2b32740a4e27ffc82854dcd72035887f336a09a28"
 
 [[package]]
+name = "north-api"
+version = "0.1.0"
+dependencies = [
+ "axum-extra",
+ "http",
+ "jsonwebtoken",
+ "leptos",
+ "leptos_axum",
+ "north-domain",
+ "north-services",
+ "serde",
+]
+
+[[package]]
 name = "north-app"
 version = "0.1.0"
 dependencies = [
@@ -1736,7 +1750,9 @@ dependencies = [
  "leptos_meta",
  "leptos_router",
  "north-domain",
+ "north-repositories",
  "north-services",
+ "north-stores",
  "north-ui",
  "serde",
  "serde_json",
@@ -1770,6 +1786,15 @@ dependencies = [
  "fractional_index",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "north-repositories"
+version = "0.1.0"
+dependencies = [
+ "leptos",
+ "north-api",
+ "north-domain",
 ]
 
 [[package]]
@@ -1815,6 +1840,16 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "tracing",
+]
+
+[[package]]
+name = "north-stores"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "leptos",
+ "north-domain",
+ "north-repositories",
 ]
 
 [[package]]

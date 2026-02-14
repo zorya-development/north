@@ -6,6 +6,9 @@ members = ["crates/*"]
 north-domain = { path = "crates/domain" }
 north-app = { path = "crates/app" }
 north-ui = { path = "crates/ui" }
+north-stores = { path = "crates/stores" }
+north-repositories = { path = "crates/repositories" }
+north-api = { path = "crates/api" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

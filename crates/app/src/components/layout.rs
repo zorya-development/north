@@ -1,5 +1,7 @@
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
+use north_repositories::TaskRepository;
+use north_stores::AppStore;
 
 use crate::components::nav::Sidebar;
 use crate::server_fns::auth::check_auth;
@@ -9,6 +11,16 @@ use crate::stores::lookup_store::LookupStore;
 pub fn AppLayout(children: Children) -> impl IntoView {
     let auth_check = Resource::new(|| (), |_| check_auth());
     let navigate = use_navigate();
+
+    let app_store = AppStore::new();
+    app_store.provide();
+
+    let tasks_resource = Resource::new(|| (), |_| TaskRepository::list());
+    Effect::new(move || {
+        if let Some(Ok(tasks)) = tasks_resource.get() {
+            app_store.tasks.load(tasks);
+        }
+    });
 
     provide_context(LookupStore::new());
 

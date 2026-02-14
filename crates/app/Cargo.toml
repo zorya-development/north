@@ -7,9 +7,11 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-hydrate = ["leptos/hydrate"]
+hydrate = ["leptos/hydrate", "north-repositories/hydrate", "north-stores/hydrate"]
 ssr = [
     "leptos/ssr",
+    "north-repositories/ssr",
+    "north-stores/ssr",
     "dep:leptos_axum",
     "dep:north-services",
     "dep:argon2",
@@ -22,6 +24,8 @@ ssr = [
 [dependencies]
 north-domain = { workspace = true }
 north-ui = { workspace = true }
+north-stores = { workspace = true }
+north-repositories = { workspace = true }
 north-services = { path = "../services", optional = true }
 
 leptos = "0.7"

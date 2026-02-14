@@ -1,0 +1,14 @@
+[package]
+name = "north-stores"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+ssr = ["north-repositories/ssr"]
+hydrate = ["north-repositories/hydrate"]
+
+[dependencies]
+north-domain = { workspace = true }
+north-repositories = { workspace = true }
+leptos = "0.7"
+chrono = { workspace = true }

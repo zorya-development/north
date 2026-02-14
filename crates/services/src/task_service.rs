@@ -556,54 +556,106 @@ impl TaskService {
             .optional()?
             .ok_or_else(|| ServiceError::NotFound("Task not found".into()))?;
 
-        let title = input.title.as_deref().unwrap_or(&existing.title);
-        let body_val = input.body.as_ref().or(existing.body.as_ref());
-        let project_id = input.project_id.or(existing.project_id);
-        let parent_id = input.parent_id.or(existing.parent_id);
-        let new_column_id = input.column_id.or(existing.column_id);
-        let sort_key = input.sort_key.as_ref().unwrap_or(&existing.sort_key);
-        let sequential_limit = input.sequential_limit.unwrap_or(existing.sequential_limit);
-        let start_at = input.start_at.or(existing.start_at);
-        let due_date = input.due_date.or(existing.due_date);
+        let mut changeset = TaskChangeset::default();
 
-        // Handle completed_at based on column change
-        let completed_at = if input.column_id.is_some() && input.column_id != existing.column_id {
-            if let Some(col_id) = new_column_id {
-                let is_done = crate::ColumnService::is_done(pool, col_id).await?;
-                if is_done == Some(true) {
-                    Some(Some(Utc::now()))
-                } else {
-                    Some(None)
-                }
-            } else {
-                None
+        if let Some(ref title) = input.title {
+            changeset.title = Some(title.as_str());
+        }
+        if let Some(ref body) = input.body {
+            changeset.body = Some(body.as_deref());
+        }
+        if let Some(ref project_id) = input.project_id {
+            changeset.project_id = Some(*project_id);
+        }
+        if let Some(ref parent_id) = input.parent_id {
+            changeset.parent_id = Some(*parent_id);
+            // When nesting under a new parent, inherit parent's project_id
+            if let Some(pid) = parent_id {
+                let parent_project: Option<i64> = tasks::table
+                    .filter(tasks::id.eq(*pid))
+                    .select(tasks::project_id)
+                    .first(&mut conn)
+                    .await
+                    .optional()?
+                    .flatten();
+                changeset.project_id = Some(parent_project);
             }
-        } else {
-            None
-        };
-
-        let mut changeset = TaskChangeset {
-            title: Some(title),
-            body: Some(body_val.map(|s| s.as_str())),
-            project_id: Some(project_id),
-            parent_id: Some(parent_id),
-            column_id: Some(new_column_id),
-            sort_key: Some(sort_key),
-            sequential_limit: Some(sequential_limit),
-            start_at: Some(start_at),
-            due_date: Some(due_date),
-            ..Default::default()
-        };
-
-        if let Some(ca) = completed_at {
-            changeset.completed_at = Some(ca);
+        }
+        if let Some(ref sort_key) = input.sort_key {
+            changeset.sort_key = Some(sort_key.as_str());
+        }
+        if let Some(sequential_limit) = input.sequential_limit {
+            changeset.sequential_limit = Some(sequential_limit);
+        }
+        if let Some(ref start_at) = input.start_at {
+            changeset.start_at = Some(*start_at);
+        }
+        if let Some(ref due_date) = input.due_date {
+            changeset.due_date = Some(*due_date);
+        }
+        if let Some(ref reviewed_at) = input.reviewed_at {
+            changeset.reviewed_at = Some(*reviewed_at);
         }
 
-        let row = diesel::update(tasks::table.filter(tasks::id.eq(id)))
-            .set(&changeset)
-            .returning(TaskRow::as_returning())
-            .get_result(&mut conn)
-            .await?;
+        // Handle completed_at: explicit input takes precedence, then column-based logic
+        if let Some(ref completed_at) = input.completed_at {
+            changeset.completed_at = Some(*completed_at);
+        } else if let Some(ref column_id) = input.column_id {
+            // Column changed — derive completed_at from is_done flag
+            let effective_col = column_id.or(existing.column_id);
+            if effective_col != existing.column_id {
+                if let Some(col_id) = effective_col {
+                    let is_done = crate::ColumnService::is_done(pool, col_id).await?;
+                    if is_done == Some(true) {
+                        changeset.completed_at = Some(Some(Utc::now()));
+                    } else {
+                        changeset.completed_at = Some(None);
+                    }
+                }
+            }
+        }
+
+        // Apply column_id to changeset
+        if let Some(ref column_id) = input.column_id {
+            changeset.column_id = Some(*column_id);
+        }
+
+        let row = diesel::update(
+            tasks::table
+                .filter(tasks::id.eq(id))
+                .filter(tasks::user_id.eq(user_id)),
+        )
+        .set(&changeset)
+        .returning(TaskRow::as_returning())
+        .get_result(&mut conn)
+        .await?;
+
+        // If completing (was null, now set), cascade to descendants
+        if let Some(Some(_)) = input.completed_at {
+            if existing.completed_at.is_none() {
+                let now = Utc::now();
+                let mut parent_ids = vec![id];
+                for _ in 0..5 {
+                    if parent_ids.is_empty() {
+                        break;
+                    }
+                    let child_ids: Vec<i64> = tasks::table
+                        .filter(tasks::parent_id.eq_any(&parent_ids))
+                        .filter(tasks::completed_at.is_null())
+                        .select(tasks::id)
+                        .load(&mut conn)
+                        .await?;
+                    if child_ids.is_empty() {
+                        break;
+                    }
+                    diesel::update(tasks::table.filter(tasks::id.eq_any(&child_ids)))
+                        .set(tasks::completed_at.eq(Some(now)))
+                        .execute(&mut conn)
+                        .await?;
+                    parent_ids = child_ids;
+                }
+            }
+        }
 
         Ok(Task::from(row))
     }
@@ -628,7 +680,7 @@ impl TaskService {
         let new_column_id = input.column_id.or(existing.column_id);
         let new_sort_key = input.sort_key.as_deref().unwrap_or(&existing.sort_key);
         let new_parent_id = match &input.parent_id {
-            Some(pid) => *pid,       // Some(None)=unnest, Some(Some(id))=nest
+            Some(pid) => *pid,          // Some(None)=unnest, Some(Some(id))=nest
             None => existing.parent_id, // no change
         };
 
@@ -1157,7 +1209,10 @@ impl TaskService {
     ) -> ServiceResult<Vec<TaskWithMeta>> {
         let parsed = north_domain::parse_filter(query_str).map_err(|errs| {
             ServiceError::BadRequest(
-                errs.into_iter().map(|e| e.to_string()).collect::<Vec<_>>().join("; "),
+                errs.into_iter()
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>()
+                    .join("; "),
             )
         })?;
 
@@ -1196,21 +1251,15 @@ impl TaskService {
             use north_domain::SortDirection;
             results.sort_by(|a, b| {
                 let cmp = match order_by.field {
-                    north_domain::FilterField::Title => {
-                        a.task.title.to_lowercase().cmp(&b.task.title.to_lowercase())
-                    }
-                    north_domain::FilterField::DueDate => {
-                        a.task.due_date.cmp(&b.task.due_date)
-                    }
-                    north_domain::FilterField::StartAt => {
-                        a.task.start_at.cmp(&b.task.start_at)
-                    }
-                    north_domain::FilterField::Created => {
-                        a.task.created_at.cmp(&b.task.created_at)
-                    }
-                    north_domain::FilterField::Updated => {
-                        a.task.updated_at.cmp(&b.task.updated_at)
-                    }
+                    north_domain::FilterField::Title => a
+                        .task
+                        .title
+                        .to_lowercase()
+                        .cmp(&b.task.title.to_lowercase()),
+                    north_domain::FilterField::DueDate => a.task.due_date.cmp(&b.task.due_date),
+                    north_domain::FilterField::StartAt => a.task.start_at.cmp(&b.task.start_at),
+                    north_domain::FilterField::Created => a.task.created_at.cmp(&b.task.created_at),
+                    north_domain::FilterField::Updated => a.task.updated_at.cmp(&b.task.updated_at),
                     _ => a.task.sort_key.cmp(&b.task.sort_key),
                 };
                 match order_by.direction {
@@ -1352,10 +1401,7 @@ impl TaskService {
                     column_name: row.column_id.and_then(|cid| col_map.get(&cid).cloned()),
                     tags: tags_map.remove(&id).unwrap_or_default(),
                     subtask_count: count_map.get(&id).copied().unwrap_or(0),
-                    completed_subtask_count: completed_count_map
-                        .get(&id)
-                        .copied()
-                        .unwrap_or(0),
+                    completed_subtask_count: completed_count_map.get(&id).copied().unwrap_or(0),
                     actionable: row.completed_at.is_none(),
                     task: Task::from(row),
                 }
