@@ -7,6 +7,7 @@ pub struct TaskInlineFormController {
     app_store: AppStore,
     task_id: Option<i64>,
     project_id: Option<i64>,
+    parent_id: Option<i64>,
     pub title: (ReadSignal<String>, WriteSignal<String>),
     pub body: (ReadSignal<String>, WriteSignal<String>),
     pub preview: (ReadSignal<bool>, WriteSignal<bool>),
@@ -18,6 +19,7 @@ impl TaskInlineFormController {
         app_store: AppStore,
         task_id: Option<i64>,
         project_id: Option<i64>,
+        parent_id: Option<i64>,
         on_done: Callback<()>,
     ) -> Self {
         let initial_title;
@@ -40,6 +42,7 @@ impl TaskInlineFormController {
             app_store,
             task_id,
             project_id,
+            parent_id,
             title,
             body,
             preview,
@@ -62,6 +65,7 @@ impl TaskInlineFormController {
                 title: t,
                 body: body_opt,
                 project_id: self.project_id,
+                parent_id: self.parent_id,
                 ..Default::default()
             });
         }

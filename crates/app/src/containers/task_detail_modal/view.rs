@@ -2,9 +2,9 @@ use leptos::prelude::*;
 use north_stores::TaskDetailModalStore;
 
 use crate::components::date_picker::DateTimePicker;
-use crate::components::subtask_list::SubtaskList;
 use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
+use crate::containers::task_list_item::components::InlineSubtaskList;
 use north_ui::{Checkbox, Icon, IconKind, MarkdownView};
 
 #[component]
@@ -403,15 +403,12 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
 
                                 // Subtask area
                                 <div class="ml-6">
-                                    <SubtaskList
+                                    <InlineSubtaskList
                                         parent_id=task_id
-                                        parent_sequential_limit=sequential_limit
-                                        depth=0
-                                        project_id=project_id
-                                        on_navigate_to=Callback::new(move |id| {
+                                        sequential_limit=sequential_limit
+                                        on_click=Callback::new(move |id| {
                                             store.navigate_to_subtask(id)
                                         })
-                                        on_parent_refetch=Callback::new(move |()| {})
                                     />
                                 </div>
                             </div>

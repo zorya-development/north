@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 use north_stores::{use_app_store, IdFilter, TaskStoreFilter};
 
+use crate::containers::task_inline_form::TaskInlineForm;
 use crate::containers::task_list_item::TaskListItem;
 
 #[component]
@@ -10,10 +11,12 @@ pub fn InlineSubtaskList(
     #[prop(default = true)] show_project: bool,
     #[prop(default = false)] draggable: bool,
     #[prop(default = 1)] depth: u8,
+    #[prop(optional)] on_click: Option<Callback<i64>>,
 ) -> impl IntoView {
     let app_store = use_app_store();
     let (show_non_actionable, set_show_non_actionable) = signal(false);
     let (show_completed, set_show_completed) = signal(false);
+    let (show_form, set_show_form) = signal(false);
     let limit = sequential_limit as usize;
 
     let all_subtasks = app_store.tasks.filtered(TaskStoreFilter {
@@ -72,11 +75,39 @@ pub fn InlineSubtaskList(
                                 show_project=show_project
                                 draggable=draggable
                                 depth=depth
+                                on_click=on_click
+                                    .unwrap_or(Callback::new(|_| {}))
                             />
                         }
                     })
                     .collect_view()
             }}
+            // Add subtask form
+            <Show
+                when=move || show_form.get()
+                fallback=move || {
+                    view! {
+                        <button
+                            class="ml-6 py-1 text-xs text-accent \
+                                   hover:text-accent-hover \
+                                   hover:underline cursor-pointer \
+                                   transition-colors"
+                            on:click=move |_| set_show_form.set(true)
+                        >
+                            "+ Add subtask"
+                        </button>
+                    }
+                }
+            >
+                <div class="ml-4 py-1">
+                    <TaskInlineForm
+                        parent_id=parent_id
+                        on_done=Callback::new(move |()| {
+                            set_show_form.set(false)
+                        })
+                    />
+                </div>
+            </Show>
             // Toggle bar
             <Show when=move || {
                 non_actionable_count.get() > 0usize

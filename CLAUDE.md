@@ -261,13 +261,10 @@ north/
     │       │   ├── task_inline_form/   # Container/controller/view (inline task creation)
     │       │   └── task_list_item/     # Container/controller/view (single task row + inline subtask list)
     │       ├── components/
-    │       │   ├── task_card/          # Container/view pattern
     │       │   ├── task_list/          # Container/view pattern
     │       │   ├── date_picker/        # Container/view pattern (supports icon_only prop)
     │       │   ├── filter_autocomplete/ # DSL autocomplete for filter page
     │       │   ├── autocomplete/       # Container/view pattern
-    │       │   ├── subtask_form/       # Subtask creation form
-    │       │   ├── subtask_list/       # Subtask list rendering
     │       │   ├── task_meta.rs        # Pure view (date, project, tags display)
     │       │   ├── task_form.rs        # Self-contained form widget
     │       │   ├── drag_drop.rs        # Drag and drop utilities
