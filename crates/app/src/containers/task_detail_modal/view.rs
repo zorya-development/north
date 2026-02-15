@@ -31,7 +31,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                 on:click=move |_| store.close()
             />
             <div
-                class="relative z-10 border border-border/60 \
+                class="relative border border-border/60 \
                        rounded-2xl shadow-2xl max-w-3xl w-full mx-4 \
                        max-h-[85vh] flex flex-col"
                 style="background-color: var(--bg-secondary)"
@@ -422,124 +422,51 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                         overflow-y-auto flex-shrink-0">
                                 // Project
                                 <SidebarRow label="Project">
-                                    <div class="flex items-center gap-1.5">
-                                        <ProjectPicker
-                                            task_id=task_id
-                                            project_id=project_id
-                                            project_title=project_title.clone()
-                                            on_set_project=Callback::new(
-                                                move |(_task_id, project_id): (i64, i64)| {
-                                                    store.set_project(project_id)
-                                                },
-                                            )
-                                            on_clear_project=Callback::new(
-                                                move |_id: i64| store.clear_project(),
-                                            )
-                                            icon_only=true
-                                        />
-                                        <span class="text-xs text-text-secondary \
-                                                     truncate flex-1">
-                                            {project_title
-                                                .unwrap_or_else(
-                                                    || "None".to_string(),
-                                                )}
-                                        </span>
-                                        {project_id.map(|_| {
-                                            view! {
-                                                <button
-                                                    class="p-0.5 text-text-tertiary \
-                                                           hover:text-text-primary \
-                                                           transition-colors \
-                                                           flex-shrink-0"
-                                                    on:click=move |_| {
-                                                        store.clear_project()
-                                                    }
-                                                    title="Clear project"
-                                                >
-                                                    <Icon
-                                                        kind=IconKind::Close
-                                                        class="w-3 h-3"
-                                                    />
-                                                </button>
-                                            }
-                                        })}
-                                    </div>
+                                    <ProjectPicker
+                                        task_id=task_id
+                                        project_id=project_id
+                                        project_title=project_title.clone()
+                                        on_set_project=Callback::new(
+                                            move |(_task_id, project_id): (i64, i64)| {
+                                                store.set_project(project_id)
+                                            },
+                                        )
+                                        on_clear_project=Callback::new(
+                                            move |_id: i64| store.clear_project(),
+                                        )
+                                        always_visible=true
+                                    />
                                 </SidebarRow>
 
                                 // Tags
                                 <SidebarRow label="Tags">
-                                    <div class="flex items-center gap-1.5">
-                                        <TagPicker
-                                            task_id=task_id
-                                            tags=tags.clone()
-                                            on_set_tags=Callback::new(
-                                                move |(_task_id, tags): (i64, Vec<String>)| {
-                                                    store.set_tags(tags)
-                                                },
-                                            )
-                                            icon_only=true
-                                        />
-                                        <span class="text-xs text-text-secondary \
-                                                     truncate flex-1">
-                                            {if tags.is_empty() {
-                                                "None".to_string()
-                                            } else {
-                                                tags.iter()
-                                                    .map(|t| t.name.as_str())
-                                                    .collect::<Vec<_>>()
-                                                    .join(", ")
-                                            }}
-                                        </span>
-                                    </div>
+                                    <TagPicker
+                                        task_id=task_id
+                                        tags=tags.clone()
+                                        on_set_tags=Callback::new(
+                                            move |(_task_id, tags): (i64, Vec<String>)| {
+                                                store.set_tags(tags)
+                                            },
+                                        )
+                                        always_visible=true
+                                    />
                                 </SidebarRow>
 
                                 // Start date
                                 <SidebarRow label="Start date">
-                                    <div class="flex items-center gap-1.5">
-                                        <DateTimePicker
-                                            task_id=task_id
-                                            start_at=start_at
-                                            on_set_start_at=Callback::new(
-                                                move |(_id, start_at): (i64, String)| {
-                                                    store.set_start_at(start_at)
-                                                },
-                                            )
-                                            on_clear_start_at=Callback::new(
-                                                move |_id: i64| store.clear_start_at(),
-                                            )
-                                            icon_only=true
-                                        />
-                                        <span class="text-xs text-text-secondary \
-                                                     truncate flex-1">
-                                            {start_at
-                                                .map(|dt| {
-                                                    dt.format("%b %d, %l:%M %p")
-                                                        .to_string()
-                                                })
-                                                .unwrap_or_else(
-                                                    || "Not set".to_string(),
-                                                )}
-                                        </span>
-                                        {start_at.map(|_| {
-                                            view! {
-                                                <button
-                                                    class="p-0.5 text-text-tertiary \
-                                                           hover:text-text-primary \
-                                                           transition-colors \
-                                                           flex-shrink-0"
-                                                    on:click=move |_| {
-                                                        store.clear_start_at()
-                                                    }
-                                                    title="Clear start date"
-                                                >
-                                                    <Icon
-                                                        kind=IconKind::Close
-                                                        class="w-3 h-3"
-                                                    />
-                                                </button>
-                                            }
-                                        })}
-                                    </div>
+                                    <DateTimePicker
+                                        task_id=task_id
+                                        start_at=start_at
+                                        on_set_start_at=Callback::new(
+                                            move |(_id, start_at): (i64, String)| {
+                                                store.set_start_at(start_at)
+                                            },
+                                        )
+                                        on_clear_start_at=Callback::new(
+                                            move |_id: i64| store.clear_start_at(),
+                                        )
+                                        always_visible=true
+                                    />
                                 </SidebarRow>
 
                                 // Due date

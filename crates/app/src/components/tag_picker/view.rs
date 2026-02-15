@@ -14,6 +14,7 @@ pub fn TagPickerView(
     set_current_tags: WriteSignal<Vec<String>>,
     on_set_tags: Callback<(i64, Vec<String>)>,
     #[prop(default = false)] icon_only: bool,
+    #[prop(default = false)] always_visible: bool,
 ) -> impl IntoView {
     let (new_tag_input, set_new_tag_input) = signal(String::new());
 
@@ -96,7 +97,7 @@ pub fn TagPickerView(
                                                 <span
                                                     class="group/tag text-xs \
                                                            inline-flex items-center \
-                                                           gap-0.5"
+                                                           gap-0.5 select-none"
                                                     style=format!(
                                                         "color: {}",
                                                         color,
@@ -108,10 +109,15 @@ pub fn TagPickerView(
                                                     />
                                                     {name}
                                                     <button
-                                                        class="cursor-pointer \
-                                                               hover:opacity-70 \
-                                                               hidden \
-                                                               group-hover/tag:inline"
+                                                        class=if always_visible {
+                                                            "cursor-pointer \
+                                                             hover:opacity-70"
+                                                        } else {
+                                                            "cursor-pointer \
+                                                             hover:opacity-70 \
+                                                             hidden \
+                                                             group-hover/tag:inline"
+                                                        }
                                                         on:click=move |ev| {
                                                             ev.stop_propagation();
                                                             let mut names =
@@ -135,7 +141,8 @@ pub fn TagPickerView(
                                         class="text-text-tertiary \
                                                hover:text-text-secondary \
                                                hover:bg-bg-tertiary px-1 py-0.5 \
-                                               rounded transition-colors text-xs"
+                                               rounded transition-colors text-xs \
+                                               cursor-pointer"
                                         on:click=move |_| {
                                             set_popover_open.update(|o| *o = !*o);
                                         }
@@ -146,23 +153,40 @@ pub fn TagPickerView(
                             }
                             .into_any()
                         } else {
-                            view! {
-                                <button
-                                    class="items-center gap-1 \
-                                           text-text-tertiary \
-                                           hover:text-text-secondary \
-                                           hover:bg-bg-tertiary px-1.5 py-0.5 \
-                                           rounded transition-colors hidden \
-                                           group-hover:inline-flex"
-                                    on:click=move |_| {
-                                        set_popover_open.update(|o| *o = !*o);
-                                    }
-                                >
-                                    <Icon kind=IconKind::Tag class="w-3 h-3"/>
-                                    "Tags"
-                                </button>
+                            {
+                                let vis_class = if always_visible {
+                                    "inline-flex items-center gap-1 \
+                                     text-text-tertiary \
+                                     hover:text-text-secondary \
+                                     hover:bg-bg-tertiary px-1.5 py-0.5 \
+                                     rounded transition-colors \
+                                     cursor-pointer select-none"
+                                } else {
+                                    "items-center gap-1 \
+                                     text-text-tertiary \
+                                     hover:text-text-secondary \
+                                     hover:bg-bg-tertiary px-1.5 py-0.5 \
+                                     rounded transition-colors \
+                                     cursor-pointer select-none \
+                                     hidden group-hover:inline-flex"
+                                };
+                                view! {
+                                    <button
+                                        class=vis_class
+                                        on:click=move |_| {
+                                            set_popover_open
+                                                .update(|o| *o = !*o);
+                                        }
+                                    >
+                                        <Icon
+                                            kind=IconKind::Tag
+                                            class="w-3 h-3"
+                                        />
+                                        "None"
+                                    </button>
+                                }
+                                .into_any()
                             }
-                            .into_any()
                         }
                     }}
                 }

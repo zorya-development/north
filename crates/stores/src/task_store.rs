@@ -50,6 +50,10 @@ impl TaskStore {
         self.loaded.get_untracked()
     }
 
+    pub fn loaded_signal(&self) -> Signal<bool> {
+        self.loaded.into()
+    }
+
     pub fn get_by_id(&self, id: i64) -> Memo<Option<TaskWithMeta>> {
         let tasks = self.tasks;
         Memo::new(move |_| tasks.get().into_iter().find(|t| t.task.id == id))

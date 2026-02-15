@@ -10,6 +10,7 @@ pub fn TagPicker(
     tags: Vec<TagInfo>,
     on_set_tags: Callback<(i64, Vec<String>)>,
     #[prop(default = false)] icon_only: bool,
+    #[prop(default = false)] always_visible: bool,
 ) -> impl IntoView {
     let (popover_open, set_popover_open) = signal(false);
     let current_names: Vec<String> = tags.iter().map(|t| t.name.clone()).collect();
@@ -39,6 +40,7 @@ pub fn TagPicker(
             set_current_tags=set_current_tags
             on_set_tags=on_set_tags
             icon_only=icon_only
+            always_visible=always_visible
         />
     }
 }

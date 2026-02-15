@@ -5,6 +5,7 @@ pub mod icon;
 pub mod markdown;
 pub mod modal;
 pub mod popover;
+pub mod spinner;
 
 pub use autocomplete::{AutocompleteDropdown, SuggestionItem};
 pub use checkbox::Checkbox;
@@ -13,3 +14,4 @@ pub use icon::{Icon, IconKind};
 pub use markdown::{render_markdown, MarkdownView};
 pub use modal::Modal;
 pub use popover::Popover;
+pub use spinner::Spinner;

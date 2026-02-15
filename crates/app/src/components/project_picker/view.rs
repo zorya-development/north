@@ -13,6 +13,7 @@ pub fn ProjectPickerView(
     on_set_project: Callback<(i64, i64)>,
     on_clear_project: Callback<i64>,
     #[prop(default = false)] icon_only: bool,
+    #[prop(default = false)] always_visible: bool,
 ) -> impl IntoView {
     view! {
         <Popover
@@ -48,14 +49,16 @@ pub fn ProjectPickerView(
                             <button
                                 class="inline-flex items-center gap-1 \
                                        text-text-secondary hover:bg-bg-tertiary \
-                                       px-1.5 py-0.5 rounded transition-colors"
+                                       px-1.5 py-0.5 rounded transition-colors \
+                                       cursor-pointer select-none"
                                 on:click=move |_| {
                                     set_popover_open.update(|o| *o = !*o);
                                 }
                             >
-                                <span
-                                    class="w-2.5 h-2.5 rounded-full flex-shrink-0 \
-                                           bg-text-tertiary"
+                                <Icon
+                                    kind=IconKind::Folder
+                                    class="w-3.5 h-3.5 text-text-tertiary \
+                                           flex-shrink-0"
                                 />
                                 {display}
                                 <span
@@ -71,25 +74,35 @@ pub fn ProjectPickerView(
                         }
                         .into_any()
                     } else {
-                        view! {
-                            <button
-                                class="items-center gap-1 \
-                                       text-text-tertiary hover:text-text-secondary \
-                                       hover:bg-bg-tertiary px-1.5 py-0.5 rounded \
-                                       transition-colors hidden \
-                                       group-hover:inline-flex"
-                                on:click=move |_| {
-                                    set_popover_open.update(|o| *o = !*o);
-                                }
-                            >
-                                <span
-                                    class="w-2.5 h-2.5 rounded-full flex-shrink-0 \
-                                           bg-text-tertiary"
-                                />
-                                "Project"
-                            </button>
+                        {
+                            let vis_class = if always_visible {
+                                "inline-flex items-center gap-1 \
+                                 text-text-tertiary hover:text-text-secondary \
+                                 hover:bg-bg-tertiary px-1.5 py-0.5 rounded \
+                                 transition-colors cursor-pointer select-none"
+                            } else {
+                                "items-center gap-1 \
+                                 text-text-tertiary hover:text-text-secondary \
+                                 hover:bg-bg-tertiary px-1.5 py-0.5 rounded \
+                                 transition-colors cursor-pointer select-none \
+                                 hidden group-hover:inline-flex"
+                            };
+                            view! {
+                                <button
+                                    class=vis_class
+                                    on:click=move |_| {
+                                        set_popover_open.update(|o| *o = !*o);
+                                    }
+                                >
+                                    <Icon
+                                        kind=IconKind::Inbox
+                                        class="w-3.5 h-3.5"
+                                    />
+                                    "Inbox"
+                                </button>
+                            }
+                            .into_any()
                         }
-                        .into_any()
                     }
                 }
             })
@@ -117,25 +130,24 @@ pub fn ProjectPickerView(
                                     } else {
                                         view! {
                                             <div>
-                                                {if has_project {
-                                                    Some(view! {
-                                                        <button
-                                                            class="w-full text-left px-3 \
-                                                                   py-1.5 text-xs \
-                                                                   text-text-tertiary \
-                                                                   hover:bg-bg-tertiary \
-                                                                   rounded transition-colors"
-                                                            on:click=move |_| {
-                                                                set_popover_open.set(false);
-                                                                on_clear_project.run(task_id);
-                                                            }
-                                                        >
-                                                            "None"
-                                                        </button>
-                                                    })
-                                                } else {
-                                                    None
-                                                }}
+                                                <button
+                                                    class="w-full text-left px-3 \
+                                                           py-1.5 text-sm \
+                                                           text-text-primary \
+                                                           hover:bg-bg-tertiary \
+                                                           rounded transition-colors \
+                                                           flex items-center gap-2"
+                                                    on:click=move |_| {
+                                                        set_popover_open.set(false);
+                                                        on_clear_project.run(task_id);
+                                                    }
+                                                >
+                                                    <Icon
+                                                        kind=IconKind::Inbox
+                                                        class="w-4 h-4 text-text-tertiary"
+                                                    />
+                                                    "Inbox"
+                                                </button>
                                                 {list
                                                     .into_iter()
                                                     .map(|p| {

@@ -1,11 +1,12 @@
 use leptos::prelude::*;
-use north_domain::{CreateTask, Task, TaskFilter, TaskWithMeta, UpdateTask};
+use leptos::server_fn::codec::Json;
+use north_domain::{CreateTask, Task, TaskWithMeta, UpdateTask};
 
 #[server(ApiListTasksFn, "/api")]
 pub async fn list_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
     let pool = expect_context::<north_core::DbPool>();
     let user_id = crate::auth::get_auth_user_id().await?;
-    let filter = TaskFilter::default();
+    let filter = north_domain::TaskFilter::default();
     north_core::TaskService::list(&pool, user_id, &filter)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))
@@ -29,7 +30,7 @@ pub async fn create_task(input: CreateTask) -> Result<Task, ServerFnError> {
         .map_err(|e| ServerFnError::new(e.to_string()))
 }
 
-#[server(ApiUpdateTaskFn, "/api")]
+#[server(name = ApiUpdateTaskFn, prefix = "/api", input = Json)]
 pub async fn update_task(id: i64, input: UpdateTask) -> Result<Task, ServerFnError> {
     let pool = expect_context::<north_core::DbPool>();
     let user_id = crate::auth::get_auth_user_id().await?;

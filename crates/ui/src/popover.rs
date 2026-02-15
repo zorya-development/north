@@ -90,9 +90,9 @@ pub fn Popover(
             />
             <div
                 node_ref=panel_ref
-                class="fixed z-50 bg-bg-secondary border border-border/60 \
-                        rounded-xl shadow-lg"
-                style="opacity: 0"
+                class="fixed z-50 rounded-xl shadow-lg"
+                style="opacity: 0; background-color: var(--bg-secondary); \
+                       border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);"
                 style:display=move || {
                     if open.get() { "block" } else { "none" }
                 }

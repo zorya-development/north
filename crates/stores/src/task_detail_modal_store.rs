@@ -1,11 +1,11 @@
 use leptos::prelude::*;
 use north_domain::TaskWithMeta;
 
-use crate::AppStore;
+use crate::TaskStore;
 
 #[derive(Clone, Copy)]
 pub struct TaskDetailModalStore {
-    app_store: AppStore,
+    task_store: TaskStore,
     open_task_id: RwSignal<Option<i64>>,
     task_stack: RwSignal<Vec<i64>>,
     task_ids: RwSignal<Vec<i64>>,
@@ -13,7 +13,7 @@ pub struct TaskDetailModalStore {
 }
 
 impl TaskDetailModalStore {
-    pub fn new(app_store: AppStore) -> Self {
+    pub fn new(task_store: TaskStore) -> Self {
         let open_task_id = RwSignal::new(None::<i64>);
         let task_stack = RwSignal::new(vec![]);
         let task_ids = RwSignal::new(vec![]);
@@ -21,15 +21,13 @@ impl TaskDetailModalStore {
 
         let current_task_id = Self::current_task_id_memo(open_task_id, task_stack);
 
-        // Update the task memo when current_task_id changes
-        let task_store = app_store.tasks;
         Effect::new(move || match current_task_id.get() {
             Some(id) => task_memo.set(Some(task_store.get_by_id(id))),
             None => task_memo.set(None),
         });
 
         Self {
-            app_store,
+            task_store,
             open_task_id,
             task_stack,
             task_ids,
@@ -78,7 +76,7 @@ impl TaskDetailModalStore {
 
     pub fn ancestors(&self) -> Vec<(i64, String, i64)> {
         match self.current_task_id() {
-            Some(id) => self.app_store.tasks.get_ancestors(id),
+            Some(id) => self.task_store.get_ancestors(id),
             None => vec![],
         }
     }
@@ -149,66 +147,62 @@ impl TaskDetailModalStore {
         });
     }
 
-    // ── Task mutations (delegate to app_store) ───────────────────
+    // ── Task mutations (delegate to task_store) ───────────────────
 
     pub fn toggle_complete(&self) {
         let Some(task) = self.task() else { return };
         let was_completed = task.task.completed_at.is_some();
-        self.app_store
-            .tasks
-            .toggle_complete(task.task.id, was_completed);
+        self.task_store.toggle_complete(task.task.id, was_completed);
     }
 
     pub fn delete(&self) {
         let Some(task) = self.task() else { return };
-        self.app_store.tasks.delete_task(task.task.id);
+        self.task_store.delete_task(task.task.id);
         self.close();
     }
 
     pub fn update(&self, title: String, body: Option<String>) {
         let Some(task) = self.task() else { return };
-        self.app_store.tasks.update_task(task.task.id, title, body);
+        self.task_store.update_task(task.task.id, title, body);
     }
 
     pub fn set_start_at(&self, start_at: String) {
         let Some(task) = self.task() else { return };
-        self.app_store.tasks.set_start_at(task.task.id, start_at);
+        self.task_store.set_start_at(task.task.id, start_at);
     }
 
     pub fn clear_start_at(&self) {
         let Some(task) = self.task() else { return };
-        self.app_store.tasks.clear_start_at(task.task.id);
+        self.task_store.clear_start_at(task.task.id);
     }
 
     pub fn set_project(&self, project_id: i64) {
         let Some(task) = self.task() else { return };
-        self.app_store.tasks.set_project(task.task.id, project_id);
+        self.task_store.set_project(task.task.id, project_id);
     }
 
     pub fn clear_project(&self) {
         let Some(task) = self.task() else { return };
-        self.app_store.tasks.clear_project(task.task.id);
+        self.task_store.clear_project(task.task.id);
     }
 
     pub fn set_tags(&self, tag_names: Vec<String>) {
         let Some(task) = self.task() else { return };
-        self.app_store.tasks.set_tags(task.task.id, tag_names);
+        self.task_store.set_tags(task.task.id, tag_names);
     }
 
     pub fn set_due_date(&self, due_date: String) {
         let Some(task) = self.task() else { return };
-        self.app_store.tasks.set_due_date(task.task.id, due_date);
+        self.task_store.set_due_date(task.task.id, due_date);
     }
 
     pub fn clear_due_date(&self) {
         let Some(task) = self.task() else { return };
-        self.app_store.tasks.clear_due_date(task.task.id);
+        self.task_store.clear_due_date(task.task.id);
     }
 
     pub fn set_sequential_limit(&self, limit: i16) {
         let Some(task) = self.task() else { return };
-        self.app_store
-            .tasks
-            .set_sequential_limit(task.task.id, limit);
+        self.task_store.set_sequential_limit(task.task.id, limit);
     }
 }

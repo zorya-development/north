@@ -16,6 +16,7 @@ pub fn DateTimePickerView(
     on_set_start_at: Callback<(i64, String)>,
     on_clear_start_at: Callback<i64>,
     #[prop(default = false)] icon_only: bool,
+    #[prop(default = false)] always_visible: bool,
 ) -> impl IntoView {
     let date_text_class = if is_overdue {
         "text-danger"
@@ -76,7 +77,8 @@ pub fn DateTimePickerView(
                                 class=format!(
                                     "inline-flex items-center gap-1 {} \
                                      hover:bg-bg-tertiary px-1.5 py-0.5 \
-                                     rounded transition-colors",
+                                     rounded transition-colors \
+                                     cursor-pointer select-none",
                                     date_text_class,
                                 )
                                 on:click={
@@ -107,24 +109,39 @@ pub fn DateTimePickerView(
                         }
                         .into_any()
                     } else {
-                        view! {
-                            <button
-                                class="items-center gap-1 \
-                                       text-text-tertiary hover:text-text-secondary \
-                                       hover:bg-bg-tertiary px-1.5 py-0.5 rounded \
-                                       transition-colors hidden \
-                                       group-hover:inline-flex"
-                                on:click=move |_| {
-                                    picked_date.set(String::new());
-                                    picked_time.set("09:00".to_string());
-                                    set_popover_open.update(|o| *o = !*o);
-                                }
-                            >
-                                <Icon kind=IconKind::Calendar class="w-3 h-3"/>
-                                "Start"
-                            </button>
+                        {
+                            let vis_class = if always_visible {
+                                "inline-flex items-center gap-1 \
+                                 text-text-tertiary hover:text-text-secondary \
+                                 hover:bg-bg-tertiary px-1.5 py-0.5 rounded \
+                                 transition-colors cursor-pointer select-none"
+                            } else {
+                                "items-center gap-1 \
+                                 text-text-tertiary hover:text-text-secondary \
+                                 hover:bg-bg-tertiary px-1.5 py-0.5 rounded \
+                                 transition-colors cursor-pointer select-none \
+                                 hidden group-hover:inline-flex"
+                            };
+                            view! {
+                                <button
+                                    class=vis_class
+                                    on:click=move |_| {
+                                        picked_date.set(String::new());
+                                        picked_time
+                                            .set("09:00".to_string());
+                                        set_popover_open
+                                            .update(|o| *o = !*o);
+                                    }
+                                >
+                                    <Icon
+                                        kind=IconKind::Calendar
+                                        class="w-3 h-3"
+                                    />
+                                    "Not set"
+                                </button>
+                            }
+                            .into_any()
                         }
-                        .into_any()
                     }
                 }
             })

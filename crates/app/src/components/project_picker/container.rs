@@ -11,6 +11,7 @@ pub fn ProjectPicker(
     on_set_project: Callback<(i64, i64)>,
     on_clear_project: Callback<i64>,
     #[prop(default = false)] icon_only: bool,
+    #[prop(default = false)] always_visible: bool,
 ) -> impl IntoView {
     let has_project = project_id.is_some();
     let (popover_open, set_popover_open) = signal(false);
@@ -37,6 +38,7 @@ pub fn ProjectPicker(
             on_set_project=on_set_project
             on_clear_project=on_clear_project
             icon_only=icon_only
+            always_visible=always_visible
         />
     }
 }
