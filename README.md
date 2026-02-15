@@ -87,6 +87,33 @@ north/
 - **Statistics** — open/closed today, week, total
 - **Markdown & images** — full CommonMark with image upload
 
+## Docker Images
+
+```
+docker/base/Dockerfile   → Rust toolchain, cargo-leptos, diesel_cli, wasm target
+docker/dev/Dockerfile    → Extends base, adds just + tailwindcss
+docker/prod/Dockerfile   → Multi-stage release (base → debian:bookworm-slim)
+```
+
+Base image version is tracked in `docker/base/VERSION`. Bump with:
+
+```bash
+just bump-base patch    # 1.0.0 → 1.0.1
+just bump-base minor    # 1.0.0 → 1.1.0
+just bump-base major    # 1.0.0 → 2.0.0
+```
+
+## CI/CD
+
+- **test.yml** — runs on master push + PRs: fmt, clippy, test. Conditionally rebuilds base image if `docker/base/**` changed.
+- **release.yml** — runs on master push: builds prod Docker image, pushes to ghcr.io, creates GitHub release with auto-generated changelog (git-cliff).
+
+### Releasing
+
+1. Bump version: `just bump-version {major,minor,patch}`
+2. Push to master
+3. Release workflow creates tag `v<version>`, Docker image, and GitHub release automatically
+
 ## Auth
 
 No self-registration. Default admin account is seeded via `just seed`. Admin creates all other accounts.

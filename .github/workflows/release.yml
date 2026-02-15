@@ -85,8 +85,9 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHANGELOG: ${{ steps.changelog.outputs.content }}
         run: |
           gh release create "v${{ needs.resolve.outputs.app_version }}" \
             --title "v${{ needs.resolve.outputs.app_version }}" \
-            --notes "${{ steps.changelog.outputs.content }}" \
+            --notes "$CHANGELOG" \
             --target "${{ github.sha }}"

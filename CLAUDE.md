@@ -130,14 +130,21 @@ north/
 ├── rust-toolchain.toml         # Stable + wasm32-unknown-unknown
 ├── diesel.toml                 # Diesel CLI config (schema.rs path)
 ├── justfile                    # Dev commands (see above)
-├── docker-compose.yml          # app, PostgreSQL 17, Redis 7
-├── docker/dev/Dockerfile       # Rust 1.93, cargo-leptos, diesel_cli, tailwindcss v4
+├── docker-compose.yml          # app (depends on base), PostgreSQL 17, Redis 7
+├── docker/
+│   ├── base/Dockerfile         # Base image: Rust 1.93, cargo-leptos, diesel_cli, wasm target
+│   ├── base/VERSION            # Semver for base image (source of truth)
+│   ├── dev/Dockerfile          # Dev image: extends base, adds just + tailwindcss v4
+│   └── prod/Dockerfile         # Prod image: multi-stage (base → debian:bookworm-slim)
+├── cliff.toml                  # git-cliff changelog config
 ├── migrations/                 # Diesel reversible migrations (up.sql + down.sql)
 ├── style/main.css              # TailwindCSS v4, dark theme, Inter + JetBrains Mono
 ├── public/                     # Static assets served at /public
 ├── uploads/                    # User-uploaded files (volume mount)
 ├── docs/                       # PRD.md, DESIGN.md
-├── .github/workflows/ci.yml   # GitHub Actions CI
+├── .github/workflows/
+│   ├── test.yml                # CI: fmt, clippy, test (conditionally builds base image)
+│   └── release.yml             # Release: prod Docker image + GitHub release on master
 │
 └── crates/
     ├── domain/                 # Pure data types (no IO)
@@ -419,4 +426,48 @@ just migrate-redo                  # Test reversibility
 - Docker Compose for development (all commands via `docker compose exec app`)
 - Diesel ORM with diesel-async for async PostgreSQL access
 - Images stored on filesystem (`./uploads/` volume mount)
-- CI: GitHub Actions — fmt, clippy, test, cargo-leptos release build against PostgreSQL 17 service
+
+### Docker Images
+
+Three Dockerfiles, layered:
+
+| Image | Path | Purpose |
+|---|---|---|
+| **base** | `docker/base/Dockerfile` | Rust toolchain, cargo-leptos, diesel_cli, wasm32 target, clippy, rustfmt |
+| **dev** | `docker/dev/Dockerfile` | Extends base, adds `just` and `tailwindcss` CLI |
+| **prod** | `docker/prod/Dockerfile` | Multi-stage: builds release in base image, copies binary to `debian:bookworm-slim` |
+
+- `docker/base/VERSION` is the single source of truth for base image version
+- `docker-compose.yml` builds base locally as `north-base:<version>`, dev image extends it
+- CI and release pull base from `ghcr.io/zorya-development/north/base:<version>`
+- Use `just bump-base {major,minor,patch}` to bump base version (updates VERSION, dev Dockerfile, docker-compose.yml)
+- Use `just bump-version {major,minor,patch}` to bump app version in root `Cargo.toml`
+
+### CI/CD
+
+Two GitHub Actions workflows:
+
+**test.yml** (push to master + all PRs):
+1. `resolve` — reads `docker/base/VERSION`, detects changes in `docker/base/**`
+2. `build-base` — conditional: builds and pushes base image to ghcr.io only if base files changed
+3. `check` — runs in base container: `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`
+
+**release.yml** (push to master only):
+1. `resolve` — reads app version from `Cargo.toml`, checks if git tag `v<version>` exists
+2. `build` — if tag doesn't exist: builds prod Docker image, pushes to ghcr.io (`:v<version>` + `:latest`), generates changelog via git-cliff, creates GitHub release with tag
+
+### Release Process
+
+To release a new version:
+1. Bump version: `just bump-version {major,minor,patch}`
+2. Commit and push to master (via PR or direct push)
+3. The release workflow automatically:
+   - Builds the prod Docker image using the base image from ghcr.io
+   - Pushes to `ghcr.io/zorya-development/north:v<version>` and `:latest`
+   - Generates changelog from commits since last tag using git-cliff
+   - Creates a GitHub release with the changelog
+
+To bump the base Docker image (when toolchain or dependencies change):
+1. Modify `docker/base/Dockerfile` as needed
+2. Run `just bump-base {major,minor,patch}`
+3. Commit and push — the test workflow will build and push the new base image
