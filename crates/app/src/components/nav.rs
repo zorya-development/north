@@ -3,7 +3,6 @@ use leptos_router::hooks::use_location;
 
 use crate::components::drag_drop::DragDropContext;
 use crate::components::theme_toggle::ThemeToggle;
-use crate::server_fns::filters::get_saved_filters;
 use north_stores::use_app_store;
 use north_ui::{Icon, IconKind};
 
@@ -15,7 +14,6 @@ const PRESET_COLORS: &[&str] = &[
 #[component]
 pub fn Sidebar() -> impl IntoView {
     let app_store = use_app_store();
-    let filters = Resource::new(|| (), |_| get_saved_filters());
     let (creating, set_creating) = signal(false);
     let (new_title, set_new_title) = signal(String::new());
 
@@ -133,35 +131,24 @@ pub fn Sidebar() -> impl IntoView {
                         </a>
                     </div>
 
-                    <Suspense fallback=|| ()>
+                    <div class="mt-1 space-y-0.5">
                         {move || {
-                            Suspend::new(async move {
-                                match filters.await {
-                                    Ok(list) => {
-                                        view! {
-                                            <div class="mt-1 space-y-0.5">
-                                                {list
-                                                    .into_iter()
-                                                    .map(|f| {
-                                                        let href =
-                                                            format!("/filters/{}", f.id);
-                                                        view! {
-                                                            <FilterNavItem
-                                                                href=href
-                                                                title=f.title
-                                                            />
-                                                        }
-                                                    })
-                                                    .collect::<Vec<_>>()}
-                                            </div>
-                                        }
-                                        .into_any()
+                            app_store
+                                .saved_filters
+                                .get()
+                                .into_iter()
+                                .map(|f| {
+                                    let href = format!("/filters/{}", f.id);
+                                    view! {
+                                        <FilterNavItem
+                                            href=href
+                                            title=f.title
+                                        />
                                     }
-                                    Err(_) => view! { <div/> }.into_any(),
-                                }
-                            })
+                                })
+                                .collect::<Vec<_>>()
                         }}
-                    </Suspense>
+                    </div>
                 </div>
 
                 <div class="pt-4">

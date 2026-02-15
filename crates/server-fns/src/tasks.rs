@@ -74,3 +74,12 @@ pub async fn set_task_tags(task_id: i64, tag_names: Vec<String>) -> Result<(), S
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))
 }
+
+#[server(ApiReviewAllTasksFn, "/api")]
+pub async fn review_all_tasks() -> Result<(), ServerFnError> {
+    let pool = expect_context::<north_services::DbPool>();
+    let user_id = crate::auth::get_auth_user_id().await?;
+    north_services::TaskService::mark_all_reviewed(&pool, user_id)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}

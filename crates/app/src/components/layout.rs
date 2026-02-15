@@ -22,8 +22,7 @@ pub fn AppLayout(children: Children) -> impl IntoView {
     });
 
     Effect::new(move || {
-        app_store.projects.refetch();
-        app_store.tags.refetch();
+        app_store.refetch();
     });
 
     view! {

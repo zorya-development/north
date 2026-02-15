@@ -6,6 +6,7 @@ use north_stores::AppStore;
 pub struct TaskInlineFormController {
     app_store: AppStore,
     task_id: Option<i64>,
+    project_id: Option<i64>,
     pub title: (ReadSignal<String>, WriteSignal<String>),
     pub body: (ReadSignal<String>, WriteSignal<String>),
     pub preview: (ReadSignal<bool>, WriteSignal<bool>),
@@ -13,7 +14,12 @@ pub struct TaskInlineFormController {
 }
 
 impl TaskInlineFormController {
-    pub fn new(app_store: AppStore, task_id: Option<i64>, on_done: Callback<()>) -> Self {
+    pub fn new(
+        app_store: AppStore,
+        task_id: Option<i64>,
+        project_id: Option<i64>,
+        on_done: Callback<()>,
+    ) -> Self {
         let initial_title;
         let initial_body;
         if let Some(id) = task_id {
@@ -33,6 +39,7 @@ impl TaskInlineFormController {
         Self {
             app_store,
             task_id,
+            project_id,
             title,
             body,
             preview,
@@ -54,6 +61,7 @@ impl TaskInlineFormController {
             self.app_store.tasks.create_task(CreateTask {
                 title: t,
                 body: body_opt,
+                project_id: self.project_id,
                 ..Default::default()
             });
         }

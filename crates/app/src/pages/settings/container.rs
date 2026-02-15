@@ -1,0 +1,20 @@
+use leptos::prelude::*;
+
+use super::controller::SettingsController;
+use super::view::SettingsView;
+
+#[component]
+pub fn SettingsPage() -> impl IntoView {
+    let ctrl = SettingsController::new();
+
+    view! {
+        <SettingsView
+            interval=ctrl.interval.0
+            set_interval=ctrl.interval.1
+            saved=ctrl.saved.0
+            set_saved=ctrl.saved.1
+            is_loaded=ctrl.is_loaded
+            on_save=Callback::new(move |()| ctrl.save())
+        />
+    }
+}
