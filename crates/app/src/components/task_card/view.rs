@@ -475,7 +475,7 @@ fn InlineSubtaskList(
     #[prop(default = false)] draggable: bool,
     #[prop(default = 1)] depth: u8,
 ) -> impl IntoView {
-    let subtasks = Resource::new(move || parent_id, |pid| get_subtasks(pid));
+    let subtasks = Resource::new(move || parent_id, get_subtasks);
 
     view! {
         <Suspense fallback=|| ()>

@@ -14,7 +14,7 @@ pub fn SubtaskList(
     on_parent_refetch: Callback<()>,
 ) -> impl IntoView {
     let subtasks: Resource<Result<Vec<TaskWithMeta>, ServerFnError>> =
-        Resource::new(move || parent_id, |pid| get_subtasks(pid));
+        Resource::new(move || parent_id, get_subtasks);
 
     let (hide_completed, set_hide_completed) = signal(true);
 

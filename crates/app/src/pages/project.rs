@@ -25,8 +25,8 @@ pub fn ProjectPage() -> impl IntoView {
             .unwrap_or(0)
     };
 
-    let project = Resource::new(project_id, |id| get_project(id));
-    let project_tasks = Resource::new(project_id, |id| get_project_tasks(id));
+    let project = Resource::new(project_id, get_project);
+    let project_tasks = Resource::new(project_id, get_project_tasks);
     let completed = Resource::new(project_id, |id| get_completed_tasks(Some(id), false));
     let store = TaskStore::new(project_tasks);
 
@@ -84,7 +84,7 @@ pub fn ProjectPage() -> impl IntoView {
                 }}
             </Suspense>
             <InlineTaskForm on_submit={
-                let create_action = create_action.clone();
+                let create_action = create_action;
                 move |title: String, body: Option<String>| {
                     let pid = project_id();
                     create_action.dispatch((title, body, pid));

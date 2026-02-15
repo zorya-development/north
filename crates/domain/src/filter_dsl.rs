@@ -82,14 +82,9 @@ pub struct OrderBy {
     pub direction: SortDirection,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SortDirection {
+    #[default]
     Asc,
     Desc,
-}
-
-impl Default for SortDirection {
-    fn default() -> Self {
-        Self::Asc
-    }
 }

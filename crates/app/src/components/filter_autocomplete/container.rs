@@ -214,21 +214,18 @@ pub fn FilterAutocompleteTextarea(
                                 set_highlighted.update(|h| {
                                     *h = (*h + 1).min(items.len() - 1);
                                 });
-                                return;
                             }
                             "ArrowUp" => {
                                 ev.prevent_default();
                                 set_highlighted.update(|h| {
                                     *h = h.saturating_sub(1);
                                 });
-                                return;
                             }
                             "Enter" if !ev.shift_key() => {
                                 let idx = highlighted.get_untracked();
                                 if idx < items.len() {
                                     ev.prevent_default();
                                     on_select.run(items[idx].name.clone());
-                                    return;
                                 }
                             }
                             "Tab" => {
@@ -236,13 +233,11 @@ pub fn FilterAutocompleteTextarea(
                                 if idx < items.len() {
                                     ev.prevent_default();
                                     on_select.run(items[idx].name.clone());
-                                    return;
                                 }
                             }
                             "Escape" => {
                                 set_suggestions.set(vec![]);
                                 set_completion_ctx.set(DslCompletionContext::None);
-                                return;
                             }
                             _ => {}
                         }

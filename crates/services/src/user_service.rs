@@ -17,8 +17,7 @@ impl UserService {
             .select(UserRow::as_select())
             .first(&mut conn)
             .await
-            .optional()
-            .map_err(diesel::result::Error::from)?;
+            .optional()?;
         Ok(row)
     }
 
