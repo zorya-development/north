@@ -50,7 +50,7 @@ jobs:
         run: cargo binstall cargo-leptos --no-confirm
 
       - name: Install diesel_cli
-        run: cargo binstall diesel_cli --no-default-features --features postgres --no-confirm
+        run: cargo install diesel_cli --no-default-features --features postgres
 
       - name: Run migrations
         run: diesel migration run
