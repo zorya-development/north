@@ -1,8 +1,15 @@
 services:
+  base:
+    build:
+      context: docker/base
+    image: north-base:1.0.0
+
   app:
     build:
       context: .
       dockerfile: docker/dev/Dockerfile
+      args:
+        BASE_VERSION: "1.0.0"
     dns:
       - 8.8.8.8
     ports:
@@ -21,6 +28,8 @@ services:
       UPLOAD_DIR: /app/uploads
     command: sleep infinity
     depends_on:
+      base:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
       redis:

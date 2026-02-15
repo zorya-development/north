@@ -25,7 +25,7 @@ pub fn TaskListItemView(
     let (editing, set_editing) = ctrl.editing;
     let (menu_open, set_menu_open) = ctrl.menu_open;
     let drag_ctx = use_context::<DragDropContext>();
-    let (subtasks_expanded, set_subtasks_expanded) = signal(true);
+    let (subtasks_expanded, _set_subtasks_expanded) = signal(true);
     let (hovered, set_hovered) = signal(false);
 
     let indent_class = match depth {
@@ -57,7 +57,7 @@ pub fn TaskListItemView(
             let reviewed_at = t.task.reviewed_at;
             let tags = t.tags.clone();
             let subtask_count = t.subtask_count;
-            let completed_subtask_count = t.completed_subtask_count;
+            let _completed_subtask_count = t.completed_subtask_count;
             let sequential_limit = t.task.sequential_limit;
             let has_subtasks = subtask_count > 0;
 
@@ -506,13 +506,13 @@ fn InlineSubtaskList(
             }}
             // Toggle bar
             <Show when=move || {
-                (non_actionable_count.get() > 0usize)
-                    || (completed_count.get() > 0usize)
+                non_actionable_count.get() > 0usize
+                    || completed_count.get() > 0usize
             }>
                 <div class="ml-6 py-1 flex items-center gap-2 text-xs">
                     // Show N More / Hide Non Actionable
                     <Show when=move || {
-                        (non_actionable_count.get() > 0usize)
+                        non_actionable_count.get() > 0usize
                     }>
                         <button
                             class="text-accent hover:text-accent-hover \
@@ -537,7 +537,7 @@ fn InlineSubtaskList(
                     </Show>
                     // Show / Hide Completed
                     <Show when=move || {
-                        (completed_count.get() > 0usize)
+                        completed_count.get() > 0usize
                     }>
                         <button
                             class="text-accent hover:text-accent-hover \

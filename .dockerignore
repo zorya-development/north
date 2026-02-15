@@ -1,0 +1,6 @@
+target/
+.git/
+uploads/
+public/
+node_modules/
+*.md

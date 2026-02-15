@@ -4,6 +4,12 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Build & Development Commands
 
+First-time setup (builds base image + dev image via compose):
+
+```bash
+docker compose build
+```
+
 Start dependencies, then enter the app container:
 
 ```bash
