@@ -2,9 +2,9 @@ use leptos::prelude::*;
 use north_domain::Task;
 
 use crate::components::date_picker::DateTimePicker;
-use crate::components::project_picker::ProjectPicker;
 use crate::components::subtask_list::SubtaskList;
-use crate::components::tag_picker::TagPicker;
+use crate::containers::project_picker::ProjectPicker;
+use crate::containers::tag_picker::TagPicker;
 use north_ui::{Checkbox, Icon, IconKind, MarkdownView};
 
 type AncestorsResource = Resource<Result<Vec<(i64, String, i64)>, ServerFnError>>;

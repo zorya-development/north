@@ -2,7 +2,6 @@ use leptos::prelude::*;
 use north_domain::Task;
 
 use crate::server_fns::projects::{clear_task_project, set_task_project};
-use crate::server_fns::tags::set_task_tags;
 use crate::server_fns::tasks::*;
 
 #[derive(Clone)]

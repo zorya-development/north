@@ -1,7 +1,7 @@
 use leptos::prelude::*;
+use north_stores::use_app_store;
 
 use super::view::ProjectPickerView;
-use crate::server_fns::projects::get_projects;
 
 #[component]
 pub fn ProjectPicker(
@@ -16,16 +16,8 @@ pub fn ProjectPicker(
     let has_project = project_id.is_some();
     let (popover_open, set_popover_open) = signal(false);
 
-    let projects = Resource::new(
-        move || popover_open.get(),
-        move |open| async move {
-            if open {
-                get_projects().await
-            } else {
-                Ok(vec![])
-            }
-        },
-    );
+    let app_store = use_app_store();
+    let projects = Memo::new(move |_| app_store.projects.get());
 
     view! {
         <ProjectPickerView

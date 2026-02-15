@@ -3,7 +3,6 @@ use leptos::wasm_bindgen::JsCast;
 use north_domain::{detect_completion_context, DslCompletionContext, FilterField};
 use north_ui::{AutocompleteDropdown, SuggestionItem};
 
-use crate::stores::lookup_store::LookupStore;
 use north_stores::AppStore;
 
 const FIELD_NAMES: &[&str] = &[
@@ -14,11 +13,7 @@ const STATUS_VALUES: &[&str] = &["ACTIVE", "OPEN", "COMPLETED", "DONE"];
 
 const KEYWORDS: &[&str] = &["AND", "OR", "NOT", "ORDER BY"];
 
-fn get_dsl_suggestions(
-    lookup: &LookupStore,
-    app_store: &AppStore,
-    ctx: &DslCompletionContext,
-) -> Vec<SuggestionItem> {
+fn get_dsl_suggestions(app_store: &AppStore, ctx: &DslCompletionContext) -> Vec<SuggestionItem> {
     match ctx {
         DslCompletionContext::FieldName { partial, .. } => {
             let partial_lower = partial.to_lowercase();
@@ -36,7 +31,7 @@ fn get_dsl_suggestions(
             let partial_lower = partial.to_lowercase();
             match field {
                 FilterField::Tags => {
-                    let tags = lookup.tags.get().and_then(|r| r.ok()).unwrap_or_default();
+                    let tags = app_store.tags.get();
                     tags.into_iter()
                         .filter(|t| {
                             partial_lower.is_empty()
@@ -133,7 +128,6 @@ pub fn FilterAutocompleteTextarea(
     #[prop(optional, default = 3)] rows: u32,
     #[prop(optional)] on_submit: Option<Callback<()>>,
 ) -> impl IntoView {
-    let lookup = use_context::<LookupStore>();
     let app_store = use_context::<AppStore>();
     let (highlighted, set_highlighted) = signal(0_usize);
     let (suggestions, set_suggestions) = signal(Vec::<SuggestionItem>::new());
@@ -141,9 +135,9 @@ pub fn FilterAutocompleteTextarea(
     let textarea_ref = NodeRef::<leptos::html::Textarea>::new();
 
     let update_suggestions = move |val: &str, cursor: usize| {
-        if let (Some(ref lookup), Some(ref app_store)) = (&lookup, &app_store) {
+        if let Some(ref app_store) = &app_store {
             let ctx = detect_completion_context(val, cursor);
-            let items = get_dsl_suggestions(lookup, app_store, &ctx);
+            let items = get_dsl_suggestions(app_store, &ctx);
             set_suggestions.set(items);
             set_completion_ctx.set(ctx);
             set_highlighted.set(0);

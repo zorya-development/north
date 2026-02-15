@@ -6,7 +6,7 @@ pub struct TagInfo {
     pub color: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Tag {
     pub id: i64,
     pub user_id: i64,

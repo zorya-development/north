@@ -1,8 +1,8 @@
 use leptos::prelude::*;
 use north_domain::TagInfo;
+use north_stores::use_app_store;
 
 use super::view::TagPickerView;
-use crate::server_fns::tags::get_tags;
 
 #[component]
 pub fn TagPicker(
@@ -17,16 +17,13 @@ pub fn TagPicker(
     let (current_tags, set_current_tags) = signal(current_names);
     let (display_tags, set_display_tags) = signal(tags.clone());
 
-    let all_tags = Resource::new(
-        move || popover_open.get(),
-        move |open| async move {
-            if open {
-                get_tags().await
-            } else {
-                Ok(vec![])
-            }
-        },
-    );
+    let app_store = use_app_store();
+    let all_tags = Memo::new(move |_| app_store.tags.get());
+
+    let wrapped_on_set_tags = Callback::new(move |args: (i64, Vec<String>)| {
+        on_set_tags.run(args);
+        app_store.tags.refetch();
+    });
 
     view! {
         <TagPickerView
@@ -38,7 +35,7 @@ pub fn TagPicker(
             all_tags=all_tags
             current_tags=current_tags
             set_current_tags=set_current_tags
-            on_set_tags=on_set_tags
+            on_set_tags=wrapped_on_set_tags
             icon_only=icon_only
             always_visible=always_visible
         />

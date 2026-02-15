@@ -5,7 +5,6 @@ use north_stores::AppStore;
 use crate::components::nav::Sidebar;
 use crate::containers::task_detail_modal::TaskDetailModal;
 use crate::server_fns::auth::check_auth;
-use crate::stores::lookup_store::LookupStore;
 
 #[component]
 pub fn AppLayout(children: Children) -> impl IntoView {
@@ -16,8 +15,6 @@ pub fn AppLayout(children: Children) -> impl IntoView {
     provide_context(app_store);
     provide_context(app_store.task_detail_modal);
 
-    provide_context(LookupStore::new());
-
     Effect::new(move || {
         if let Some(Err(_)) = auth_check.get() {
             navigate("/login", Default::default());
@@ -26,6 +23,7 @@ pub fn AppLayout(children: Children) -> impl IntoView {
 
     Effect::new(move || {
         app_store.projects.refetch();
+        app_store.tags.refetch();
     });
 
     view! {

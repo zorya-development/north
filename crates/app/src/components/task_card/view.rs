@@ -6,11 +6,11 @@ use wasm_bindgen::JsCast;
 
 use crate::components::date_picker::DateTimePicker;
 use crate::components::drag_drop::{DragDropContext, DropZone};
-use crate::components::project_picker::ProjectPicker;
-use crate::components::tag_picker::TagPicker;
 use crate::components::task_detail_modal::TaskDetailContext;
 use crate::components::task_form::EditTaskForm;
 use crate::components::task_meta::TaskMeta;
+use crate::containers::project_picker::ProjectPicker;
+use crate::containers::tag_picker::TagPicker;
 use crate::server_fns::tasks::get_subtasks;
 use north_ui::{Checkbox, DropdownItem, DropdownMenu, Icon, IconKind, MarkdownView};
 

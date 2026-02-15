@@ -9,7 +9,7 @@ pub fn TagPickerView(
     set_display_tags: WriteSignal<Vec<TagInfo>>,
     popover_open: ReadSignal<bool>,
     set_popover_open: WriteSignal<bool>,
-    all_tags: Resource<Result<Vec<Tag>, ServerFnError>>,
+    all_tags: Memo<Vec<Tag>>,
     current_tags: ReadSignal<Vec<String>>,
     set_current_tags: WriteSignal<Vec<String>>,
     on_set_tags: Callback<(i64, Vec<String>)>,
@@ -216,106 +216,84 @@ pub fn TagPickerView(
                         }
                     />
                 </div>
-                <Suspense fallback=move || {
-                    view! {
-                        <div class="px-3 py-2 text-xs text-text-tertiary">
-                            "Loading..."
-                        </div>
+                {move || {
+                    let list = all_tags.get();
+                    if list.is_empty() {
+                        view! {
+                            <div class="px-3 py-2 text-xs \
+                                        text-text-tertiary">
+                                "No tags yet"
+                            </div>
+                        }
+                        .into_any()
+                    } else {
+                        view! {
+                            <div>
+                                {list
+                                    .into_iter()
+                                    .map(|tag| {
+                                        let name =
+                                            tag.name.clone();
+                                        let color =
+                                            tag.color.clone();
+                                        let toggle_name =
+                                            name.clone();
+                                        let check_name =
+                                            name.clone();
+                                        view! {
+                                            <button
+                                                class="w-full text-left \
+                                                       px-3 py-1.5 text-sm \
+                                                       text-text-primary \
+                                                       hover:bg-bg-tertiary \
+                                                       rounded \
+                                                       transition-colors \
+                                                       flex items-center \
+                                                       gap-2"
+                                                on:click=move |_| {
+                                                    toggle_tag(
+                                                        toggle_name.clone(),
+                                                    );
+                                                }
+                                            >
+                                                <span
+                                                    class="w-2.5 h-2.5 \
+                                                           rounded-full \
+                                                           flex-shrink-0"
+                                                    style=format!(
+                                                        "background-color: {}",
+                                                        color,
+                                                    )
+                                                />
+                                                <span class="flex-1">
+                                                    {name}
+                                                </span>
+                                                {move || {
+                                                    let names =
+                                                        current_tags.get();
+                                                    if names.contains(
+                                                        &check_name,
+                                                    ) {
+                                                        Some(view! {
+                                                            <Icon
+                                                                kind=IconKind::Check
+                                                                class="w-3 h-3 \
+                                                                       text-accent"
+                                                            />
+                                                        })
+                                                    } else {
+                                                        None
+                                                    }
+                                                }}
+                                            </button>
+                                        }
+                                    })
+                                    .collect::<Vec<_>>()}
+                            </div>
+                        }
+                        .into_any()
                     }
-                }>
-                    {move || {
-                        Suspend::new(async move {
-                            match all_tags.await {
-                                Ok(list) => {
-                                    if list.is_empty() {
-                                        view! {
-                                            <div class="px-3 py-2 text-xs \
-                                                        text-text-tertiary">
-                                                "No tags yet"
-                                            </div>
-                                        }
-                                        .into_any()
-                                    } else {
-                                        view! {
-                                            <div>
-                                                {list
-                                                    .into_iter()
-                                                    .map(|tag| {
-                                                        let name =
-                                                            tag.name.clone();
-                                                        let color =
-                                                            tag.color.clone();
-                                                        let toggle_name =
-                                                            name.clone();
-                                                        let check_name =
-                                                            name.clone();
-                                                        view! {
-                                                            <button
-                                                                class="w-full text-left \
-                                                                       px-3 py-1.5 text-sm \
-                                                                       text-text-primary \
-                                                                       hover:bg-bg-tertiary \
-                                                                       rounded \
-                                                                       transition-colors \
-                                                                       flex items-center \
-                                                                       gap-2"
-                                                                on:click=move |_| {
-                                                                    toggle_tag(
-                                                                        toggle_name.clone(),
-                                                                    );
-                                                                }
-                                                            >
-                                                                <span
-                                                                    class="w-2.5 h-2.5 \
-                                                                           rounded-full \
-                                                                           flex-shrink-0"
-                                                                    style=format!(
-                                                                        "background-color: {}",
-                                                                        color,
-                                                                    )
-                                                                />
-                                                                <span class="flex-1">
-                                                                    {name}
-                                                                </span>
-                                                                {move || {
-                                                                    let names =
-                                                                        current_tags.get();
-                                                                    if names.contains(
-                                                                        &check_name,
-                                                                    ) {
-                                                                        Some(view! {
-                                                                            <Icon
-                                                                                kind=IconKind::Check
-                                                                                class="w-3 h-3 \
-                                                                                       text-accent"
-                                                                            />
-                                                                        })
-                                                                    } else {
-                                                                        None
-                                                                    }
-                                                                }}
-                                                            </button>
-                                                        }
-                                                    })
-                                                    .collect::<Vec<_>>()}
-                                            </div>
-                                        }
-                                        .into_any()
-                                    }
-                                }
-                                Err(_) => {
-                                    view! {
-                                        <div class="px-3 py-2 text-xs \
-                                                    text-danger">
-                                            "Failed to load"
-                                        </div>
-                                    }
-                                    .into_any()
-                                }
-                            }
-                        })
-                    }}
-                </Suspense>
+                }}
             </div>
         </Popover>
     }

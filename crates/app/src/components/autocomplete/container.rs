@@ -3,7 +3,6 @@ use leptos::html;
 use leptos::prelude::*;
 use leptos::wasm_bindgen::JsCast;
 
-use crate::stores::lookup_store::LookupStore;
 use north_stores::AppStore;
 use north_ui::{AutocompleteDropdown, SuggestionItem};
 
@@ -36,16 +35,11 @@ fn find_trigger(value: &str, cursor: usize) -> Option<TriggerState> {
     None
 }
 
-fn get_suggestions(
-    lookup: &LookupStore,
-    app_store: &AppStore,
-    trigger: char,
-    query: &str,
-) -> Vec<SuggestionItem> {
+fn get_suggestions(app_store: &AppStore, trigger: char, query: &str) -> Vec<SuggestionItem> {
     let query_lower = query.to_lowercase();
     match trigger {
         '#' => {
-            let tags = lookup.tags.get().and_then(|r| r.ok()).unwrap_or_default();
+            let tags = app_store.tags.get();
             tags.into_iter()
                 .filter(|t| query_lower.is_empty() || t.name.to_lowercase().contains(&query_lower))
                 .map(|t| SuggestionItem {
@@ -91,7 +85,6 @@ pub fn AutocompleteInput(
     #[prop(optional)] on_keydown: Option<std::sync::Arc<dyn Fn(KeyboardEvent) + Send + Sync>>,
     #[prop(optional)] autofocus: bool,
 ) -> impl IntoView {
-    let lookup = use_context::<LookupStore>();
     let app_store = use_context::<AppStore>();
     let (trigger_state, set_trigger_state) = signal(None::<TriggerState>);
     let (highlighted, set_highlighted) = signal(0_usize);
@@ -107,9 +100,9 @@ pub fn AutocompleteInput(
     }
 
     let update_suggestions = move |val: &str, cursor: usize| {
-        if let (Some(ref lookup), Some(ref app_store)) = (&lookup, &app_store) {
+        if let Some(ref app_store) = &app_store {
             if let Some(ts) = find_trigger(val, cursor) {
-                let items = get_suggestions(lookup, app_store, ts.trigger, &ts.query);
+                let items = get_suggestions(app_store, ts.trigger, &ts.query);
                 set_suggestions.set(items);
                 set_trigger_state.set(Some(ts));
                 set_highlighted.set(0);
@@ -217,16 +210,15 @@ pub fn AutocompleteTextarea(
     #[prop(optional, default = 3)] rows: u32,
     #[prop(optional)] on_keydown: Option<std::sync::Arc<dyn Fn(KeyboardEvent) + Send + Sync>>,
 ) -> impl IntoView {
-    let lookup = use_context::<LookupStore>();
     let app_store = use_context::<AppStore>();
     let (trigger_state, set_trigger_state) = signal(None::<TriggerState>);
     let (highlighted, set_highlighted) = signal(0_usize);
     let (suggestions, set_suggestions) = signal(Vec::<SuggestionItem>::new());
 
     let update_suggestions = move |val: &str, cursor: usize| {
-        if let (Some(ref lookup), Some(ref app_store)) = (&lookup, &app_store) {
+        if let Some(ref app_store) = &app_store {
             if let Some(ts) = find_trigger(val, cursor) {
-                let items = get_suggestions(lookup, app_store, ts.trigger, &ts.query);
+                let items = get_suggestions(app_store, ts.trigger, &ts.query);
                 set_suggestions.set(items);
                 set_trigger_state.set(Some(ts));
                 set_highlighted.set(0);

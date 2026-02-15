@@ -15,7 +15,7 @@ pub enum ProjectViewType {
     Kanban,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Project {
     pub id: i64,
     pub user_id: i64,
