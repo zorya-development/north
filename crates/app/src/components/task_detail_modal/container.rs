@@ -3,6 +3,8 @@ use north_domain::TaskWithMeta;
 
 use super::view::TaskDetailModalView;
 use crate::server_fns::tasks::*;
+
+type AncestorsResource = Resource<Result<Vec<(i64, String, i64)>, ServerFnError>>;
 use crate::stores::task_store::TaskStore;
 
 #[derive(Clone, Copy)]
@@ -37,7 +39,7 @@ pub fn TaskDetailModal(task_ids: Signal<Vec<i64>>, task_store: TaskStore) -> imp
         },
     );
 
-    let ancestors: Resource<Result<Vec<(i64, String, i64)>, ServerFnError>> = Resource::new(
+    let ancestors: AncestorsResource = Resource::new(
         move || current_task_id.get(),
         |id| async move {
             match id {

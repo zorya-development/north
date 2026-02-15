@@ -84,7 +84,6 @@ pub fn ProjectPage() -> impl IntoView {
                 }}
             </Suspense>
             <InlineTaskForm on_submit={
-                let create_action = create_action;
                 move |title: String, body: Option<String>| {
                     let pid = project_id();
                     create_action.dispatch((title, body, pid));

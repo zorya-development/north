@@ -8,6 +8,12 @@ pub struct LookupStore {
     pub tags: Resource<Result<Vec<Tag>, ServerFnError>>,
 }
 
+impl Default for LookupStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LookupStore {
     pub fn new() -> Self {
         let tags = Resource::new(|| (), |_| get_tags());

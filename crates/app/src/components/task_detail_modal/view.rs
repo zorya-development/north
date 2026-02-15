@@ -7,10 +7,12 @@ use crate::components::subtask_list::SubtaskList;
 use crate::components::tag_picker::TagPicker;
 use north_ui::{Checkbox, Icon, IconKind, MarkdownView};
 
+type AncestorsResource = Resource<Result<Vec<(i64, String, i64)>, ServerFnError>>;
+
 #[component]
 pub fn TaskDetailModalView(
     task_detail: Resource<Result<Option<TaskWithMeta>, ServerFnError>>,
-    ancestors: Resource<Result<Vec<(i64, String, i64)>, ServerFnError>>,
+    ancestors: AncestorsResource,
     has_stack: Memo<bool>,
     on_close: Callback<()>,
     on_prev: Callback<()>,

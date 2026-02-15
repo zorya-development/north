@@ -13,6 +13,12 @@ pub struct DragDropContext {
     pub drop_target: RwSignal<Option<(i64, DropZone)>>,
 }
 
+impl Default for DragDropContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DragDropContext {
     pub fn new() -> Self {
         Self {

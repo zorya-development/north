@@ -9,6 +9,12 @@ pub struct ProjectStore {
     loaded: RwSignal<bool>,
 }
 
+impl Default for ProjectStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ProjectStore {
     pub fn new() -> Self {
         Self {

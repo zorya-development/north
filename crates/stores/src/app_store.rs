@@ -1,6 +1,6 @@
 use crate::{ProjectStore, TaskStore};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub struct AppStore {
     pub tasks: TaskStore,
     pub projects: ProjectStore,

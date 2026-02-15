@@ -25,6 +25,12 @@ pub enum IdFilter {
     Is(i64),
 }
 
+impl Default for TaskStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TaskStore {
     pub fn new() -> Self {
         Self {
