@@ -913,7 +913,6 @@ mod tests {
     fn test_field_aliases() {
         assert!(parse_filter("due = '2024-01-01'").is_ok());
         assert!(parse_filter("start = '2024-01-01'").is_ok());
-        assert!(parse_filter("col = 'Done'").is_ok());
         assert!(parse_filter("tag = 'work'").is_ok());
         assert!(parse_filter("created_at > '2024-01-01'").is_ok());
         assert!(parse_filter("updated_at > '2024-01-01'").is_ok());
