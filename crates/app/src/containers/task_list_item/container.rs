@@ -10,6 +10,7 @@ pub fn TaskListItem(
     #[prop(default = false)] show_review: bool,
     #[prop(default = true)] show_project: bool,
     #[prop(default = false)] draggable: bool,
+    #[prop(default = false)] compact: bool,
     #[prop(default = 0)] depth: u8,
     #[prop(optional)] on_click: Option<Callback<i64>>,
 ) -> impl IntoView {
@@ -22,6 +23,7 @@ pub fn TaskListItem(
             show_review=show_review
             show_project=show_project
             draggable=draggable
+            compact=compact
             depth=depth
             on_click=on_click
         />

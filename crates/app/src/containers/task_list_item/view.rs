@@ -17,6 +17,7 @@ pub fn TaskListItemView(
     #[prop(default = false)] show_review: bool,
     #[prop(default = true)] show_project: bool,
     #[prop(default = false)] draggable: bool,
+    #[prop(default = false)] compact: bool,
     #[prop(default = 0)] depth: u8,
     on_click: Option<Callback<i64>>,
 ) -> impl IntoView {
@@ -246,104 +247,122 @@ pub fn TaskListItemView(
                                         } else {
                                             None
                                         }}
-                                        <div
-                                            class=move || format!(
-                                                "{} transition-opacity flex items-center",
-                                                if hovered.get() {
-                                                    "opacity-100"
-                                                } else {
-                                                    "opacity-0"
-                                                },
-                                            )
-                                            on:click=move |ev| ev.stop_propagation()
-                                        >
-                                            <button
-                                                on:click=move |ev| {
-                                                    ev.stop_propagation();
-                                                    set_editing.set(true);
-                                                }
-                                                class="p-1 rounded hover:bg-bg-input \
-                                                       text-text-tertiary \
-                                                       hover:text-text-secondary \
-                                                       transition-colors"
-                                                aria-label="Edit task"
-                                            >
-                                                <Icon kind=IconKind::Edit class="w-4 h-4"/>
-                                            </button>
-                                            <DateTimePicker
-                                                task_id=task_id
-                                                start_at=start_at
-                                                on_set_start_at=Callback::new(move |(_, sa)| {
-                                                    ctrl.set_start_at(sa)
-                                                })
-                                                on_clear_start_at=Callback::new(move |_| {
-                                                    ctrl.clear_start_at()
-                                                })
-                                                icon_only=true
-                                            />
-                                            <ProjectPicker
-                                                task_id=task_id
-                                                project_id=project_id
-                                                project_title=project_title.clone()
-                                                on_set_project=Callback::new(
-                                                    move |(_, pid)| ctrl.set_project(pid),
-                                                )
-                                                on_clear_project=Callback::new(move |_| {
-                                                    ctrl.clear_project()
-                                                })
-                                                icon_only=true
-                                            />
-                                            <TagPicker
-                                                task_id=task_id
-                                                tags=meta_tags.clone()
-                                                on_set_tags=Callback::new(
-                                                    move |(_, tags)| ctrl.set_tags(tags),
-                                                )
-                                                icon_only=true
-                                            />
-                                            <DropdownMenu
-                                                open=menu_open
-                                                set_open=set_menu_open
-                                                trigger=Box::new(move || {
-                                                    view! {
-                                                        <button
-                                                            on:click=move |ev| {
-                                                                ev.stop_propagation();
-                                                                set_menu_open
-                                                                    .update(|o| *o = !*o);
+                                        {if !compact {
+                                            Some(view! {
+                                                <div
+                                                    class=move || format!(
+                                                        "{} transition-opacity \
+                                                         flex items-center",
+                                                        if hovered.get() {
+                                                            "opacity-100"
+                                                        } else {
+                                                            "opacity-0"
+                                                        },
+                                                    )
+                                                    on:click=move |ev| ev.stop_propagation()
+                                                >
+                                                    <button
+                                                        on:click=move |ev| {
+                                                            ev.stop_propagation();
+                                                            set_editing.set(true);
+                                                        }
+                                                        class="p-1 rounded hover:bg-bg-input \
+                                                               text-text-tertiary \
+                                                               hover:text-text-secondary \
+                                                               transition-colors"
+                                                        aria-label="Edit task"
+                                                    >
+                                                        <Icon
+                                                            kind=IconKind::Edit
+                                                            class="w-4 h-4"
+                                                        />
+                                                    </button>
+                                                    <DateTimePicker
+                                                        task_id=task_id
+                                                        start_at=start_at
+                                                        on_set_start_at=Callback::new(
+                                                            move |(_, sa)| {
+                                                                ctrl.set_start_at(sa)
+                                                            },
+                                                        )
+                                                        on_clear_start_at=Callback::new(
+                                                            move |_| ctrl.clear_start_at(),
+                                                        )
+                                                        icon_only=true
+                                                    />
+                                                    <ProjectPicker
+                                                        task_id=task_id
+                                                        project_id=project_id
+                                                        project_title=project_title.clone()
+                                                        on_set_project=Callback::new(
+                                                            move |(_, pid)| {
+                                                                ctrl.set_project(pid)
+                                                            },
+                                                        )
+                                                        on_clear_project=Callback::new(
+                                                            move |_| ctrl.clear_project(),
+                                                        )
+                                                        icon_only=true
+                                                    />
+                                                    <TagPicker
+                                                        task_id=task_id
+                                                        tags=meta_tags.clone()
+                                                        on_set_tags=Callback::new(
+                                                            move |(_, tags)| {
+                                                                ctrl.set_tags(tags)
+                                                            },
+                                                        )
+                                                        icon_only=true
+                                                    />
+                                                    <DropdownMenu
+                                                        open=menu_open
+                                                        set_open=set_menu_open
+                                                        trigger=Box::new(move || {
+                                                            view! {
+                                                                <button
+                                                                    on:click=move |ev| {
+                                                                        ev.stop_propagation();
+                                                                        set_menu_open
+                                                                            .update(|o| {
+                                                                                *o = !*o
+                                                                            });
+                                                                    }
+                                                                    class="p-1 rounded \
+                                                                           hover:bg-bg-input \
+                                                                           text-text-tertiary \
+                                                                           hover:text-text-secondary \
+                                                                           transition-colors"
+                                                                    aria-label="Task actions"
+                                                                >
+                                                                    <Icon
+                                                                        kind=IconKind::KebabMenu
+                                                                        class="w-4 h-4"
+                                                                    />
+                                                                </button>
+                                                            }.into_any()
+                                                        })
+                                                    >
+                                                        <DropdownItem
+                                                            label="Edit"
+                                                            on_click=move || {
+                                                                set_menu_open.set(false);
+                                                                set_editing.set(true);
                                                             }
-                                                            class="p-1 rounded \
-                                                                   hover:bg-bg-input \
-                                                                   text-text-tertiary \
-                                                                   hover:text-text-secondary \
-                                                                   transition-colors"
-                                                            aria-label="Task actions"
-                                                        >
-                                                            <Icon
-                                                                kind=IconKind::KebabMenu
-                                                                class="w-4 h-4"
-                                                            />
-                                                        </button>
-                                                    }.into_any()
-                                                })
-                                            >
-                                                <DropdownItem
-                                                    label="Edit"
-                                                    on_click=move || {
-                                                        set_menu_open.set(false);
-                                                        set_editing.set(true);
-                                                    }
-                                                />
-                                                <DropdownItem
-                                                    label="Delete"
-                                                    on_click=move || {
-                                                        set_menu_open.set(false);
-                                                        ctrl.delete();
-                                                    }
-                                                    danger=true
-                                                />
-                                            </DropdownMenu>
-                                        </div>
+                                                        />
+                                                        <DropdownItem
+                                                            label="Delete"
+                                                            on_click=move || {
+                                                                set_menu_open.set(false);
+                                                                ctrl.delete();
+                                                            }
+                                                            danger=true
+                                                        />
+                                                    </DropdownMenu>
+                                                </div>
+                                            })
+                                        } else {
+                                            None
+                                        }}
                                     </div>
 
                                     {body.map(|b| {
@@ -363,7 +382,7 @@ pub fn TaskListItemView(
                                         reviewed_at=reviewed_at
                                         show_review=show_review
                                     />
-                                    {if has_subtasks {
+                                    {if has_subtasks && !compact {
                                         Some(view! {
                                             <Show when=move || subtasks_expanded.get()>
                                                 <div
