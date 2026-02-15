@@ -435,7 +435,7 @@ Three Dockerfiles, layered:
 |---|---|---|
 | **base** | `docker/base/Dockerfile` | Rust toolchain, cargo-leptos, diesel_cli, wasm32 target, clippy, rustfmt |
 | **dev** | `docker/dev/Dockerfile` | Extends base, adds `just` and `tailwindcss` CLI |
-| **prod** | `docker/prod/Dockerfile` | Multi-stage: builds release in base image, copies binary to `debian:bookworm-slim` |
+| **prod** | `docker/prod/Dockerfile` | Runtime-only: `debian:bookworm-slim` with pre-built binary (built in CI container job) |
 
 - `docker/base/VERSION` is the single source of truth for base image version
 - `docker-compose.yml` builds base locally as `north-base:<version>`, dev image extends it
@@ -454,7 +454,8 @@ Two GitHub Actions workflows:
 
 **release.yml** (push to master only):
 1. `resolve` — reads app version from `Cargo.toml`, checks if git tag `v<version>` exists
-2. `build` — if tag doesn't exist: builds prod Docker image, pushes to ghcr.io (`:v<version>` + `:latest`), generates changelog via git-cliff, creates GitHub release with tag
+2. `build` — if tag doesn't exist: builds release binary in base container (reuses `north-cargo` cache from test workflow), uploads artifacts
+3. `package` — packages binary into `debian:bookworm-slim` image, pushes to ghcr.io (`:v<version>` + `:latest`), generates changelog via git-cliff, creates GitHub release with tag
 
 ### Release Process
 
@@ -462,8 +463,8 @@ To release a new version:
 1. Bump version: `just bump-version {major,minor,patch}`
 2. Commit and push to master (via PR or direct push)
 3. The release workflow automatically:
-   - Builds the prod Docker image using the base image from ghcr.io
-   - Pushes to `ghcr.io/zorya-development/north:v<version>` and `:latest`
+   - Builds the release binary in the base container (reuses cargo cache from test workflow)
+   - Packages into a slim runtime Docker image and pushes to `ghcr.io/zorya-development/north:v<version>` and `:latest`
    - Generates changelog from commits since last tag using git-cliff
    - Creates a GitHub release with the changelog
 

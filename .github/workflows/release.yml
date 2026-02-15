@@ -7,6 +7,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  BASE_IMAGE: ghcr.io/zorya-development/north/base
 
 jobs:
   resolve:
@@ -43,9 +44,37 @@ jobs:
           fi
 
   build:
-    name: Build & Release
+    name: Build release binary
     needs: [resolve]
     if: needs.resolve.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/zorya-development/north/base:${{ needs.resolve.outputs.base_version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: "true"
+          shared-key: north-cargo
+
+      - name: Build release
+        run: cargo leptos build --release
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          retention-days: 1
+          path: |
+            target/release/north-server
+            target/site
+            Cargo.toml
+
+  package:
+    name: Package & Release
+    needs: [resolve, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -56,6 +85,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: artifacts
+
       - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -64,13 +98,10 @@ jobs:
 
       - uses: docker/build-push-action@v6
         with:
-          context: .
+          context: artifacts
           file: docker/prod/Dockerfile
           push: true
           provenance: false
-          build-args: |
-            BASE_VERSION=${{ needs.resolve.outputs.base_version }}
-            REGISTRY=${{ env.REGISTRY }}/${{ github.repository }}/base
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:v${{ needs.resolve.outputs.app_version }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest

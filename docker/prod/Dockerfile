@@ -1,15 +1,3 @@
-ARG BASE_VERSION=1.0.0
-ARG REGISTRY=ghcr.io/zorya-development/north/base
-
-# === Build stage ===
-FROM ${REGISTRY}:${BASE_VERSION} AS builder
-
-WORKDIR /build
-COPY . .
-
-RUN cargo leptos build --release
-
-# === Runtime stage ===
 FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y \
@@ -23,9 +11,9 @@ RUN groupadd -g 1001 north && \
 
 RUN mkdir -p /app/uploads && chown -R north:north /app
 
-COPY --from=builder --chown=north:north /build/target/release/north-server /app/north-server
-COPY --from=builder --chown=north:north /build/target/site /app/site
-COPY --from=builder --chown=north:north /build/Cargo.toml /app/
+COPY --chown=north:north target/release/north-server /app/north-server
+COPY --chown=north:north target/site /app/site
+COPY --chown=north:north Cargo.toml /app/
 
 WORKDIR /app
 USER north
