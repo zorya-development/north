@@ -6,7 +6,6 @@ use wasm_bindgen::JsCast;
 
 use crate::components::date_picker::DateTimePicker;
 use crate::components::drag_drop::{DragDropContext, DropZone};
-use crate::components::task_detail_modal::TaskDetailContext;
 use crate::components::task_form::EditTaskForm;
 use crate::components::task_meta::TaskMeta;
 use crate::containers::project_picker::ProjectPicker;
@@ -53,7 +52,6 @@ pub fn TaskCardView(
     #[prop(default = 0)] depth: u8,
 ) -> impl IntoView {
     let _ = parent_id;
-    let detail_ctx = use_context::<TaskDetailContext>();
     let drag_ctx = use_context::<DragDropContext>();
     let edit_title = title.clone();
     let edit_body = body.clone();
@@ -184,11 +182,6 @@ pub fn TaskCardView(
                                     {
                                         ctx.drop_target.set(None);
                                     }
-                                }
-                            }
-                            on:click=move |_| {
-                                if let Some(ctx) = detail_ctx {
-                                    ctx.open_task_id.set(Some(task_id));
                                 }
                             }
                         >

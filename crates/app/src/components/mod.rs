@@ -7,7 +7,6 @@ pub mod nav;
 pub mod subtask_form;
 pub mod subtask_list;
 pub mod task_card;
-pub mod task_detail_modal;
 pub mod task_form;
 pub mod task_list;
 pub mod task_meta;
