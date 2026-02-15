@@ -322,45 +322,43 @@ impl TaskService {
                 }
             } else if let Some(None) = input.completed_at {
                 if existing.completed_at.is_some() {
-                    let last_key: Option<String> =
-                        if let Some(pid) = resolved_parent {
-                            tasks::table
-                                .filter(tasks::parent_id.eq(pid))
-                                .filter(tasks::user_id.eq(user_id))
-                                .filter(tasks::completed_at.is_null())
-                                .filter(tasks::id.ne(id))
-                                .order(tasks::sort_key.desc())
-                                .select(tasks::sort_key)
-                                .first(&mut conn)
-                                .await
-                                .optional()?
-                        } else if let Some(proj) = resolved_project {
-                            tasks::table
-                                .filter(tasks::project_id.eq(proj))
-                                .filter(tasks::parent_id.is_null())
-                                .filter(tasks::user_id.eq(user_id))
-                                .filter(tasks::completed_at.is_null())
-                                .filter(tasks::id.ne(id))
-                                .order(tasks::sort_key.desc())
-                                .select(tasks::sort_key)
-                                .first(&mut conn)
-                                .await
-                                .optional()?
-                        } else {
-                            tasks::table
-                                .filter(tasks::project_id.is_null())
-                                .filter(tasks::parent_id.is_null())
-                                .filter(tasks::user_id.eq(user_id))
-                                .filter(tasks::completed_at.is_null())
-                                .filter(tasks::id.ne(id))
-                                .order(tasks::sort_key.desc())
-                                .select(tasks::sort_key)
-                                .first(&mut conn)
-                                .await
-                                .optional()?
-                        };
-                    uncomplete_sort_key =
-                        north_domain::sort_key_after(last_key.as_deref());
+                    let last_key: Option<String> = if let Some(pid) = resolved_parent {
+                        tasks::table
+                            .filter(tasks::parent_id.eq(pid))
+                            .filter(tasks::user_id.eq(user_id))
+                            .filter(tasks::completed_at.is_null())
+                            .filter(tasks::id.ne(id))
+                            .order(tasks::sort_key.desc())
+                            .select(tasks::sort_key)
+                            .first(&mut conn)
+                            .await
+                            .optional()?
+                    } else if let Some(proj) = resolved_project {
+                        tasks::table
+                            .filter(tasks::project_id.eq(proj))
+                            .filter(tasks::parent_id.is_null())
+                            .filter(tasks::user_id.eq(user_id))
+                            .filter(tasks::completed_at.is_null())
+                            .filter(tasks::id.ne(id))
+                            .order(tasks::sort_key.desc())
+                            .select(tasks::sort_key)
+                            .first(&mut conn)
+                            .await
+                            .optional()?
+                    } else {
+                        tasks::table
+                            .filter(tasks::project_id.is_null())
+                            .filter(tasks::parent_id.is_null())
+                            .filter(tasks::user_id.eq(user_id))
+                            .filter(tasks::completed_at.is_null())
+                            .filter(tasks::id.ne(id))
+                            .order(tasks::sort_key.desc())
+                            .select(tasks::sort_key)
+                            .first(&mut conn)
+                            .await
+                            .optional()?
+                    };
+                    uncomplete_sort_key = north_domain::sort_key_after(last_key.as_deref());
                     changeset.sort_key = Some(&uncomplete_sort_key);
                 }
             }

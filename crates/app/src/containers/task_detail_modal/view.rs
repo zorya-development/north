@@ -618,10 +618,7 @@ fn DueDatePicker(
 }
 
 #[component]
-fn SequentialLimitInput(
-    sequential_limit: i16,
-    store: TaskDetailModalStore,
-) -> impl IntoView {
+fn SequentialLimitInput(sequential_limit: i16, store: TaskDetailModalStore) -> impl IntoView {
     let (value, set_value) = signal(sequential_limit.to_string());
 
     view! {

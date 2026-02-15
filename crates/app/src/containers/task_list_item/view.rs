@@ -463,12 +463,11 @@ fn InlineSubtaskList(
     let visible_ids = Memo::new(move |_| {
         let tasks = uncompleted.get();
         let total = tasks.len();
-        let mut ids: Vec<i64> =
-            if !show_non_actionable.get() && limit > 0 && total > limit {
-                tasks.iter().take(limit).map(|t| t.task.id).collect()
-            } else {
-                tasks.iter().map(|t| t.task.id).collect()
-            };
+        let mut ids: Vec<i64> = if !show_non_actionable.get() && limit > 0 && total > limit {
+            tasks.iter().take(limit).map(|t| t.task.id).collect()
+        } else {
+            tasks.iter().map(|t| t.task.id).collect()
+        };
         if show_completed.get() {
             ids.extend(completed.get().iter().map(|t| t.task.id));
         }
@@ -477,13 +476,15 @@ fn InlineSubtaskList(
 
     let non_actionable_count = Memo::new(move |_| {
         let total = uncompleted.get().len();
-        if limit > 0 && total > limit { total - limit } else { 0 }
+        if limit > 0 && total > limit {
+            total - limit
+        } else {
+            0
+        }
     });
 
-    let completed_count =
-        Memo::new(move |_| completed.get().len());
-    let total_count =
-        Memo::new(move |_| all_subtasks.get().len());
+    let completed_count = Memo::new(move |_| completed.get().len());
+    let total_count = Memo::new(move |_| all_subtasks.get().len());
 
     view! {
         <div class="ml-4">

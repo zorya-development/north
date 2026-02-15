@@ -758,10 +758,7 @@ impl TaskService {
                 .filter(tasks::user_id.eq(user_id))
                 .filter(tasks::completed_at.is_null()),
         )
-        .set((
-            tasks::completed_at.eq(Some(now)),
-            tasks::sort_key.eq(""),
-        ))
+        .set((tasks::completed_at.eq(Some(now)), tasks::sort_key.eq("")))
         .execute(&mut conn)
         .await?;
         if affected == 0 {
@@ -784,10 +781,7 @@ impl TaskService {
                 break;
             }
             diesel::update(tasks::table.filter(tasks::id.eq_any(&child_ids)))
-                .set((
-                    tasks::completed_at.eq(Some(now)),
-                    tasks::sort_key.eq(""),
-                ))
+                .set((tasks::completed_at.eq(Some(now)), tasks::sort_key.eq("")))
                 .execute(&mut conn)
                 .await?;
             parent_ids = child_ids;

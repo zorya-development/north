@@ -17,18 +17,15 @@ impl TaskDetailModalStore {
         let open_task_id = RwSignal::new(None::<i64>);
         let task_stack = RwSignal::new(vec![]);
         let task_ids = RwSignal::new(vec![]);
-        let task_memo: RwSignal<Option<Memo<Option<TaskWithMeta>>>> =
-            RwSignal::new(None);
+        let task_memo: RwSignal<Option<Memo<Option<TaskWithMeta>>>> = RwSignal::new(None);
 
         let current_task_id = Self::current_task_id_memo(open_task_id, task_stack);
 
         // Update the task memo when current_task_id changes
         let task_store = app_store.tasks;
-        Effect::new(move || {
-            match current_task_id.get() {
-                Some(id) => task_memo.set(Some(task_store.get_by_id(id))),
-                None => task_memo.set(None),
-            }
+        Effect::new(move || match current_task_id.get() {
+            Some(id) => task_memo.set(Some(task_store.get_by_id(id))),
+            None => task_memo.set(None),
         });
 
         Self {
@@ -170,9 +167,7 @@ impl TaskDetailModalStore {
 
     pub fn update(&self, title: String, body: Option<String>) {
         let Some(task) = self.task() else { return };
-        self.app_store
-            .tasks
-            .update_task(task.task.id, title, body);
+        self.app_store.tasks.update_task(task.task.id, title, body);
     }
 
     pub fn set_start_at(&self, start_at: String) {
@@ -187,9 +182,7 @@ impl TaskDetailModalStore {
 
     pub fn set_project(&self, project_id: i64) {
         let Some(task) = self.task() else { return };
-        self.app_store
-            .tasks
-            .set_project(task.task.id, project_id);
+        self.app_store.tasks.set_project(task.task.id, project_id);
     }
 
     pub fn clear_project(&self) {
