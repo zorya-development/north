@@ -76,11 +76,7 @@ impl TaskStore {
             let Some(parent) = all.iter().find(|t| t.id == parent_id) else {
                 break;
             };
-            ancestors.push((
-                parent.id,
-                parent.title.clone(),
-                parent.subtask_count,
-            ));
+            ancestors.push((parent.id, parent.title.clone(), parent.subtask_count));
             current_id = parent_id;
         }
 

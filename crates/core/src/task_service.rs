@@ -453,10 +453,7 @@ impl TaskService {
 
     // ── Internal helpers ───────────────────────────────────────────
 
-    async fn load_with_meta(
-        pool: &DbPool,
-        task_rows: Vec<TaskRow>,
-    ) -> ServiceResult<Vec<Task>> {
+    async fn load_with_meta(pool: &DbPool, task_rows: Vec<TaskRow>) -> ServiceResult<Vec<Task>> {
         if task_rows.is_empty() {
             return Ok(vec![]);
         }
@@ -528,12 +525,10 @@ impl TaskService {
             .into_iter()
             .map(|row| {
                 let id = row.id;
-                let project_title =
-                    row.project_id.and_then(|pid| proj_map.get(&pid).cloned());
+                let project_title = row.project_id.and_then(|pid| proj_map.get(&pid).cloned());
                 let tags = tags_map.remove(&id).unwrap_or_default();
                 let subtask_count = count_map.get(&id).copied().unwrap_or(0);
-                let completed_subtask_count =
-                    completed_count_map.get(&id).copied().unwrap_or(0);
+                let completed_subtask_count = completed_count_map.get(&id).copied().unwrap_or(0);
                 let actionable = row.completed_at.is_none();
                 let mut task = Task::from(row);
                 task.project_title = project_title;
@@ -580,10 +575,7 @@ impl TaskService {
         Ok(siblings_before < parent_limit as i64)
     }
 
-    async fn compute_actionable_batch(
-        pool: &DbPool,
-        results: &mut [Task],
-    ) -> ServiceResult<()> {
+    async fn compute_actionable_batch(pool: &DbPool, results: &mut [Task]) -> ServiceResult<()> {
         let today = Utc::now().date_naive();
 
         let parent_ids: Vec<i64> = results

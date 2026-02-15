@@ -158,10 +158,7 @@ impl TaskService {
         Self::enrich(pool, rows).await
     }
 
-    pub async fn get_recently_reviewed(
-        pool: &DbPool,
-        user_id: i64,
-    ) -> ServiceResult<Vec<Task>> {
+    pub async fn get_recently_reviewed(pool: &DbPool, user_id: i64) -> ServiceResult<Vec<Task>> {
         let mut conn = pool.get().await?;
         let rows = tasks::table
             .left_join(projects::table.on(projects::id.nullable().eq(tasks::project_id)))
@@ -195,11 +192,7 @@ impl TaskService {
         Ok(Task::from(row))
     }
 
-    pub async fn get_by_id_with_meta(
-        pool: &DbPool,
-        user_id: i64,
-        id: i64,
-    ) -> ServiceResult<Task> {
+    pub async fn get_by_id_with_meta(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<Task> {
         let mut conn = pool.get().await?;
         let row = tasks::table
             .filter(tasks::id.eq(id))
@@ -213,7 +206,7 @@ impl TaskService {
 
         // Compute actionable for single task
         if let Some(item) = results.first_mut() {
-            item.actionable = Self::compute_actionable_single(pool, &item).await?;
+            item.actionable = Self::compute_actionable_single(pool, item).await?;
         }
 
         results
@@ -1213,10 +1206,9 @@ impl TaskService {
             use north_domain::SortDirection;
             results.sort_by(|a, b| {
                 let cmp = match order_by.field {
-                    north_domain::FilterField::Title => a
-                        .title
-                        .to_lowercase()
-                        .cmp(&b.title.to_lowercase()),
+                    north_domain::FilterField::Title => {
+                        a.title.to_lowercase().cmp(&b.title.to_lowercase())
+                    }
                     north_domain::FilterField::DueDate => a.due_date.cmp(&b.due_date),
                     north_domain::FilterField::StartAt => a.start_at.cmp(&b.start_at),
                     north_domain::FilterField::Created => a.created_at.cmp(&b.created_at),
@@ -1338,12 +1330,10 @@ impl TaskService {
             .into_iter()
             .map(|row| {
                 let id = row.id;
-                let project_title =
-                    row.project_id.and_then(|pid| proj_map.get(&pid).cloned());
+                let project_title = row.project_id.and_then(|pid| proj_map.get(&pid).cloned());
                 let tags = tags_map.remove(&id).unwrap_or_default();
                 let subtask_count = count_map.get(&id).copied().unwrap_or(0);
-                let completed_subtask_count =
-                    completed_count_map.get(&id).copied().unwrap_or(0);
+                let completed_subtask_count = completed_count_map.get(&id).copied().unwrap_or(0);
                 let actionable = row.completed_at.is_none();
                 let mut task = Task::from(row);
                 task.project_title = project_title;
@@ -1393,10 +1383,7 @@ impl TaskService {
     }
 
     /// Batch compute actionable for filtered results
-    async fn compute_actionable_batch(
-        pool: &DbPool,
-        results: &mut [Task],
-    ) -> ServiceResult<()> {
+    async fn compute_actionable_batch(pool: &DbPool, results: &mut [Task]) -> ServiceResult<()> {
         let today = Utc::now().date_naive();
 
         // Collect parent_ids we need to look up

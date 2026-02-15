@@ -34,8 +34,7 @@ impl InboxController {
             is_completed: Some(true),
         });
 
-        let active_task_ids =
-            Memo::new(move |_| active_tasks.get().iter().map(|t| t.id).collect());
+        let active_task_ids = Memo::new(move |_| active_tasks.get().iter().map(|t| t.id).collect());
 
         let completed_task_ids =
             Memo::new(move |_| completed_tasks.get().iter().map(|t| t.id).collect());

@@ -11,9 +11,7 @@ pub fn TaskList(
     #[prop(default = false)] show_review: bool,
     #[prop(default = true)] show_project: bool,
     #[prop(default = "No tasks.")] empty_message: &'static str,
-    #[prop(optional)] completed_resource: Option<
-        Resource<Result<Vec<Task>, ServerFnError>>,
-    >,
+    #[prop(optional)] completed_resource: Option<Resource<Result<Vec<Task>, ServerFnError>>>,
     #[prop(default = false)] draggable: bool,
 ) -> impl IntoView {
     match completed_resource {
