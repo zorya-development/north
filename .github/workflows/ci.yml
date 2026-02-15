@@ -43,14 +43,17 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Install cargo-leptos
-        run: cargo install cargo-leptos
+      - name: Install cargo-binstall
+        run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
 
-      - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features postgres
+      - name: Install cargo-leptos
+        run: cargo binstall cargo-leptos --no-confirm
+
+      - name: Install diesel_cli
+        run: cargo binstall diesel_cli --no-default-features --features postgres --no-confirm
 
       - name: Run migrations
-        run: sqlx migrate run
+        run: diesel migration run
 
       - name: Format check
         run: cargo fmt --check
