@@ -36,7 +36,7 @@ pub fn TaskListItemView(
 
     let is_completed = Memo::new(move |_| {
         task.get()
-            .map(|t| t.task.completed_at.is_some())
+            .map(|t| t.completed_at.is_some())
             .unwrap_or(false)
     });
 
@@ -46,19 +46,19 @@ pub fn TaskListItemView(
                 return view! { <div/> }.into_any();
             };
 
-            let task_id = t.task.id;
-            let title = t.task.title.clone();
-            let body = t.task.body.clone();
-            let sort_key = t.task.sort_key.clone();
-            let project_id = t.task.project_id;
+            let task_id = t.id;
+            let title = t.title.clone();
+            let body = t.body.clone();
+            let sort_key = t.sort_key.clone();
+            let project_id = t.project_id;
             let project_title = t.project_title.clone();
-            let due_date = t.task.due_date;
-            let start_at = t.task.start_at;
-            let reviewed_at = t.task.reviewed_at;
+            let due_date = t.due_date;
+            let start_at = t.start_at;
+            let reviewed_at = t.reviewed_at;
             let tags = t.tags.clone();
             let subtask_count = t.subtask_count;
             let _completed_subtask_count = t.completed_subtask_count;
-            let sequential_limit = t.task.sequential_limit;
+            let sequential_limit = t.sequential_limit;
             let has_subtasks = subtask_count > 0;
 
             let edit_title = title.clone();
@@ -464,12 +464,12 @@ fn InlineSubtaskList(
         let tasks = uncompleted.get();
         let total = tasks.len();
         let mut ids: Vec<i64> = if !show_non_actionable.get() && limit > 0 && total > limit {
-            tasks.iter().take(limit).map(|t| t.task.id).collect()
+            tasks.iter().take(limit).map(|t| t.id).collect()
         } else {
-            tasks.iter().map(|t| t.task.id).collect()
+            tasks.iter().map(|t| t.id).collect()
         };
         if show_completed.get() {
-            ids.extend(completed.get().iter().map(|t| t.task.id));
+            ids.extend(completed.get().iter().map(|t| t.id));
         }
         ids
     });

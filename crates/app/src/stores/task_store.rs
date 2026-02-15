@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::TaskWithMeta;
+use north_domain::Task;
 
 use crate::server_fns::projects::{clear_task_project, set_task_project};
 use crate::server_fns::tags::set_task_tags;
@@ -20,7 +20,7 @@ pub struct TaskStore {
 }
 
 impl TaskStore {
-    pub fn new(resource: Resource<Result<Vec<TaskWithMeta>, ServerFnError>>) -> Self {
+    pub fn new(resource: Resource<Result<Vec<Task>, ServerFnError>>) -> Self {
         let complete_action = Action::new(|id: &i64| {
             let id = *id;
             complete_task(id)

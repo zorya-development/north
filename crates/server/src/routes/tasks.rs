@@ -1,7 +1,7 @@
 use axum::extract::{Path, Query, State};
 use axum::Json;
 use north_core::TaskService;
-use north_domain::{CreateTask, Task, TaskFilter, TaskWithMeta, UpdateTask};
+use north_domain::{CreateTask, Task, TaskFilter, UpdateTask};
 
 use crate::auth::AuthUser;
 use crate::error::AppError;
@@ -11,7 +11,7 @@ pub async fn list_tasks(
     auth_user: axum::Extension<AuthUser>,
     State(state): State<AppState>,
     Query(filter): Query<TaskFilter>,
-) -> Result<Json<Vec<TaskWithMeta>>, AppError> {
+) -> Result<Json<Vec<Task>>, AppError> {
     let results = TaskService::list(&state.pool, auth_user.id, &filter).await?;
     Ok(Json(results))
 }
@@ -29,7 +29,7 @@ pub async fn get_task(
     auth_user: axum::Extension<AuthUser>,
     State(state): State<AppState>,
     Path(id): Path<i64>,
-) -> Result<Json<TaskWithMeta>, AppError> {
+) -> Result<Json<Task>, AppError> {
     let task = TaskService::get_by_id(&state.pool, auth_user.id, id).await?;
     Ok(Json(task))
 }

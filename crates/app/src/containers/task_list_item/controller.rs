@@ -1,12 +1,12 @@
 use leptos::prelude::*;
-use north_domain::TaskWithMeta;
+use north_domain::Task;
 use north_stores::AppStore;
 
 #[derive(Clone, Copy)]
 pub struct TaskListItemController {
     app_store: AppStore,
     task_id: i64,
-    pub task: Memo<Option<TaskWithMeta>>,
+    pub task: Memo<Option<Task>>,
     pub editing: (ReadSignal<bool>, WriteSignal<bool>),
     pub menu_open: (ReadSignal<bool>, WriteSignal<bool>),
 }
@@ -29,7 +29,7 @@ impl TaskListItemController {
         let was_completed = self
             .task
             .get_untracked()
-            .map(|t| t.task.completed_at.is_some())
+            .map(|t| t.completed_at.is_some())
             .unwrap_or(false);
         self.app_store
             .tasks

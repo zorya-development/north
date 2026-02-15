@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::{Task, TaskWithMeta};
+use north_domain::Task;
 
 #[server(ReorderTaskFn, "/api")]
 pub async fn reorder_task(
@@ -21,7 +21,7 @@ pub async fn reorder_task(
 }
 
 #[server(GetInboxTasksFn, "/api")]
-pub async fn get_inbox_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
+pub async fn get_inbox_tasks() -> Result<Vec<Task>, ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
     north_services::TaskService::get_inbox(&pool, user_id)
@@ -30,7 +30,7 @@ pub async fn get_inbox_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
 }
 
 #[server(GetTodayTasksFn, "/api")]
-pub async fn get_today_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
+pub async fn get_today_tasks() -> Result<Vec<Task>, ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
     north_services::TaskService::get_today(&pool, user_id)
@@ -39,7 +39,7 @@ pub async fn get_today_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
 }
 
 #[server(GetAllTasksFn, "/api")]
-pub async fn get_all_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
+pub async fn get_all_tasks() -> Result<Vec<Task>, ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
     north_services::TaskService::get_all(&pool, user_id)
@@ -122,7 +122,7 @@ pub async fn clear_task_start_at(id: i64) -> Result<(), ServerFnError> {
 }
 
 #[server(GetReviewTasksFn, "/api")]
-pub async fn get_review_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
+pub async fn get_review_tasks() -> Result<Vec<Task>, ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
     north_services::TaskService::get_review_due(&pool, user_id)
@@ -131,7 +131,7 @@ pub async fn get_review_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
 }
 
 #[server(GetRecentlyReviewedTasksFn, "/api")]
-pub async fn get_recently_reviewed_tasks() -> Result<Vec<TaskWithMeta>, ServerFnError> {
+pub async fn get_recently_reviewed_tasks() -> Result<Vec<Task>, ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
     north_services::TaskService::get_recently_reviewed(&pool, user_id)
@@ -161,7 +161,7 @@ pub async fn review_all_tasks() -> Result<(), ServerFnError> {
 pub async fn get_completed_tasks(
     project_id: Option<i64>,
     inbox_only: bool,
-) -> Result<Vec<TaskWithMeta>, ServerFnError> {
+) -> Result<Vec<Task>, ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
     north_services::TaskService::get_completed(&pool, user_id, project_id, inbox_only)
@@ -170,7 +170,7 @@ pub async fn get_completed_tasks(
 }
 
 #[server(GetTaskDetailFn, "/api")]
-pub async fn get_task_detail(id: i64) -> Result<TaskWithMeta, ServerFnError> {
+pub async fn get_task_detail(id: i64) -> Result<Task, ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
     north_services::TaskService::get_by_id_with_meta(&pool, user_id, id)
@@ -179,7 +179,7 @@ pub async fn get_task_detail(id: i64) -> Result<TaskWithMeta, ServerFnError> {
 }
 
 #[server(GetSubtasksFn, "/api")]
-pub async fn get_subtasks(parent_id: i64) -> Result<Vec<TaskWithMeta>, ServerFnError> {
+pub async fn get_subtasks(parent_id: i64) -> Result<Vec<Task>, ServerFnError> {
     let pool = expect_context::<north_services::DbPool>();
     let user_id = crate::server_fns::auth::get_auth_user_id().await?;
     north_services::TaskService::get_children(&pool, user_id, parent_id)

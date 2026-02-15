@@ -41,16 +41,16 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                     let ancestor_list = store.ancestors();
                     let has_stack_val = store.has_stack();
 
-                    let task_id = task.task.id;
-                    let title = task.task.title.clone();
-                    let body = task.task.body.clone();
-                    let project_id = task.task.project_id;
+                    let task_id = task.id;
+                    let title = task.title.clone();
+                    let body = task.body.clone();
+                    let project_id = task.project_id;
                     let project_title = task.project_title.clone();
                     let tags = task.tags.clone();
-                    let start_at = task.task.start_at;
-                    let due_date = task.task.due_date;
-                    let is_completed = task.task.completed_at.is_some();
-                    let sequential_limit = task.task.sequential_limit;
+                    let start_at = task.start_at;
+                    let due_date = task.due_date;
+                    let is_completed = task.completed_at.is_some();
+                    let sequential_limit = task.sequential_limit;
 
                     let (completed_sig, set_completed_sig) = signal(is_completed);
 

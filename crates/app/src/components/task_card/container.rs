@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
 use leptos::prelude::*;
-use north_domain::TaskWithMeta;
+use north_domain::Task;
 
 use super::view::TaskCardView;
 
 #[component]
 pub fn TaskCard(
-    task: TaskWithMeta,
+    task: Task,
     on_toggle_complete: Callback<(i64, bool)>,
     on_delete: Callback<i64>,
     on_update: Callback<(i64, String, Option<String>)>,
@@ -22,17 +22,17 @@ pub fn TaskCard(
     #[prop(default = false)] draggable: bool,
     #[prop(default = 0)] depth: u8,
 ) -> impl IntoView {
-    let task_id = task.task.id;
-    let title = task.task.title.clone();
-    let body = task.task.body.clone();
-    let sort_key = task.task.sort_key.clone();
-    let parent_id = task.task.parent_id;
-    let project_id = task.task.project_id;
+    let task_id = task.id;
+    let title = task.title.clone();
+    let body = task.body.clone();
+    let sort_key = task.sort_key.clone();
+    let parent_id = task.parent_id;
+    let project_id = task.project_id;
     let project_title = task.project_title.clone();
-    let due_date = task.task.due_date;
-    let start_at = task.task.start_at;
-    let reviewed_at = task.task.reviewed_at;
-    let initial_completed = task.task.completed_at.is_some();
+    let due_date = task.due_date;
+    let start_at = task.start_at;
+    let reviewed_at = task.reviewed_at;
+    let initial_completed = task.completed_at.is_some();
     let tags = task.tags.clone();
     let subtask_count = task.subtask_count;
     let completed_subtask_count = task.completed_subtask_count;

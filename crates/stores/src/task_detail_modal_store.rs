@@ -1,6 +1,5 @@
 use leptos::prelude::*;
-use north_domain::TaskWithMeta;
-
+use north_domain::Task;
 use crate::TaskStore;
 
 #[derive(Clone, Copy)]
@@ -9,7 +8,7 @@ pub struct TaskDetailModalStore {
     open_task_id: RwSignal<Option<i64>>,
     task_stack: RwSignal<Vec<i64>>,
     task_ids: RwSignal<Vec<i64>>,
-    task_memo: RwSignal<Option<Memo<Option<TaskWithMeta>>>>,
+    task_memo: RwSignal<Option<Memo<Option<Task>>>>,
 }
 
 impl TaskDetailModalStore {
@@ -17,7 +16,7 @@ impl TaskDetailModalStore {
         let open_task_id = RwSignal::new(None::<i64>);
         let task_stack = RwSignal::new(vec![]);
         let task_ids = RwSignal::new(vec![]);
-        let task_memo: RwSignal<Option<Memo<Option<TaskWithMeta>>>> = RwSignal::new(None);
+        let task_memo: RwSignal<Option<Memo<Option<Task>>>> = RwSignal::new(None);
 
         let current_task_id = Self::current_task_id_memo(open_task_id, task_stack);
 
@@ -58,7 +57,7 @@ impl TaskDetailModalStore {
         }
     }
 
-    pub fn task(&self) -> Option<TaskWithMeta> {
+    pub fn task(&self) -> Option<Task> {
         self.task_memo.get().and_then(|memo| memo.get())
     }
 
@@ -151,58 +150,58 @@ impl TaskDetailModalStore {
 
     pub fn toggle_complete(&self) {
         let Some(task) = self.task() else { return };
-        let was_completed = task.task.completed_at.is_some();
-        self.task_store.toggle_complete(task.task.id, was_completed);
+        let was_completed = task.completed_at.is_some();
+        self.task_store.toggle_complete(task.id, was_completed);
     }
 
     pub fn delete(&self) {
         let Some(task) = self.task() else { return };
-        self.task_store.delete_task(task.task.id);
+        self.task_store.delete_task(task.id);
         self.close();
     }
 
     pub fn update(&self, title: String, body: Option<String>) {
         let Some(task) = self.task() else { return };
-        self.task_store.update_task(task.task.id, title, body);
+        self.task_store.update_task(task.id, title, body);
     }
 
     pub fn set_start_at(&self, start_at: String) {
         let Some(task) = self.task() else { return };
-        self.task_store.set_start_at(task.task.id, start_at);
+        self.task_store.set_start_at(task.id, start_at);
     }
 
     pub fn clear_start_at(&self) {
         let Some(task) = self.task() else { return };
-        self.task_store.clear_start_at(task.task.id);
+        self.task_store.clear_start_at(task.id);
     }
 
     pub fn set_project(&self, project_id: i64) {
         let Some(task) = self.task() else { return };
-        self.task_store.set_project(task.task.id, project_id);
+        self.task_store.set_project(task.id, project_id);
     }
 
     pub fn clear_project(&self) {
         let Some(task) = self.task() else { return };
-        self.task_store.clear_project(task.task.id);
+        self.task_store.clear_project(task.id);
     }
 
     pub fn set_tags(&self, tag_names: Vec<String>) {
         let Some(task) = self.task() else { return };
-        self.task_store.set_tags(task.task.id, tag_names);
+        self.task_store.set_tags(task.id, tag_names);
     }
 
     pub fn set_due_date(&self, due_date: String) {
         let Some(task) = self.task() else { return };
-        self.task_store.set_due_date(task.task.id, due_date);
+        self.task_store.set_due_date(task.id, due_date);
     }
 
     pub fn clear_due_date(&self) {
         let Some(task) = self.task() else { return };
-        self.task_store.clear_due_date(task.task.id);
+        self.task_store.clear_due_date(task.id);
     }
 
     pub fn set_sequential_limit(&self, limit: i16) {
         let Some(task) = self.task() else { return };
-        self.task_store.set_sequential_limit(task.task.id, limit);
+        self.task_store.set_sequential_limit(task.id, limit);
     }
 }

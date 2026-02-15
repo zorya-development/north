@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use leptos::prelude::*;
-use north_domain::TaskWithMeta;
+use north_domain::Task;
 
 use crate::components::task_card::TaskCard;
 use crate::components::task_detail_modal::{TaskDetailContext, TaskDetailModal};
@@ -22,7 +22,7 @@ pub fn TodayPage() -> impl IntoView {
             .and_then(|r| r.ok())
             .unwrap_or_default()
             .iter()
-            .map(|t| t.task.id)
+            .map(|t| t.id)
             .collect::<Vec<_>>()
     });
 
@@ -116,8 +116,8 @@ pub fn TodayPage() -> impl IntoView {
     }
 }
 
-fn group_by_project(tasks: Vec<TaskWithMeta>) -> Vec<(String, Vec<TaskWithMeta>)> {
-    let mut groups: BTreeMap<String, Vec<TaskWithMeta>> = BTreeMap::new();
+fn group_by_project(tasks: Vec<Task>) -> Vec<(String, Vec<Task>)> {
+    let mut groups: BTreeMap<String, Vec<Task>> = BTreeMap::new();
     for task in tasks {
         let label = task
             .project_title

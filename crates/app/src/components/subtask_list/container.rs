@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::TaskWithMeta;
+use north_domain::Task;
 
 use super::view::SubtaskListView;
 use crate::server_fns::tasks::*;
@@ -13,7 +13,7 @@ pub fn SubtaskList(
     on_navigate_to: Callback<i64>,
     on_parent_refetch: Callback<()>,
 ) -> impl IntoView {
-    let subtasks: Resource<Result<Vec<TaskWithMeta>, ServerFnError>> =
+    let subtasks: Resource<Result<Vec<Task>, ServerFnError>> =
         Resource::new(move || parent_id, get_subtasks);
 
     let (hide_completed, set_hide_completed) = signal(true);

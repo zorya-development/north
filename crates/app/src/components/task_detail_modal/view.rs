@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::TaskWithMeta;
+use north_domain::Task;
 
 use crate::components::date_picker::DateTimePicker;
 use crate::components::project_picker::ProjectPicker;
@@ -11,7 +11,7 @@ type AncestorsResource = Resource<Result<Vec<(i64, String, i64)>, ServerFnError>
 
 #[component]
 pub fn TaskDetailModalView(
-    task_detail: Resource<Result<Option<TaskWithMeta>, ServerFnError>>,
+    task_detail: Resource<Result<Option<Task>, ServerFnError>>,
     ancestors: AncestorsResource,
     has_stack: Memo<bool>,
     on_close: Callback<()>,
@@ -97,18 +97,18 @@ pub fn TaskDetailModalView(
 
                             let ancestor_list = ancestor_data.unwrap_or_default();
 
-                            let task_id = task.task.id;
-                            let title = task.task.title.clone();
-                            let body = task.task.body.clone();
-                            let project_id = task.task.project_id;
+                            let task_id = task.id;
+                            let title = task.title.clone();
+                            let body = task.body.clone();
+                            let project_id = task.project_id;
                             let project_title = task.project_title.clone();
                             let tags = task.tags.clone();
-                            let start_at = task.task.start_at;
-                            let due_date = task.task.due_date;
-                            let is_completed = task.task.completed_at.is_some();
-                            let sequential_limit = task.task.sequential_limit;
+                            let start_at = task.start_at;
+                            let due_date = task.due_date;
+                            let is_completed = task.completed_at.is_some();
+                            let sequential_limit = task.sequential_limit;
                             let _subtask_count = task.subtask_count;
-                            let _has_parent = task.task.parent_id.is_some();
+                            let _has_parent = task.parent_id.is_some();
 
                             let (completed_sig, set_completed_sig) = signal(is_completed);
 

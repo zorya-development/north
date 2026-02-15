@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::TaskWithMeta;
+use north_domain::Task;
 use north_ui::Spinner;
 
 use crate::components::drag_drop::{DragDropContext, DropZone};
@@ -16,7 +16,7 @@ pub fn InboxView(
     set_form_open: WriteSignal<bool>,
     on_task_click: Callback<i64>,
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
-    active_tasks_for_reorder: Memo<Vec<TaskWithMeta>>,
+    active_tasks_for_reorder: Memo<Vec<Task>>,
 ) -> impl IntoView {
     let (showing_completed, set_showing_completed) = signal(false);
     let drag_ctx = use_context::<DragDropContext>();
@@ -134,7 +134,7 @@ pub fn InboxView(
 fn handle_drop(
     _ev: &web_sys::DragEvent,
     drag_ctx: Option<DragDropContext>,
-    tasks: &[TaskWithMeta],
+    tasks: &[Task],
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
 ) {
     let Some(ctx) = drag_ctx else { return };
@@ -151,7 +151,7 @@ fn handle_drop(
         return;
     }
 
-    let target_idx = tasks.iter().position(|t| t.task.id == target_id);
+    let target_idx = tasks.iter().position(|t| t.id == target_id);
     let Some(target_idx) = target_idx else {
         ctx.dragging_task_id.set(None);
         ctx.drop_target.set(None);
@@ -161,18 +161,18 @@ fn handle_drop(
     match zone {
         DropZone::Above => {
             let above_key = if target_idx > 0 {
-                Some(tasks[target_idx - 1].task.sort_key.as_str())
+                Some(tasks[target_idx - 1].sort_key.as_str())
             } else {
                 None
             };
-            let below_key = Some(tasks[target_idx].task.sort_key.as_str());
+            let below_key = Some(tasks[target_idx].sort_key.as_str());
             let new_key = north_domain::sort_key_between(above_key, below_key);
             on_reorder.run((dragging_id, new_key, Some(None)));
         }
         DropZone::Below => {
-            let above_key = Some(tasks[target_idx].task.sort_key.as_str());
+            let above_key = Some(tasks[target_idx].sort_key.as_str());
             let below_key = if target_idx + 1 < tasks.len() {
-                Some(tasks[target_idx + 1].task.sort_key.as_str())
+                Some(tasks[target_idx + 1].sort_key.as_str())
             } else {
                 None
             };

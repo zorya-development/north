@@ -42,7 +42,7 @@ pub fn ReviewPage() -> impl IntoView {
             .and_then(|r| r.ok())
             .unwrap_or_default()
             .iter()
-            .map(|t| t.task.id)
+            .map(|t| t.id)
             .collect::<Vec<_>>()
     });
 

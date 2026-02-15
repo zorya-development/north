@@ -1,14 +1,14 @@
 use leptos::prelude::ServerFnError;
-use north_domain::{CreateTask, Task, TaskWithMeta, UpdateTask};
+use north_domain::{CreateTask, Task, UpdateTask};
 
 pub struct TaskRepository;
 
 impl TaskRepository {
-    pub async fn list() -> Result<Vec<TaskWithMeta>, ServerFnError> {
+    pub async fn list() -> Result<Vec<Task>, ServerFnError> {
         north_server_fns::tasks::list_tasks().await
     }
 
-    pub async fn get(id: i64) -> Result<TaskWithMeta, ServerFnError> {
+    pub async fn get(id: i64) -> Result<Task, ServerFnError> {
         north_server_fns::tasks::get_task(id).await
     }
 

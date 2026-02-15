@@ -1,14 +1,14 @@
 use std::collections::HashSet;
 
 use leptos::prelude::*;
-use north_domain::TaskWithMeta;
+use north_domain::Task;
 use north_ui::{Checkbox, Icon, IconKind};
 
 use crate::components::subtask_form::SubtaskForm;
 
 #[component]
 pub fn SubtaskListView(
-    subtasks: Resource<Result<Vec<TaskWithMeta>, ServerFnError>>,
+    subtasks: Resource<Result<Vec<Task>, ServerFnError>>,
     parent_id: i64,
     depth: usize,
     project_id: Option<i64>,
@@ -59,7 +59,7 @@ pub fn SubtaskListView(
                     let total = tasks.len();
                     let completed_count = tasks
                         .iter()
-                        .filter(|t| t.task.completed_at.is_some())
+                        .filter(|t| t.completed_at.is_some())
                         .count();
 
                     view! {
@@ -99,13 +99,13 @@ pub fn SubtaskListView(
                             {tasks
                                 .into_iter()
                                 .map(|task| {
-                                    let task_id = task.task.id;
-                                    let title = task.task.title.clone();
+                                    let task_id = task.id;
+                                    let title = task.title.clone();
                                     let is_completed =
-                                        task.task.completed_at.is_some();
+                                        task.completed_at.is_some();
                                     let actionable = task.actionable;
                                     let sub_count = task.subtask_count;
-                                    let seq_limit = task.task.sequential_limit;
+                                    let seq_limit = task.sequential_limit;
                                     let (completed_sig, set_completed_sig) =
                                         signal(is_completed);
 

@@ -19,10 +19,10 @@ impl TaskInlineFormController {
         if let Some(id) = task_id {
             let task = app_store.tasks.get_by_id(id);
             let t = task.get_untracked();
-            initial_title = t.as_ref().map(|t| t.task.title.clone()).unwrap_or_default();
+            initial_title = t.as_ref().map(|t| t.title.clone()).unwrap_or_default();
             initial_body = t
                 .as_ref()
-                .and_then(|t| t.task.body.clone())
+                .and_then(|t| t.body.clone())
                 .unwrap_or_default();
         } else {
             initial_title = String::new();

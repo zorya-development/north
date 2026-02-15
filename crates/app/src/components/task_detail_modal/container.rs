@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::TaskWithMeta;
+use north_domain::Task;
 
 use super::view::TaskDetailModalView;
 use crate::server_fns::tasks::*;
@@ -29,7 +29,7 @@ pub fn TaskDetailModal(task_ids: Signal<Vec<i64>>, task_store: TaskStore) -> imp
 
     let is_open = Memo::new(move |_| current_task_id.get().is_some());
 
-    let task_detail: Resource<Result<Option<TaskWithMeta>, ServerFnError>> = Resource::new(
+    let task_detail: Resource<Result<Option<Task>, ServerFnError>> = Resource::new(
         move || current_task_id.get(),
         |id| async move {
             match id {

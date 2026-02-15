@@ -1,6 +1,10 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Task {
     pub id: i64,
@@ -17,16 +21,15 @@ pub struct Task {
     pub reviewed_at: Option<NaiveDate>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct TaskWithMeta {
-    #[serde(flatten)]
-    pub task: Task,
+    #[serde(default)]
     pub project_title: Option<String>,
+    #[serde(default)]
     pub tags: Vec<crate::TagInfo>,
+    #[serde(default)]
     pub subtask_count: i64,
+    #[serde(default)]
     pub completed_subtask_count: i64,
+    #[serde(default = "default_true")]
     pub actionable: bool,
 }
 

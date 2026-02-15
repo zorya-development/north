@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::TaskWithMeta;
+use north_domain::Task;
 use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskStoreFilter};
 
 #[derive(Clone, Copy)]
@@ -11,7 +11,7 @@ pub struct InboxController {
     pub completed_count: Memo<usize>,
     pub is_loaded: Signal<bool>,
     pub is_new_task_form_open: (ReadSignal<bool>, WriteSignal<bool>),
-    pub active_tasks_for_reorder: Memo<Vec<TaskWithMeta>>,
+    pub active_tasks_for_reorder: Memo<Vec<Task>>,
 }
 
 impl InboxController {
@@ -35,10 +35,10 @@ impl InboxController {
         });
 
         let active_task_ids =
-            Memo::new(move |_| active_tasks.get().iter().map(|t| t.task.id).collect());
+            Memo::new(move |_| active_tasks.get().iter().map(|t| t.id).collect());
 
         let completed_task_ids =
-            Memo::new(move |_| completed_tasks.get().iter().map(|t| t.task.id).collect());
+            Memo::new(move |_| completed_tasks.get().iter().map(|t| t.id).collect());
 
         let completed_count = Memo::new(move |_| completed_tasks.get().len());
 

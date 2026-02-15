@@ -1,18 +1,18 @@
 use leptos::prelude::*;
-use north_domain::TaskWithMeta;
+use north_domain::Task;
 
 use super::view::TaskListView;
 use crate::stores::task_store::TaskStore;
 
 #[component]
 pub fn TaskList(
-    resource: Resource<Result<Vec<TaskWithMeta>, ServerFnError>>,
+    resource: Resource<Result<Vec<Task>, ServerFnError>>,
     store: TaskStore,
     #[prop(default = false)] show_review: bool,
     #[prop(default = true)] show_project: bool,
     #[prop(default = "No tasks.")] empty_message: &'static str,
     #[prop(optional)] completed_resource: Option<
-        Resource<Result<Vec<TaskWithMeta>, ServerFnError>>,
+        Resource<Result<Vec<Task>, ServerFnError>>,
     >,
     #[prop(default = false)] draggable: bool,
 ) -> impl IntoView {

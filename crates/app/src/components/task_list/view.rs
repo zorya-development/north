@@ -1,14 +1,14 @@
 use std::collections::HashSet;
 
 use leptos::prelude::*;
-use north_domain::TaskWithMeta;
+use north_domain::Task;
 
 use crate::components::drag_drop::{DragDropContext, DropZone};
 use crate::components::task_card::TaskCard;
 
 #[component]
 pub fn TaskListView(
-    resource: Resource<Result<Vec<TaskWithMeta>, ServerFnError>>,
+    resource: Resource<Result<Vec<Task>, ServerFnError>>,
     on_toggle_complete: Callback<(i64, bool)>,
     on_delete: Callback<i64>,
     on_update: Callback<(i64, String, Option<String>)>,
@@ -23,7 +23,7 @@ pub fn TaskListView(
     #[prop(default = true)] show_project: bool,
     #[prop(default = "No tasks.")] empty_message: &'static str,
     #[prop(optional)] completed_resource: Option<
-        Resource<Result<Vec<TaskWithMeta>, ServerFnError>>,
+        Resource<Result<Vec<Task>, ServerFnError>>,
     >,
     #[prop(default = false)] draggable: bool,
 ) -> impl IntoView {
@@ -31,12 +31,12 @@ pub fn TaskListView(
     let drag_ctx = use_context::<DragDropContext>();
 
     // Tasks uncompleted from the completed section, rendered in the active list
-    let locally_uncompleted: RwSignal<Vec<TaskWithMeta>> = RwSignal::new(vec![]);
+    let locally_uncompleted: RwSignal<Vec<Task>> = RwSignal::new(vec![]);
     let uncompleted_ids = Memo::new(move |_| {
         locally_uncompleted
             .get()
             .iter()
-            .map(|t| t.task.id)
+            .map(|t| t.id)
             .collect::<HashSet<i64>>()
     });
 
@@ -48,11 +48,11 @@ pub fn TaskListView(
                 // Uncompleting — if task is in completed resource, move it
                 if let Some(cr) = cr {
                     if let Some(Ok(tasks)) = cr.get_untracked() {
-                        if let Some(task) = tasks.iter().find(|t| t.task.id == id) {
+                        if let Some(task) = tasks.iter().find(|t| t.id == id) {
                             let mut task = task.clone();
-                            task.task.completed_at = None;
+                            task.completed_at = None;
                             locally_uncompleted.update(|v| {
-                                if !v.iter().any(|t| t.task.id == id) {
+                                if !v.iter().any(|t| t.id == id) {
                                     v.push(task);
                                 }
                             });
@@ -206,7 +206,7 @@ pub fn TaskListView(
 fn handle_drop(
     _ev: &web_sys::DragEvent,
     drag_ctx: Option<DragDropContext>,
-    tasks: &[TaskWithMeta],
+    tasks: &[Task],
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
 ) {
     let Some(ctx) = drag_ctx else { return };
@@ -225,7 +225,7 @@ fn handle_drop(
     }
 
     // Find target task's index in list
-    let target_idx = tasks.iter().position(|t| t.task.id == target_id);
+    let target_idx = tasks.iter().position(|t| t.id == target_id);
     let Some(target_idx) = target_idx else {
         ctx.dragging_task_id.set(None);
         ctx.drop_target.set(None);
@@ -235,18 +235,18 @@ fn handle_drop(
     match zone {
         DropZone::Above => {
             let above_key = if target_idx > 0 {
-                Some(tasks[target_idx - 1].task.sort_key.as_str())
+                Some(tasks[target_idx - 1].sort_key.as_str())
             } else {
                 None
             };
-            let below_key = Some(tasks[target_idx].task.sort_key.as_str());
+            let below_key = Some(tasks[target_idx].sort_key.as_str());
             let new_key = north_domain::sort_key_between(above_key, below_key);
             on_reorder.run((dragging_id, new_key, Some(None)));
         }
         DropZone::Below => {
-            let above_key = Some(tasks[target_idx].task.sort_key.as_str());
+            let above_key = Some(tasks[target_idx].sort_key.as_str());
             let below_key = if target_idx + 1 < tasks.len() {
-                Some(tasks[target_idx + 1].task.sort_key.as_str())
+                Some(tasks[target_idx + 1].sort_key.as_str())
             } else {
                 None
             };
@@ -266,7 +266,7 @@ fn handle_drop(
 
 #[component]
 fn CompletedSection(
-    resource: Resource<Result<Vec<TaskWithMeta>, ServerFnError>>,
+    resource: Resource<Result<Vec<Task>, ServerFnError>>,
     showing: ReadSignal<bool>,
     set_showing: WriteSignal<bool>,
     on_toggle_complete: Callback<(i64, bool)>,
@@ -294,7 +294,7 @@ fn CompletedSection(
                         Ok(tasks) if !tasks.is_empty() => {
                             let tasks: Vec<_> = tasks
                                 .into_iter()
-                                .filter(|t| !excluded.contains(&t.task.id))
+                                .filter(|t| !excluded.contains(&t.id))
                                 .collect();
                             if tasks.is_empty() {
                                 return view! { <div/> }.into_any();
