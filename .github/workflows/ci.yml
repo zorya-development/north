@@ -52,6 +52,7 @@ jobs:
         with:
           context: docker/base
           push: true
+          provenance: false
           tags: ${{ env.BASE_IMAGE }}:${{ needs.resolve.outputs.version }}
 
   check:
