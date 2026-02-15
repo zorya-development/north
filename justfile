@@ -59,3 +59,20 @@ bump-base part:
     echo "Base image version bumped: $current → $version"
     echo "Files updated: docker/base/VERSION, docker/dev/Dockerfile, docker-compose.yml"
     echo "Run 'docker compose build' to rebuild locally"
+
+# Bump app version: just bump-version {major,minor,patch}
+bump-version part:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    current=$(grep -m1 '^version' Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
+    IFS='.' read -r major minor patch <<< "$current"
+    case "{{ part }}" in
+        major) major=$((major + 1)); minor=0; patch=0 ;;
+        minor) minor=$((minor + 1)); patch=0 ;;
+        patch) patch=$((patch + 1)) ;;
+        *) echo "Usage: just bump-version {major,minor,patch}"; exit 1 ;;
+    esac
+    version="$major.$minor.$patch"
+    sed -i "s|^version = \"$current\"|version = \"$version\"|" Cargo.toml
+    echo "App version bumped: $current → $version"
+    echo "Push to master to trigger release"

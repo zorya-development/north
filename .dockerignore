@@ -1,6 +1,13 @@
 target/
 .git/
 uploads/
-public/
 node_modules/
+docker/
+.github/
+.dockerignore
+docker-compose.yml
 *.md
+.env
+.env.*
+.vscode/
+.idea/
