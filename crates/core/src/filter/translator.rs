@@ -4,8 +4,8 @@ use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use north_db::schema::{projects, tags, task_tags, tasks};
 use north_db::DbPool;
-use north_domain::{Condition, FilterExpr, FilterField, FilterOp, FilterValue};
 
+use crate::filter::dsl::{Condition, FilterExpr, FilterField, FilterOp, FilterValue};
 use crate::ServiceResult;
 
 /// Evaluates a FilterExpr into a set of matching task IDs for the given user.

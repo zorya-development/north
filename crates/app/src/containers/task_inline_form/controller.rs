@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::CreateTask;
+use north_dto::CreateTask;
 use north_stores::AppStore;
 
 #[derive(Clone, Copy)]

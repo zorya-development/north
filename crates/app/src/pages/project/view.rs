@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::{Project, Task};
+use north_dto::{Project, Task};
 
 use crate::components::task_list::{CompletedSection, TaskList};
 use crate::containers::task_inline_form::TaskInlineForm;

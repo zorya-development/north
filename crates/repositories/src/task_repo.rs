@@ -1,5 +1,5 @@
 use leptos::prelude::ServerFnError;
-use north_domain::{CreateTask, Task, UpdateTask};
+use north_dto::{CreateTask, Task, UpdateTask};
 
 pub struct TaskRepository;
 

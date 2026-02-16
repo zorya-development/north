@@ -6,7 +6,7 @@ use diesel_async::RunQueryDsl;
 use north_db::models::{NewTask, TagRow, TaskChangeset, TaskRow};
 use north_db::schema::{projects, tags, task_tags, tasks, users};
 use north_db::DbPool;
-use north_domain::{CreateTask, TagInfo, Task, TaskFilter, UpdateTask, UserSettings};
+use north_dto::{CreateTask, TagInfo, Task, TaskFilter, UpdateTask, UserSettings};
 
 use crate::{ServiceError, ServiceResult};
 
@@ -187,7 +187,7 @@ impl TaskService {
                 .await
                 .optional()?
         };
-        let sort_key = north_domain::sort_key_after(last_key.as_deref());
+        let sort_key = north_dto::sort_key_after(last_key.as_deref());
 
         let row = diesel::insert_into(tasks::table)
             .values(&NewTask {
@@ -308,7 +308,7 @@ impl TaskService {
                     .await
                     .optional()?
             };
-            new_sort_key = north_domain::sort_key_after(last_key.as_deref());
+            new_sort_key = north_dto::sort_key_after(last_key.as_deref());
             changeset.sort_key = Some(&new_sort_key);
         }
         if let Some(sequential_limit) = input.sequential_limit {
@@ -373,7 +373,7 @@ impl TaskService {
                             .await
                             .optional()?
                     };
-                    uncomplete_sort_key = north_domain::sort_key_after(last_key.as_deref());
+                    uncomplete_sort_key = north_dto::sort_key_after(last_key.as_deref());
                     changeset.sort_key = Some(&uncomplete_sort_key);
                 }
             }
@@ -655,7 +655,7 @@ impl TaskService {
         user_id: i64,
         query_str: &str,
     ) -> ServiceResult<Vec<Task>> {
-        let parsed = north_domain::parse_filter(query_str).map_err(|errs| {
+        let parsed = crate::filter::parse_filter(query_str).map_err(|errs| {
             ServiceError::BadRequest(
                 errs.into_iter()
                     .map(|e| e.to_string())
@@ -667,7 +667,7 @@ impl TaskService {
         let mut conn = pool.get().await?;
 
         let matching_ids: Vec<i64> = if let Some(ref expr) = parsed.expression {
-            let ids = crate::filter_translator::eval_expr(pool, user_id, expr).await?;
+            let ids = crate::filter::eval_expr(pool, user_id, expr).await?;
             ids.into_iter().collect()
         } else {
             tasks::table
@@ -692,16 +692,14 @@ impl TaskService {
         Self::compute_actionable_batch(pool, &mut results).await?;
 
         if let Some(ref order_by) = parsed.order_by {
-            use north_domain::SortDirection;
+            use crate::filter::dsl::{FilterField, SortDirection};
             results.sort_by(|a, b| {
                 let cmp = match order_by.field {
-                    north_domain::FilterField::Title => {
-                        a.title.to_lowercase().cmp(&b.title.to_lowercase())
-                    }
-                    north_domain::FilterField::DueDate => a.due_date.cmp(&b.due_date),
-                    north_domain::FilterField::StartAt => a.start_at.cmp(&b.start_at),
-                    north_domain::FilterField::Created => a.created_at.cmp(&b.created_at),
-                    north_domain::FilterField::Updated => a.updated_at.cmp(&b.updated_at),
+                    FilterField::Title => a.title.to_lowercase().cmp(&b.title.to_lowercase()),
+                    FilterField::DueDate => a.due_date.cmp(&b.due_date),
+                    FilterField::StartAt => a.start_at.cmp(&b.start_at),
+                    FilterField::Created => a.created_at.cmp(&b.created_at),
+                    FilterField::Updated => a.updated_at.cmp(&b.updated_at),
                     _ => a.sort_key.cmp(&b.sort_key),
                 };
                 match order_by.direction {

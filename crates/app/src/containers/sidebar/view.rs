@@ -3,7 +3,7 @@ use leptos_router::hooks::use_location;
 
 use crate::components::drag_drop::DragDropContext;
 use crate::components::theme_toggle::ThemeToggle;
-use north_domain::{Project, SavedFilter};
+use north_dto::{Project, SavedFilter};
 use north_ui::{Icon, IconKind};
 
 const PRESET_COLORS: &[&str] = &[

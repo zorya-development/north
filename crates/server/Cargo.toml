@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-north-domain = { workspace = true }
+north-dto = { workspace = true }
 north-app = { path = "../app", features = ["ssr"] }
 north-core = { path = "../core" }
 north-db = { path = "../db" }

@@ -3,7 +3,7 @@ use leptos::html;
 use leptos::prelude::*;
 use leptos::wasm_bindgen::JsCast;
 
-use north_domain::{Project, ProjectStatus, Tag};
+use north_dto::{Project, ProjectStatus, Tag};
 use north_ui::{AutocompleteDropdown, SuggestionItem};
 
 #[derive(Clone)]

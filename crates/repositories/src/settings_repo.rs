@@ -1,5 +1,5 @@
 use leptos::prelude::ServerFnError;
-use north_domain::UserSettings;
+use north_dto::UserSettings;
 
 pub struct SettingsRepository;
 

@@ -1,7 +1,7 @@
 use axum::extract::{Path, Query, State};
 use axum::Json;
 use north_core::TaskService;
-use north_domain::{CreateTask, Task, TaskFilter, UpdateTask};
+use north_dto::{CreateTask, Task, TaskFilter, UpdateTask};
 
 use crate::auth::AuthUser;
 use crate::error::AppError;

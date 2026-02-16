@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::Task;
+use north_dto::Task;
 use north_ui::Spinner;
 
 use crate::components::drag_drop::{DragDropContext, DropZone};
@@ -102,7 +102,7 @@ fn handle_drop(
                 None
             };
             let below_key = Some(tasks[target_idx].sort_key.as_str());
-            let new_key = north_domain::sort_key_between(above_key, below_key);
+            let new_key = north_dto::sort_key_between(above_key, below_key);
             on_reorder.run((dragging_id, new_key, Some(None)));
         }
         DropZone::Below => {
@@ -112,11 +112,11 @@ fn handle_drop(
             } else {
                 None
             };
-            let new_key = north_domain::sort_key_between(above_key, below_key);
+            let new_key = north_dto::sort_key_between(above_key, below_key);
             on_reorder.run((dragging_id, new_key, Some(None)));
         }
         DropZone::Nest => {
-            let new_key = north_domain::sort_key_after(None);
+            let new_key = north_dto::sort_key_after(None);
             on_reorder.run((dragging_id, new_key, Some(Some(target_id))));
         }
     }

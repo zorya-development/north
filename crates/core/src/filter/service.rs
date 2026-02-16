@@ -3,7 +3,7 @@ use diesel_async::RunQueryDsl;
 use north_db::models::{NewSavedFilter, SavedFilterChangeset, SavedFilterRow};
 use north_db::schema::saved_filters;
 use north_db::DbPool;
-use north_domain::SavedFilter;
+use north_dto::SavedFilter;
 
 use crate::{ServiceError, ServiceResult};
 
@@ -40,7 +40,7 @@ impl FilterService {
         title: &str,
         query: &str,
     ) -> ServiceResult<SavedFilter> {
-        north_domain::parse_filter(query).map_err(|errs| {
+        crate::filter::parser::parse_filter(query).map_err(|errs| {
             ServiceError::BadRequest(
                 errs.into_iter()
                     .map(|e| e.to_string())
@@ -81,7 +81,7 @@ impl FilterService {
         position: Option<i32>,
     ) -> ServiceResult<SavedFilter> {
         if let Some(q) = query {
-            north_domain::parse_filter(q).map_err(|errs| {
+            crate::filter::parser::parse_filter(q).map_err(|errs| {
                 ServiceError::BadRequest(
                     errs.into_iter()
                         .map(|e| e.to_string())

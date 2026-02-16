@@ -1,4 +1,5 @@
-use crate::filter_dsl::*;
+use crate::filter::dsl::*;
+use crate::filter::field_registry::TaskFieldRegistry;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FilterParseError {
@@ -457,7 +458,7 @@ impl<'a> Parser<'a> {
                 let span = (*start, *end);
                 let s = s.clone();
                 self.advance();
-                FilterField::from_str_ci(&s).ok_or_else(|| {
+                TaskFieldRegistry::from_str_ci(&s).ok_or_else(|| {
                     vec![FilterParseError {
                         message: format!("Unknown field: '{s}'"),
                         span,

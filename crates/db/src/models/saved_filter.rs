@@ -32,9 +32,9 @@ pub struct SavedFilterChangeset<'a> {
     pub position: Option<i32>,
 }
 
-impl From<SavedFilterRow> for north_domain::SavedFilter {
+impl From<SavedFilterRow> for north_dto::SavedFilter {
     fn from(row: SavedFilterRow) -> Self {
-        north_domain::SavedFilter {
+        north_dto::SavedFilter {
             id: row.id,
             user_id: row.user_id,
             title: row.title,

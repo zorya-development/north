@@ -1,4 +1,5 @@
 use leptos::prelude::*;
+use north_stores::use_app_store;
 use north_ui::{Icon, IconKind, Modal};
 
 use super::controller::FilterController;
@@ -14,15 +15,21 @@ pub fn FilterView(
     on_delete: Callback<()>,
     on_task_click: Callback<i64>,
 ) -> impl IntoView {
-    let (query_text, set_query_text) = ctrl.query_text;
+    let app_store = use_app_store();
+    let filter_dsl = app_store.filter_dsl;
+
     let (title_text, _set_title_text) = ctrl.title_text;
-    let (parse_error, _) = ctrl.parse_error;
     let (is_editing_title, set_is_editing_title) = ctrl.is_editing_title;
     let (show_save_modal, set_show_save_modal) = ctrl.show_save_modal;
     let (modal_title, set_modal_title) = ctrl.modal_title;
     let (original_title, _) = ctrl.original_title;
     let is_dirty = ctrl.is_dirty;
     let filter_id = ctrl.filter_id;
+
+    let query_text = filter_dsl.query();
+    let parse_error = filter_dsl.parse_error();
+    let filter_result_ids = Memo::new(move |_| filter_dsl.result_ids().get());
+    let is_loaded = filter_dsl.is_loaded();
 
     let modal_input_ref = NodeRef::<leptos::html::Input>::new();
 
@@ -178,8 +185,6 @@ pub fn FilterView(
                 <div class="flex w-full gap-2">
                     <div class="flex-1 min-w-0">
                         <FilterAutocompleteTextarea
-                            value=query_text
-                            set_value=set_query_text
                             placeholder="e.g. status = 'ACTIVE' AND tags =~ 'work:*'"
                             rows=1
                             class="w-full bg-bg-input border border-border \
@@ -217,9 +222,9 @@ pub fn FilterView(
             <hr class="border-border"/>
 
             <TaskList
-                active_task_ids=ctrl.filter_result_ids
+                active_task_ids=filter_result_ids
                 active_tasks_for_reorder=empty_reorder_tasks
-                is_loaded=ctrl.is_loaded
+                is_loaded=is_loaded
                 show_project=true
                 on_reorder=Callback::new(|_| {})
                 on_task_click=on_task_click

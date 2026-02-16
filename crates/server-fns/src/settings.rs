@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::{UpdateSettings, UserSettings};
+use north_dto::{UpdateSettings, UserSettings};
 
 #[server(ApiGetUserSettingsFn, "/api")]
 pub async fn get_user_settings() -> Result<UserSettings, ServerFnError> {

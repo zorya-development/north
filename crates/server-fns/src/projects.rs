@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::{CreateProject, Project, ProjectFilter, UpdateProject};
+use north_dto::{CreateProject, Project, ProjectFilter, UpdateProject};
 
 #[server(ApiListProjectsFn, "/api")]
 pub async fn list_projects(filter: ProjectFilter) -> Result<Vec<Project>, ServerFnError> {

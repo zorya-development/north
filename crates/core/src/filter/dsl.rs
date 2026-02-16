@@ -34,23 +34,6 @@ pub enum FilterField {
     Updated,
 }
 
-impl FilterField {
-    pub fn from_str_ci(s: &str) -> Option<Self> {
-        match s.to_lowercase().as_str() {
-            "title" => Some(Self::Title),
-            "body" => Some(Self::Body),
-            "project" => Some(Self::Project),
-            "tags" | "tag" => Some(Self::Tags),
-            "status" => Some(Self::Status),
-            "due_date" | "due" => Some(Self::DueDate),
-            "start_at" | "start" => Some(Self::StartAt),
-            "created" | "created_at" => Some(Self::Created),
-            "updated" | "updated_at" => Some(Self::Updated),
-            _ => None,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum FilterOp {
     Eq,

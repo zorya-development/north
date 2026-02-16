@@ -4,7 +4,7 @@ use axum::Json;
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
 use north_core::UserService;
-use north_domain::{AuthResponse, LoginRequest, User, UserRole, UserSettings};
+use north_dto::{AuthResponse, LoginRequest, User, UserRole, UserSettings};
 use time::Duration;
 
 use crate::error::AppError;

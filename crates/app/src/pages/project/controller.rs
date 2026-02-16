@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::{Project, Task};
+use north_dto::{Project, Task};
 use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskStoreFilter};
 
 #[derive(Clone, Copy)]

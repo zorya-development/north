@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::TagInfo;
+use north_dto::TagInfo;
 use north_stores::use_app_store;
 
 use super::view::TagPickerView;

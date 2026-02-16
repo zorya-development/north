@@ -6,7 +6,7 @@ members = ["crates/*"]
 version = "0.1.2"
 
 [workspace.dependencies]
-north-domain = { path = "crates/domain" }
+north-dto = { path = "crates/dto" }
 north-app = { path = "crates/app" }
 north-ui = { path = "crates/ui" }
 north-stores = { path = "crates/stores" }

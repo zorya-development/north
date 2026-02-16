@@ -1,4 +1,5 @@
-use crate::filter_dsl::FilterField;
+use crate::filter::dsl::FilterField;
+use crate::filter::field_registry::TaskFieldRegistry;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DslCompletionContext {
@@ -426,7 +427,7 @@ fn find_array_field(tokens: &[ContextToken]) -> Option<FilterField> {
                         if let ContextToken::Ident(field_name, _)
                         | ContextToken::Partial(field_name, _) = &non_bracket[field_idx]
                         {
-                            return FilterField::from_str_ci(field_name);
+                            return TaskFieldRegistry::from_str_ci(field_name);
                         }
                     }
                 }
@@ -437,7 +438,7 @@ fn find_array_field(tokens: &[ContextToken]) -> Option<FilterField> {
                         if let ContextToken::Ident(field_name, _)
                         | ContextToken::Partial(field_name, _) = &non_bracket[i - 2]
                         {
-                            return FilterField::from_str_ci(field_name);
+                            return TaskFieldRegistry::from_str_ci(field_name);
                         }
                     }
                 }
@@ -457,7 +458,7 @@ fn find_field_before_operator(tokens: &[&ContextToken]) -> Option<FilterField> {
     // Last token is operator
     if matches!(tokens[len - 1], ContextToken::Operator) && len >= 2 {
         if let ContextToken::Ident(name, _) | ContextToken::Partial(name, _) = tokens[len - 2] {
-            return FilterField::from_str_ci(name);
+            return TaskFieldRegistry::from_str_ci(name);
         }
     }
 
@@ -465,7 +466,7 @@ fn find_field_before_operator(tokens: &[&ContextToken]) -> Option<FilterField> {
     if let ContextToken::Ident(kw, _) = tokens[len - 1] {
         if (kw.eq_ignore_ascii_case("is") || kw.eq_ignore_ascii_case("in")) && len >= 2 {
             if let ContextToken::Ident(name, _) | ContextToken::Partial(name, _) = tokens[len - 2] {
-                return FilterField::from_str_ci(name);
+                return TaskFieldRegistry::from_str_ci(name);
             }
         }
         // field not [in] — "not" after "is"
@@ -475,7 +476,7 @@ fn find_field_before_operator(tokens: &[&ContextToken]) -> Option<FilterField> {
                     if let ContextToken::Ident(name, _) | ContextToken::Partial(name, _) =
                         tokens[len - 3]
                     {
-                        return FilterField::from_str_ci(name);
+                        return TaskFieldRegistry::from_str_ci(name);
                     }
                 }
             }
@@ -551,13 +552,13 @@ fn is_after_condition(tokens: &[ContextToken]) -> bool {
 
     // Check for a field before the operator
     if let ContextToken::Ident(ref name, _) = meaningful[len - 3] {
-        if FilterField::from_str_ci(name).is_some() {
+        if TaskFieldRegistry::from_str_ci(name).is_some() {
             return true;
         }
         // "is not" pattern: field is not <value> — field at len-4
         if name.eq_ignore_ascii_case("is") && len >= 4 {
             if let ContextToken::Ident(ref field_name, _) = meaningful[len - 4] {
-                return FilterField::from_str_ci(field_name).is_some();
+                return TaskFieldRegistry::from_str_ci(field_name).is_some();
             }
         }
     }

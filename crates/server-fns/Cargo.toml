@@ -16,7 +16,7 @@ ssr = [
 hydrate = ["leptos/hydrate"]
 
 [dependencies]
-north-domain = { workspace = true }
+north-dto = { workspace = true }
 leptos = "0.7"
 serde = { workspace = true }
 

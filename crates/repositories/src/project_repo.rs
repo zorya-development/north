@@ -1,5 +1,5 @@
 use leptos::prelude::ServerFnError;
-use north_domain::{CreateProject, Project, ProjectFilter, UpdateProject};
+use north_dto::{CreateProject, Project, ProjectFilter, UpdateProject};
 
 pub struct ProjectRepository;
 

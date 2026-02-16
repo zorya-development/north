@@ -8,7 +8,7 @@ ssr = ["north-repositories/ssr"]
 hydrate = ["north-repositories/hydrate"]
 
 [dependencies]
-north-domain = { workspace = true }
+north-dto = { workspace = true }
 north-repositories = { workspace = true }
 leptos = "0.7"
 chrono = { workspace = true }

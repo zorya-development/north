@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::Task;
+use north_dto::Task;
 
 use super::controller::GroupedTasks;
 use crate::components::task_list::{CompletedSection, TaskList};

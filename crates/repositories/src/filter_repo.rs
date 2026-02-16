@@ -1,5 +1,5 @@
 use leptos::prelude::ServerFnError;
-use north_domain::{SavedFilter, Task};
+use north_dto::{DslSuggestion, SavedFilter, Task};
 
 pub struct FilterRepository;
 
@@ -30,5 +30,16 @@ impl FilterRepository {
 
     pub async fn execute(query: String) -> Result<Vec<Task>, ServerFnError> {
         north_server_fns::filters::execute_filter(query).await
+    }
+
+    pub async fn validate_query(query: String) -> Result<(), ServerFnError> {
+        north_server_fns::filters::validate_filter_query(query).await
+    }
+
+    pub async fn get_completions(
+        query: String,
+        cursor: usize,
+    ) -> Result<Vec<DslSuggestion>, ServerFnError> {
+        north_server_fns::filters::get_dsl_completions(query, cursor).await
     }
 }

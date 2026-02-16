@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::Project;
+use north_dto::Project;
 
 #[component]
 pub fn ArchiveView(

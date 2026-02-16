@@ -5,7 +5,7 @@ use north_db::models::{NewProject, ProjectChangeset, ProjectRow};
 use north_db::schema::projects;
 use north_db::sql_types::{ProjectStatusMapping, ProjectViewTypeMapping};
 use north_db::DbPool;
-use north_domain::{CreateProject, Project, ProjectFilter, ProjectViewType, UpdateProject};
+use north_dto::{CreateProject, Project, ProjectFilter, ProjectViewType, UpdateProject};
 
 use crate::{ServiceError, ServiceResult};
 

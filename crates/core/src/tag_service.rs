@@ -3,7 +3,7 @@ use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use north_db::models::{NewTag, NewTaskTag, TagRow};
 use north_db::schema::{tags, task_tags};
 use north_db::DbPool;
-use north_domain::Tag;
+use north_dto::Tag;
 
 use crate::ServiceResult;
 

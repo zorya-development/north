@@ -1,5 +1,31 @@
 use leptos::prelude::*;
-use north_domain::{SavedFilter, Task};
+use north_dto::{DslSuggestion, SavedFilter, Task};
+
+#[server(ApiValidateFilterQueryFn, "/api")]
+pub async fn validate_filter_query(query: String) -> Result<(), ServerFnError> {
+    north_core::filter::parse_filter(&query)
+        .map(|_| ())
+        .map_err(|errs| {
+            ServerFnError::new(
+                errs.into_iter()
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>()
+                    .join("; "),
+            )
+        })
+}
+
+#[server(ApiGetDslCompletionsFn, "/api")]
+pub async fn get_dsl_completions(
+    query: String,
+    cursor: usize,
+) -> Result<Vec<DslSuggestion>, ServerFnError> {
+    let pool = expect_context::<north_core::DbPool>();
+    let user_id = crate::auth::get_auth_user_id().await?;
+    north_core::filter::autocomplete::get_dsl_suggestions(&pool, user_id, &query, cursor)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
 
 #[server(ApiListSavedFiltersFn, "/api")]
 pub async fn list_saved_filters() -> Result<Vec<SavedFilter>, ServerFnError> {

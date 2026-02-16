@@ -1,12 +1,11 @@
-pub mod filter_service;
-pub mod filter_translator;
+pub mod filter;
 pub mod project_service;
 pub mod stats_service;
 pub mod tag_service;
 pub mod task_service;
 pub mod user_service;
 
-pub use filter_service::FilterService;
+pub use filter::FilterService;
 pub use project_service::ProjectService;
 pub use stats_service::StatsService;
 pub use tag_service::TagService;

@@ -51,10 +51,10 @@ pub struct TaskChangeset<'a> {
     pub reviewed_at: Option<Option<NaiveDate>>,
 }
 
-impl From<TaskRow> for north_domain::Task {
+impl From<TaskRow> for north_dto::Task {
     fn from(row: TaskRow) -> Self {
         let actionable = row.completed_at.is_none();
-        north_domain::Task {
+        north_dto::Task {
             id: row.id,
             project_id: row.project_id,
             parent_id: row.parent_id,

@@ -3,7 +3,7 @@ use diesel_async::RunQueryDsl;
 use north_db::models::UserRow;
 use north_db::schema::users;
 use north_db::DbPool;
-use north_domain::{UpdateSettings, UserSettings};
+use north_dto::{UpdateSettings, UserSettings};
 
 use crate::{ServiceError, ServiceResult};
 

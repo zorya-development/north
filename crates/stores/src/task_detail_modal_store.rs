@@ -1,6 +1,6 @@
 use crate::TaskStore;
 use leptos::prelude::*;
-use north_domain::Task;
+use north_dto::Task;
 
 #[derive(Clone, Copy)]
 pub struct TaskDetailModalStore {

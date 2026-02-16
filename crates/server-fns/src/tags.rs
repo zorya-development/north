@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::Tag;
+use north_dto::Tag;
 
 #[server(ApiListTagsFn, "/api")]
 pub async fn list_tags() -> Result<Vec<Tag>, ServerFnError> {

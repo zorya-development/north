@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use chrono::Utc;
 use leptos::prelude::*;
-use north_domain::Task;
+use north_dto::Task;
 use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskStoreFilter};
 
 /// (project_title or "No Project", task_ids in that group)

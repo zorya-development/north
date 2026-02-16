@@ -1,7 +1,7 @@
 use chrono::Utc;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use north_domain::ProjectStatus;
+use north_dto::ProjectStatus;
 use north_repositories::{SettingsRepository, TaskRepository};
 use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskStoreFilter};
 

@@ -32,10 +32,10 @@ pub async fn login(email: String, password: String) -> Result<(), ServerFnError>
     let jwt_secret =
         std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret-change-me".to_string());
 
-    let role: north_domain::UserRole = row.role.into();
+    let role: north_dto::UserRole = row.role.into();
     let role_str = match role {
-        north_domain::UserRole::Admin => "admin",
-        north_domain::UserRole::User => "user",
+        north_dto::UserRole::Admin => "admin",
+        north_dto::UserRole::User => "user",
     };
 
     let exp = Utc::now() + Duration::days(7);

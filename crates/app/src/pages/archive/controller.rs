@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use north_domain::{Project, ProjectFilter, ProjectStatus, UpdateProject};
+use north_dto::{Project, ProjectFilter, ProjectStatus, UpdateProject};
 use north_repositories::ProjectRepository;
 use north_stores::AppStore;
 

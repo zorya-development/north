@@ -28,7 +28,7 @@ ssr = [
 ]
 
 [dependencies]
-north-domain = { workspace = true }
+north-dto = { workspace = true }
 north-ui = { workspace = true }
 north-stores = { workspace = true }
 north-repositories = { workspace = true }

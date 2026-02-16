@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use north_domain::SavedFilter;
+use north_dto::SavedFilter;
 use north_repositories::FilterRepository;
 
 #[derive(Clone, Copy)]

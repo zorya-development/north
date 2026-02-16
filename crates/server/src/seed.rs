@@ -3,7 +3,7 @@ use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHasher};
 use north_core::UserService;
 use north_db::DbPool;
-use north_domain::UserSettings;
+use north_dto::UserSettings;
 
 pub async fn seed_admin(pool: &DbPool) -> Result<(), Box<dyn std::error::Error>> {
     let exists = UserService::admin_exists(pool).await?;

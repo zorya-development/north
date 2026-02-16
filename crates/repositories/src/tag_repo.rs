@@ -1,5 +1,5 @@
 use leptos::prelude::ServerFnError;
-use north_domain::Tag;
+use north_dto::Tag;
 
 pub struct TagRepository;
 

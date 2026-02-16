@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::Project;
+use north_dto::Project;
 use north_ui::{Icon, IconKind, Popover};
 
 #[component]

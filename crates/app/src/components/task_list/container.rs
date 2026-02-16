@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::Task;
+use north_dto::Task;
 
 use super::view::TaskListView;
 use crate::components::drag_drop::DragDropContext;

@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use north_domain::Tag;
+use north_dto::Tag;
 use north_repositories::TagRepository;
 
 #[derive(Clone, Copy)]

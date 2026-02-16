@@ -3,7 +3,7 @@ use axum::http::StatusCode;
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum_extra::extract::CookieJar;
-use north_domain::UserRole;
+use north_dto::UserRole;
 use serde_json::json;
 
 use super::jwt::validate_token;

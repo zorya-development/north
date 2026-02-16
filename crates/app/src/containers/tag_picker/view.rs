@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_domain::{Tag, TagInfo};
+use north_dto::{Tag, TagInfo};
 use north_ui::{Icon, IconKind, Popover};
 
 #[component]
