@@ -212,7 +212,7 @@ north/
     │       ├── project_repo.rs # ProjectRepository: list, get, create, update, delete
     │       ├── filter_repo.rs  # FilterRepository: list, get, create, update, delete, execute, validate_query, get_completions
     │       ├── tag_repo.rs     # TagRepository: list
-    │       └── settings_repo.rs # SettingsRepository: get, update_review_interval
+    │       └── settings_repo.rs # SettingsRepository: get, update
     │
     ├── server-fns/             # Leptos #[server] functions — RPC boundary (north-server-fns)
     │   └── src/
@@ -222,7 +222,7 @@ north/
     │       ├── projects.rs     # list_projects, get_project, create_project, update_project, delete_project
     │       ├── filters.rs      # list_saved_filters, get_saved_filter, create_saved_filter, update_saved_filter, delete_saved_filter, execute_filter, validate_filter_query, get_dsl_completions
     │       ├── tags.rs         # list_tags
-    │       └── settings.rs     # get_user_settings, update_review_interval
+    │       └── settings.rs     # get_user_settings, update_settings
     │
     ├── ui/                     # Generic UI component library (north-ui)
     │   └── src/
