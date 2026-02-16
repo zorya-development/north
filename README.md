@@ -14,7 +14,7 @@ A self-hosted, GTD-inspired task management system built entirely in Rust. North
 - **Projects & tags** — organize work with colored projects (list or kanban view) and user-defined tags
 - **Filter DSL** — JQL-like query language with autocomplete for building saved filters (`status = 'ACTIVE' AND tags =~ 'work:*' ORDER BY due_date ASC`)
 - **Inline parsing** — type `#tag` or `@project` directly in task titles to assign tags and projects on the fly
-- **Markdown support** — full CommonMark rendering in task descriptions with image uploads
+- **Markdown support** — full CommonMark rendering in task descriptions
 - **Drag and drop** — reorder tasks, nest subtasks, and assign to projects by dragging
 - **Dark & light themes** — respects system preference with manual toggle
 - **REST API** — full CRUD API for external integrations alongside the web UI
