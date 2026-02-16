@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "north.labels" . | nindent 4 }}
   annotations:
-    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook: post-install,pre-upgrade
     helm.sh/hook-weight: "-5"
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded,hook-failed
 spec:
@@ -25,6 +25,12 @@ spec:
       restartPolicy: Never
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.37
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          command: ['sh', '-c', 'until nc -z {{ include "north.dbHost" . }} {{ include "north.dbPort" . }}; do echo "Waiting for database..."; sleep 2; done']
       containers:
         - name: migrate
           image: {{ include "north.image" . }}

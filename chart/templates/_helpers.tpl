@@ -79,6 +79,28 @@ Secret name (chart-managed or existing).
 {{- end }}
 
 {{/*
+Database host for init container wait checks.
+*/}}
+{{- define "north.dbHost" -}}
+{{- if .Values.postgresql.enabled }}
+{{- printf "%s-postgresql" .Release.Name }}
+{{- else }}
+{{- .Values.externalDatabase.host }}
+{{- end }}
+{{- end }}
+
+{{/*
+Database port for init container wait checks.
+*/}}
+{{- define "north.dbPort" -}}
+{{- if .Values.postgresql.enabled }}
+{{- 5432 }}
+{{- else }}
+{{- .Values.externalDatabase.port | int }}
+{{- end }}
+{{- end }}
+
+{{/*
 DATABASE_URL construction.
 Priority: secret.databaseUrl > subchart postgresql > externalDatabase
 */}}
