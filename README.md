@@ -84,7 +84,7 @@ helm install north oci://ghcr.io/zorya-development/north/charts/north \
 helm install north ./chart -n north --create-namespace
 ```
 
-The admin account is seeded automatically on first install. Default credentials: `admin@north.app` / `admin` — change immediately after first login.
+The admin account is seeded automatically on first install. Default credentials: `admin@north.app` / `admin`. **Password change is not yet implemented — do not expose this to the public internet.**
 
 ### Configuration
 
