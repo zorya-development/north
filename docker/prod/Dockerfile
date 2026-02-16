@@ -1,3 +1,8 @@
+# Stage 1: Get diesel_cli from base image
+ARG BASE_VERSION=1.0.0
+FROM ghcr.io/zorya-development/north/base:${BASE_VERSION} AS tools
+
+# Stage 2: Runtime
 FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y \
@@ -11,9 +16,13 @@ RUN groupadd -g 1001 north && \
 
 RUN mkdir -p /app/uploads && chown -R north:north /app
 
+COPY --from=tools /usr/local/cargo/bin/diesel /usr/local/bin/diesel
+
 COPY --chown=north:north target/release/north-server /app/north-server
 COPY --chown=north:north target/site /app/site
 COPY --chown=north:north Cargo.toml /app/
+COPY --chown=north:north migrations /app/migrations
+COPY --chown=north:north diesel.toml /app/
 
 WORKDIR /app
 USER north

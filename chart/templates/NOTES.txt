@@ -1,0 +1,21 @@
+Thank you for installing {{ .Chart.Name }}!
+
+{{- if .Values.ingress.enabled }}
+
+North is available at:
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+
+{{- else }}
+
+Get the application URL by running:
+  kubectl port-forward svc/{{ include "north.fullname" . }} 5000:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+  Then open http://localhost:5000
+
+{{- end }}
+
+To seed the admin account:
+  kubectl exec -it deploy/{{ include "north.fullname" . }} -n {{ .Release.Namespace }} -- /app/north-server --seed
+
+Default admin credentials: admin@north.app / admin (change immediately!)
