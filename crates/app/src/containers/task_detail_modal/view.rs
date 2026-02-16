@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 use north_stores::TaskDetailModalStore;
 
+use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::date_picker::DateTimePicker;
 use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
@@ -74,9 +75,9 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                             class="w-3.5 h-3.5 text-text-tertiary \
                                                    flex-shrink-0"
                                         />
-                                        <span class="text-text-secondary">
+                                        <Text variant=TextVariant::BodySm color=TextColor::Secondary>
                                             {pt}
-                                        </span>
+                                        </Text>
                                     }
                                 })}
                             </div>
@@ -334,11 +335,9 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                                         let bd = body_draft.get();
                                                         if bd.trim().is_empty() {
                                                             view! {
-                                                                <span class="text-sm \
-                                                                            text-text-tertiary \
-                                                                            italic">
+                                                                <Text variant=TextVariant::BodyMd color=TextColor::Tertiary class="italic">
                                                                     "Add description..."
-                                                                </span>
+                                                                </Text>
                                                             }.into_any()
                                                         } else {
                                                             view! {
@@ -494,10 +493,9 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
 fn SidebarRow(label: &'static str, children: Children) -> impl IntoView {
     view! {
         <div>
-            <div class="text-[11px] text-text-tertiary mb-0.5 \
-                        uppercase tracking-wide">
+            <Text variant=TextVariant::LabelSm color=TextColor::Tertiary class="block mb-0.5">
                 {label}
-            </div>
+            </Text>
             {children()}
         </div>
     }

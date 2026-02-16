@@ -2,6 +2,7 @@ use leptos::prelude::*;
 use north_dto::Task;
 use north_ui::Spinner;
 
+use crate::atoms::{Text, TextColor, TextTag, TextVariant};
 use crate::components::drag_drop::{DragDropContext, DropZone};
 use crate::containers::task_list_item::TaskListItem;
 
@@ -40,9 +41,9 @@ pub fn TaskListView(
                 let ids = active_task_ids.get();
                 if ids.is_empty() {
                     view! {
-                        <div class="text-sm text-text-secondary py-8 text-center">
+                        <Text variant=TextVariant::BodyMd color=TextColor::Secondary tag=TextTag::P class="py-8 text-center">
                             {empty_message}
-                        </div>
+                        </Text>
                     }
                         .into_any()
                 } else {

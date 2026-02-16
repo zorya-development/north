@@ -3,6 +3,7 @@ use wasm_bindgen::JsCast;
 
 use super::components::InlineSubtaskList;
 use super::controller::TaskListItemController;
+use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::date_picker::DateTimePicker;
 use crate::components::drag_drop::{DragDropContext, DropZone};
 use crate::components::task_form::EditTaskForm;
@@ -215,18 +216,20 @@ pub fn TaskListItemView(
                                                 unchecked_label="Complete task"
                                             />
                                         </div>
-                                        <span
-                                            class=move || {
-                                                if is_completed.get() {
-                                                    "flex-1 text-sm text-text-tertiary \
-                                                     line-through"
-                                                } else {
-                                                    "flex-1 text-sm text-text-primary"
-                                                }
+                                        {move || {
+                                            let completed = is_completed.get();
+                                            let t = title.clone();
+                                            view! {
+                                                <Text
+                                                    variant=TextVariant::BodyMd
+                                                    color={if completed { TextColor::Tertiary } else { TextColor::Primary }}
+                                                    line_through=completed
+                                                    class="flex-1"
+                                                >
+                                                    {t}
+                                                </Text>
                                             }
-                                        >
-                                            {title}
-                                        </span>
+                                        }}
                                         {if show_review {
                                             Some(view! {
                                                 <button

@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 use north_dto::{Project, Task};
 
+use crate::atoms::{Text, TextVariant};
 use crate::components::task_list::{CompletedSection, TaskList};
 use crate::containers::task_inline_form::TaskInlineForm;
 
@@ -23,14 +24,14 @@ pub fn ProjectView(
     view! {
         <div class="space-y-4">
             <div class="flex items-center justify-between">
-                <h1 class="text-2xl font-semibold tracking-tight text-text-primary">
+                <Text variant=TextVariant::HeadingLg>
                     {move || {
                         project
                             .get()
                             .map(|p| p.title)
                             .unwrap_or_else(|| "Project".to_string())
                     }}
-                </h1>
+                </Text>
                 <button
                     on:click=move |_| set_form_open.set(!is_form_open.get_untracked())
                     class="text-sm text-text-secondary hover:text-accent \

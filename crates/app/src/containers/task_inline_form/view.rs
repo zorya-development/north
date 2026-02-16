@@ -3,6 +3,7 @@ use leptos::prelude::*;
 use north_ui::MarkdownView;
 
 use super::controller::TaskInlineFormController;
+use crate::atoms::{Text, TextColor, TextTag, TextVariant};
 use crate::containers::autocomplete::{AutocompleteInput, AutocompleteTextarea};
 
 #[component]
@@ -62,9 +63,9 @@ pub fn TaskInlineFormView(ctrl: TaskInlineFormController) -> impl IntoView {
                     let b = body.get();
                     if b.trim().is_empty() {
                         view! {
-                            <p class="text-sm text-text-tertiary py-2">
+                            <Text variant=TextVariant::BodyMd color=TextColor::Tertiary tag=TextTag::P class="py-2">
                                 "Nothing to preview"
-                            </p>
+                            </Text>
                         }
                             .into_any()
                     } else {

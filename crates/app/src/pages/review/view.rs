@@ -1,5 +1,6 @@
 use leptos::prelude::*;
 
+use crate::atoms::{Text, TextVariant};
 use crate::components::task_list::TaskList;
 
 #[component]
@@ -18,7 +19,7 @@ pub fn ReviewView(
     view! {
         <div class="space-y-4">
             <div class="flex items-center justify-between">
-                <h1 class="text-xl font-semibold text-text-primary">"Review"</h1>
+                <Text variant=TextVariant::HeadingMd>"Review"</Text>
                 <button
                     on:click=move |_| on_review_all.run(())
                     class="px-3 py-1.5 text-sm bg-accent text-white rounded \

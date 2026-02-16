@@ -1,5 +1,7 @@
 use leptos::prelude::*;
 use north_dto::Project;
+
+use crate::atoms::{Text, TextColor, TextTag, TextVariant};
 use north_ui::{Icon, IconKind, Popover};
 
 #[component]
@@ -112,9 +114,9 @@ pub fn ProjectPickerView(
                     let list = projects.get();
                     if list.is_empty() {
                         view! {
-                            <div class="px-3 py-2 text-xs text-text-tertiary">
+                            <Text variant=TextVariant::BodySm color=TextColor::Tertiary tag=TextTag::P class="px-3 py-2">
                                 "No projects"
-                            </div>
+                            </Text>
                         }
                         .into_any()
                     } else {

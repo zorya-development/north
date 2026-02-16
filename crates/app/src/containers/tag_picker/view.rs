@@ -1,5 +1,7 @@
 use leptos::prelude::*;
 use north_dto::{Tag, TagInfo};
+
+use crate::atoms::{Text, TextColor, TextTag, TextVariant};
 use north_ui::{Icon, IconKind, Popover};
 
 #[component]
@@ -220,10 +222,9 @@ pub fn TagPickerView(
                     let list = all_tags.get();
                     if list.is_empty() {
                         view! {
-                            <div class="px-3 py-2 text-xs \
-                                        text-text-tertiary">
+                            <Text variant=TextVariant::BodySm color=TextColor::Tertiary tag=TextTag::P class="px-3 py-2">
                                 "No tags yet"
-                            </div>
+                            </Text>
                         }
                         .into_any()
                     } else {

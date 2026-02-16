@@ -1,12 +1,12 @@
 use leptos::prelude::*;
 
+use crate::atoms::{Text, TextColor, TextTag, TextVariant};
+
 #[component]
 pub fn FilterHelpPage() -> impl IntoView {
     view! {
         <div class="max-w-2xl space-y-6">
-            <h1 class="text-2xl font-semibold tracking-tight text-text-primary">
-                "Filter Query Syntax"
-            </h1>
+            <Text variant=TextVariant::HeadingLg>"Filter Query Syntax"</Text>
 
             <Section title="Fields">
                 <table class="w-full text-sm">
@@ -115,11 +115,11 @@ pub fn FilterHelpPage() -> impl IntoView {
             </Section>
 
             <Section title="ORDER BY">
-                <p class="text-sm text-text-primary">
+                <Text tag=TextTag::P>
                     "Append "
                     <code class="text-accent">"ORDER BY field ASC|DESC"</code>
                     " to sort results."
-                </p>
+                </Text>
                 <pre class="mt-1 text-sm font-mono text-text-secondary \
                             bg-bg-tertiary rounded px-3 py-2">
                     "status = 'ACTIVE' ORDER BY due_date ASC"
@@ -158,10 +158,9 @@ pub fn FilterHelpPage() -> impl IntoView {
 fn Section(title: &'static str, children: Children) -> impl IntoView {
     view! {
         <div>
-            <h2 class="text-sm font-medium text-text-secondary \
-                        uppercase tracking-wide mb-2">
+            <Text variant=TextVariant::LabelMd color=TextColor::Secondary tag=TextTag::H2 class="mb-2">
                 {title}
-            </h2>
+            </Text>
             {children()}
         </div>
     }
@@ -191,7 +190,7 @@ fn OpRow(op: &'static str, example: &'static str) -> impl IntoView {
 fn Example(label: &'static str, query: &'static str) -> impl IntoView {
     view! {
         <div>
-            <p class="text-xs text-text-secondary">{label}</p>
+            <Text variant=TextVariant::BodySm color=TextColor::Secondary tag=TextTag::P>{label}</Text>
             <pre class="text-sm font-mono text-text-primary \
                         bg-bg-tertiary rounded px-3 py-1.5 mt-0.5">
                 {query}

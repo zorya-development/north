@@ -1,5 +1,7 @@
 use leptos::prelude::*;
 
+use crate::atoms::{Text, TextColor, TextTag, TextVariant};
+
 #[component]
 pub fn SettingsView(
     interval: ReadSignal<String>,
@@ -11,30 +13,27 @@ pub fn SettingsView(
 ) -> impl IntoView {
     view! {
         <div class="space-y-6 max-w-lg">
-            <h1 class="text-2xl font-semibold tracking-tight text-text-primary">
-                "Settings"
-            </h1>
+            <Text variant=TextVariant::HeadingLg>"Settings"</Text>
 
             <Show
                 when=move || is_loaded.get()
                 fallback=|| {
                     view! {
-                        <div class="text-sm text-text-secondary py-4">
+                        <Text variant=TextVariant::BodyMd color=TextColor::Secondary tag=TextTag::P class="py-4">
                             "Loading settings..."
-                        </div>
+                        </Text>
                     }
                 }
             >
                 <div class="space-y-4">
                     <div class="space-y-2">
-                        <label class="block text-sm font-medium \
-                                      text-text-secondary">
+                        <Text variant=TextVariant::LabelLg color=TextColor::Secondary tag=TextTag::Label class="block">
                             "Review interval (days)"
-                        </label>
-                        <p class="text-xs text-text-tertiary">
+                        </Text>
+                        <Text variant=TextVariant::BodySm color=TextColor::Tertiary tag=TextTag::P>
                             "Tasks will appear in Review after this many \
                              days since their last review."
-                        </p>
+                        </Text>
                         <input
                             type="number"
                             min="1"

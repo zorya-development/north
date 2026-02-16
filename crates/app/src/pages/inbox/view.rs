@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 use north_dto::Task;
 
+use crate::atoms::{Text, TextVariant};
 use crate::components::task_list::{CompletedSection, TaskList};
 use crate::containers::task_inline_form::TaskInlineForm;
 
@@ -21,9 +22,7 @@ pub fn InboxView(
     view! {
         <div class="space-y-4">
             <div class="flex items-center justify-between">
-                <h1 class="text-2xl font-semibold tracking-tight text-text-primary">
-                    "Inbox"
-                </h1>
+                <Text variant=TextVariant::HeadingLg>"Inbox"</Text>
                 <button
                     on:click=move |_| set_form_open.set(!is_form_open.get_untracked())
                     class="text-sm text-text-secondary hover:text-accent \

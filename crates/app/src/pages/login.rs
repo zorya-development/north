@@ -1,6 +1,8 @@
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 
+use crate::atoms::{Text, TextVariant};
+
 #[server(Login, "/api")]
 pub async fn login(email: String, password: String) -> Result<(), ServerFnError> {
     use argon2::{Argon2, PasswordHash, PasswordVerifier};
@@ -99,9 +101,9 @@ pub fn LoginPage() -> impl IntoView {
     view! {
         <div class="min-h-screen bg-bg-primary flex items-center justify-center px-4">
             <div class="w-full max-w-sm bg-bg-secondary rounded-2xl border border-border shadow-lg p-8">
-                <h1 class="text-2xl font-semibold tracking-tight text-text-primary text-center mb-6">
+                <Text variant=TextVariant::HeadingLg class="text-center mb-6">
                     "North"
-                </h1>
+                </Text>
 
                 {move || {
                     error_message().map(|msg| {

@@ -1,6 +1,8 @@
 use leptos::prelude::*;
 use north_dto::Project;
 
+use crate::atoms::{Text, TextColor, TextTag, TextVariant};
+
 #[component]
 pub fn ArchiveView(
     archived_projects: Memo<Vec<Project>>,
@@ -10,17 +12,15 @@ pub fn ArchiveView(
 ) -> impl IntoView {
     view! {
         <div class="space-y-4">
-            <h1 class="text-2xl font-semibold tracking-tight text-text-primary">
-                "Archive"
-            </h1>
+            <Text variant=TextVariant::HeadingLg>"Archive"</Text>
 
             <Show
                 when=move || is_loaded.get()
                 fallback=|| {
                     view! {
-                        <div class="text-sm text-text-secondary py-4">
+                        <Text variant=TextVariant::BodyMd color=TextColor::Secondary tag=TextTag::P class="py-4">
                             "Loading..."
-                        </div>
+                        </Text>
                     }
                 }
             >
@@ -28,9 +28,9 @@ pub fn ArchiveView(
                     let projects = archived_projects.get();
                     if projects.is_empty() {
                         view! {
-                            <div class="text-sm text-text-secondary py-8 text-center">
+                            <Text variant=TextVariant::BodyMd color=TextColor::Secondary tag=TextTag::P class="py-8 text-center">
                                 "No archived projects."
-                            </div>
+                            </Text>
                         }
                         .into_any()
                     } else {

@@ -4,7 +4,7 @@ Component library for the North GTD task management system. Built on Leptos + Ta
 
 ## Current State
 
-The `north-ui` crate has 7 generic UI components: Icon, Dropdown, Popover, Checkbox, Modal, Autocomplete, Spinner, Markdown. Semantic atoms live in `crates/app/src/atoms/` — currently: **Text** (done).
+The `north-ui` crate has 7 generic UI components: Icon, Dropdown, Popover, Checkbox, Modal, Autocomplete, Spinner, Markdown. Semantic atoms live in `crates/app/src/atoms/` — currently: **Text** (done, migrated across app).
 
 **Key pain points (remaining):**
 - Button styling repeated in 6+ patterns across files (primary, icon, text, danger, nav, small)

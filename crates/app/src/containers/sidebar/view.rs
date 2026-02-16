@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 use leptos_router::hooks::use_location;
 
+use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::drag_drop::DragDropContext;
 use crate::components::theme_toggle::ThemeToggle;
 use north_dto::{Project, SavedFilter};
@@ -36,10 +37,9 @@ pub fn SidebarView(
 
                 <div class="pt-4">
                     <div class="flex items-center justify-between px-3">
-                        <span class="text-xs font-medium text-text-secondary \
-                                     uppercase tracking-wide">
+                        <Text variant=TextVariant::LabelMd color=TextColor::Secondary>
                             "Projects"
-                        </span>
+                        </Text>
                         <button
                             class="p-0.5 rounded text-text-tertiary \
                                    hover:text-text-secondary \
@@ -121,10 +121,9 @@ pub fn SidebarView(
 
                 <div class="pt-4">
                     <div class="flex items-center justify-between px-3">
-                        <span class="text-xs font-medium text-text-secondary \
-                                     uppercase tracking-wide">
+                        <Text variant=TextVariant::LabelMd color=TextColor::Secondary>
                             "Filters"
-                        </span>
+                        </Text>
                         <a
                             href="/filters/new"
                             class="p-0.5 rounded text-text-tertiary \

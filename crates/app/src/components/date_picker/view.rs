@@ -1,4 +1,6 @@
 use leptos::prelude::*;
+
+use crate::atoms::{Text, TextColor, TextTag, TextVariant};
 use north_ui::{Icon, IconKind, Popover};
 
 #[component]
@@ -148,7 +150,7 @@ pub fn DateTimePickerView(
         >
             <div class="p-3 w-[220px]">
                 <div class="flex flex-col gap-2">
-                    <label class="text-xs text-text-secondary">"Date"</label>
+                    <Text variant=TextVariant::BodySm color=TextColor::Secondary tag=TextTag::Label>"Date"</Text>
                     <input
                         type="date"
                         class="bg-bg-input border border-border \
@@ -160,7 +162,7 @@ pub fn DateTimePickerView(
                             picked_date.set(ev.target().value());
                         }
                     />
-                    <label class="text-xs text-text-secondary">"Time"</label>
+                    <Text variant=TextVariant::BodySm color=TextColor::Secondary tag=TextTag::Label>"Time"</Text>
                     <input
                         type="time"
                         class="bg-bg-input border border-border \

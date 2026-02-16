@@ -2,6 +2,7 @@ use leptos::prelude::*;
 use north_dto::Task;
 
 use super::controller::GroupedTasks;
+use crate::atoms::{Text, TextColor, TextTag, TextVariant};
 use crate::components::task_list::{CompletedSection, TaskList};
 use crate::containers::task_inline_form::TaskInlineForm;
 
@@ -22,7 +23,7 @@ pub fn TodayView(
     view! {
         <div class="space-y-4">
             <div class="flex items-center justify-between">
-                <h1 class="text-2xl font-semibold tracking-tight text-text-primary">"Today"</h1>
+                <Text variant=TextVariant::HeadingLg>"Today"</Text>
                 <button
                     on:click=move |_| set_form_open.set(!is_form_open.get_untracked())
                     class="text-sm text-text-secondary hover:text-accent \
@@ -41,16 +42,16 @@ pub fn TodayView(
             {move || {
                 if !is_loaded.get() {
                     return view! {
-                        <div class="text-sm text-text-secondary py-4">"Loading tasks..."</div>
+                        <Text variant=TextVariant::BodyMd color=TextColor::Secondary tag=TextTag::P class="py-4">"Loading tasks..."</Text>
                     }.into_any();
                 }
 
                 let groups = grouped_task_ids.get();
                 if groups.is_empty() {
                     return view! {
-                        <div class="text-sm text-text-secondary py-8 text-center">
+                        <Text variant=TextVariant::BodyMd color=TextColor::Secondary tag=TextTag::P class="py-8 text-center">
                             "No tasks scheduled for today."
-                        </div>
+                        </Text>
                     }.into_any();
                 }
 
@@ -66,10 +67,9 @@ pub fn TodayView(
                                 let ids = Memo::new(move |_| ids.clone());
                                 view! {
                                     <div>
-                                        <h2 class="text-xs font-medium text-text-secondary \
-                                                    uppercase tracking-wide px-3 pb-1">
+                                        <Text variant=TextVariant::LabelMd color=TextColor::Secondary tag=TextTag::H2 class="px-3 pb-1">
                                             {label}
-                                        </h2>
+                                        </Text>
                                         <TaskList
                                             active_task_ids=ids
                                             active_tasks_for_reorder=active_tasks_for_reorder

@@ -3,6 +3,7 @@ use north_stores::use_app_store;
 use north_ui::{Icon, IconKind, Modal};
 
 use super::controller::FilterController;
+use crate::atoms::{Text, TextColor, TextTag, TextVariant};
 use crate::components::filter_autocomplete::FilterAutocompleteTextarea;
 use crate::components::task_list::TaskList;
 
@@ -54,9 +55,9 @@ pub fn FilterView(
                         when=move || filter_id.get().is_some()
                         fallback=|| {
                             view! {
-                                <span class="text-xl font-semibold text-text-primary">
+                                <Text variant=TextVariant::HeadingMd tag=TextTag::Span>
                                     "New Filter"
-                                </span>
+                                </Text>
                             }
                         }
                     >
@@ -64,10 +65,9 @@ pub fn FilterView(
                             when=move || is_editing_title.get()
                             fallback=move || {
                                 view! {
-                                    <span class="text-xl font-semibold \
-                                                 text-text-primary truncate">
+                                    <Text variant=TextVariant::HeadingMd truncate=true>
                                         {move || title_text.get()}
-                                    </span>
+                                    </Text>
                                     <button
                                         class="p-1 text-text-tertiary \
                                                hover:text-text-primary \
@@ -213,9 +213,9 @@ pub fn FilterView(
                     </button>
                 </div>
                 <Show when=move || parse_error.get().is_some()>
-                    <p class="text-xs text-red-400 mt-1">
+                    <Text variant=TextVariant::BodySm color=TextColor::Danger tag=TextTag::P class="mt-1">
                         {move || parse_error.get().unwrap_or_default()}
-                    </p>
+                    </Text>
                 </Show>
             </div>
 
@@ -234,9 +234,9 @@ pub fn FilterView(
             // Save filter modal (new filters only)
             <Modal open=show_save_modal set_open=set_show_save_modal>
                 <div class="p-4 space-y-4">
-                    <h3 class="text-lg font-semibold text-text-primary">
+                    <Text variant=TextVariant::HeadingSm>
                         "Save Filter"
-                    </h3>
+                    </Text>
                     <input
                         type="text"
                         node_ref=modal_input_ref
