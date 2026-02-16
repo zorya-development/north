@@ -321,9 +321,39 @@ class="transition-transform motion-reduce:transition-none"
 
 ---
 
-## 4. Standard UI Patterns
+## 4. UI Kit Atoms (`app/src/atoms/`)
 
-### 4.1 Button Variants
+Semantic, multi-dimension prop components in `crates/app/src/atoms/`. Generic UI primitives (Icon, Modal, Popover, etc.) remain in `north-ui`. See `docs/UI_KIT.md` for full catalog and design rationale.
+
+**Rules:**
+- Use atoms instead of raw Tailwind for text, buttons, badges, inputs
+- Prefer `<Text variant=TextVariant::HeadingLg>` over `<h1 class="text-2xl font-semibold ...">`
+- Import via `use crate::atoms::{Text, TextVariant, TextColor, TextTag};`
+- Variant controls structure (size/weight/transform). Color is always a separate prop
+- Each variant has a default HTML tag. Override with `tag` prop when needed
+
+### 4.1 Text
+
+```rust
+use crate::atoms::{Text, TextVariant, TextColor, TextTag};
+
+<Text variant=TextVariant::HeadingLg>"Inbox"</Text>           // <h1>
+<Text variant=TextVariant::HeadingMd>"Section"</Text>         // <h2>
+<Text variant=TextVariant::TitleMd>{title}</Text>             // task title
+<Text variant=TextVariant::LabelMd color=TextColor::Secondary>"Projects"</Text>  // sidebar
+<Text variant=TextVariant::LabelMd tag=TextTag::Label color=TextColor::Tertiary>"Due date"</Text>
+<Text>"Body text"</Text>                                       // defaults: BodyMd, <span>, Primary
+<Text variant=TextVariant::BodySm color=TextColor::Danger>{overdue_date}</Text>
+<Text variant=TextVariant::CodeMd color=TextColor::Accent>"query"</Text>  // <code>
+<Text truncate=true>{long_text}</Text>
+<Text variant=TextVariant::TitleMd color=TextColor::Tertiary line_through=true>{done_task}</Text>
+```
+
+Variants: `HeadingLg/Md/Sm`, `TitleLg/Md/Sm`, `BodyLg/Md/Sm`, `LabelLg/Md/Sm`, `CodeMd/Sm`.
+Colors: `Primary`, `Secondary`, `Tertiary`, `Accent`, `Danger`, `OnAccent`, `Inherit`.
+Tags: `H1`..`H4`, `P`, `Span`, `Label`, `Code` — only specify when overriding variant's default.
+
+### 4.2 Button Variants (raw patterns, atom pending)
 
 ```rust
 // Primary action
@@ -347,18 +377,12 @@ class="px-3 py-1.5 text-sm text-danger cursor-pointer \
        transition-colors"
 ```
 
-### 4.2 Form Inputs
+### 4.3 Form Inputs (raw pattern, atom pending)
 
 ```rust
 class="w-full bg-bg-input border border-border rounded px-3 py-1.5 \
        text-sm text-text-primary placeholder:text-text-tertiary \
        focus:outline-none focus:border-accent transition-colors"
-```
-
-### 4.3 Cards / Panels
-
-```rust
-class="bg-bg-secondary border border-border rounded-lg p-4"
 ```
 
 ### 4.4 Modal Backdrop
@@ -391,6 +415,7 @@ class="opacity-0 group-hover:opacity-100 transition-opacity"
 
 Before submitting frontend code, verify:
 
+- [ ] Use `<Text>` atom for all text — never raw `<span class="text-sm ...">` for new code
 - [ ] Interactive elements use `<button>` or `<a>`, never `<div>`/`<span>` with `on:click`
 - [ ] All clickable elements have `cursor-pointer`
 - [ ] All interactive elements have hover AND focus-visible states

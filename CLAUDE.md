@@ -56,7 +56,7 @@ repositories  (thin async facade, hides transport)
   ↑
 stores        (reactive state, optimistic updates)
   ↑
-  app         (pages, containers, components, views)
+  app         (pages, containers, components, atoms, views)
   ↑
   ui          (generic UI components — leptos only, no dto deps)
 
@@ -240,6 +240,9 @@ north/
     │   └── src/
     │       ├── lib.rs          # hydrate() entry point, recursion_limit = 256
     │       ├── app.rs          # Shell, App component, router setup
+    │       ├── atoms/                  # UI Kit atoms (semantic, multi-dimension prop components)
+    │       │   ├── mod.rs              # Re-exports all atoms
+    │       │   └── text.rs             # Text (TextVariant, TextColor, TextTag — MD3-based typography)
     │       ├── pages/
     │       │   ├── login.rs    # LoginPage + login() server function
     │       │   ├── inbox/      # InboxPage (container/controller/view)
@@ -295,7 +298,7 @@ north/
 - **`repositories`** — Thin async facade (`north-repositories`). Decouples stores from server function details. No business logic — pure pass-through. Makes transport swappable for testing. Includes `TaskRepository`, `ProjectRepository`, `FilterRepository`, `TagRepository`, `SettingsRepository`.
 - **`server-fns`** — Leptos `#[server]` RPC boundary (`north-server-fns`). Each function extracts `DbPool` from context and `user_id` from JWT, then delegates to core. The `#[server]` macro generates client stubs (HTTP POST) and server handlers automatically. Covers tasks, projects, filters, tags, and settings.
 - **`ui`** — Generic UI component library (`north-ui`). No dto dependencies — only `leptos`, `pulldown-cmark`, `ammonia`. Components: `Icon`/`IconKind`, `DropdownMenu`/`DropdownItem`, `Popover`, `Modal`, `Checkbox`, `MarkdownView`/`render_markdown()`, `AutocompleteDropdown`/`SuggestionItem`, `Spinner`. Used by `app` crate for reusable UI primitives.
-- **`app`** — Leptos library crate. Features: `hydrate` (WASM client), `ssr` (server-side, pulls in north-core/north-server-fns/argon2/jsonwebtoken). Pages follow container/controller/view pattern and interact with stores for data. Complex stateful domain components live in `containers/` (pickers, sidebar, autocomplete, task list item, inline form, detail modal). Simpler/presentational components live in `components/`.
+- **`app`** — Leptos library crate. Features: `hydrate` (WASM client), `ssr` (server-side, pulls in north-core/north-server-fns/argon2/jsonwebtoken). Pages follow container/controller/view pattern and interact with stores for data. Complex stateful domain components live in `containers/` (pickers, sidebar, autocomplete, task list item, inline form, detail modal). Simpler/presentational components live in `components/`. **`atoms/`** contains UI Kit atoms — semantic multi-dimension prop components (Text, Button, Badge, etc.) based on Material Design 3 type scale. Atoms use `enum.classes() -> &'static str` pattern for variant/color/size mapping. Prefer atoms over raw Tailwind for text, buttons, badges.
 - **`server`** — Axum binary. Depends on `north-app` with `ssr` feature. Auth middleware injects `AuthUser { id, role }` into request extensions. Route handlers delegate to `north-core` for all services (tasks, projects, stats).
 
 ### REST API Routes
@@ -344,6 +347,7 @@ Triggers: `update_updated_at()` on users, projects, tasks.
 - **Page data ownership:** Each page owns its data loading. Pages call `refetch()` or create their own `Resource` on mount. The layout does not pre-fetch data for pages.
 - **Container/controller/view pattern:** Pages with state management use a three-file pattern: `container.rs` (component entry, wires controller to view via inline `Callback` props), `controller.rs` (business logic, data loading, store interaction), `view.rs` (pure rendering). Simpler components use two-file container/view. Pure presentational components stay as single files. Callbacks are inlined directly into view props — no intermediate variables. Picker components (date, project, tag) support `icon_only` prop for compact action bar rendering in task cards.
 - **Containers vs components:** `containers/` holds complex stateful domain components that wire together stores, repositories, and rich interactions (pickers, sidebar, autocomplete, task list item, inline form, detail modal). `components/` holds simpler or more presentational components (task list, date picker, layout, filter autocomplete).
+- **Atoms:** `atoms/` contains UI Kit atom components — semantic, multi-dimension prop components based on Material Design 3 type scale. Each atom enum prop has `fn classes(self) -> &'static str` mapping Tailwind classes. Variant never includes color — color is always a separate prop. Each variant declares `default_tag()` for HTML element, overridable via `tag` prop. Prefer `<Text variant=TextVariant::HeadingLg>` over raw `<h1 class="text-2xl font-semibold ...">`. See `docs/UI_KIT.md` for the full component catalog.
 - **Three-layer client architecture:** `server-fns` (RPC boundary) → `repositories` (thin facade) → `stores` (reactive state + business logic). Stores call repositories, never server-fns directly. Pages/controllers call stores, never repositories directly.
 - **TaskStore:** Reactive store (`stores/task_store.rs`) that owns task state and mutations (complete, delete, update, set/clear start_at, refetch). `AppStore` wraps `TaskStore` for global context. Inbox uses `AppStore`; other pages create local stores with their own `Resource`.
 - **TagStore / SavedFilterStore:** Individual reactive stores for tags and saved filters, cached globally via `AppStore`. Used by pickers and navigation.
@@ -389,7 +393,14 @@ Triggers: `update_updated_at()` on users, projects, tasks.
 6. Register route in `crates/app/src/app.rs`
 7. Add nav item in `crates/app/src/containers/sidebar/view.rs`
 
-### Add New UI Primitive
+### Add New Atom (UI Kit component)
+1. Create file in `crates/app/src/atoms/<name>.rs`
+2. Define enums with `fn classes(self) -> &'static str` for each dimension (variant, color, size)
+3. Add `fn default_tag(self) -> Tag` if the atom renders HTML elements
+4. Export in `crates/app/src/atoms/mod.rs`
+5. Use `use crate::atoms::{ComponentName, ...}` in views
+
+### Add New UI Primitive (generic, no domain deps)
 1. Create component file in `crates/ui/src/`
 2. Export in `crates/ui/src/lib.rs`
 3. No dto dependencies — only `leptos` and rendering libs
