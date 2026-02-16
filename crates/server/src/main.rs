@@ -109,7 +109,11 @@ async fn main() {
             "/pkg",
             ServeDir::new(format!("{}/pkg", leptos_options.site_root)),
         )
-        .nest_service("/public", ServeDir::new("public"))
+        .nest_service(
+            "/public",
+            ServeDir::new("public")
+                .fallback(ServeDir::new(format!("{}", leptos_options.site_root))),
+        )
         .with_state(app_state);
 
     let addr = leptos_options.site_addr;
