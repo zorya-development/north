@@ -256,18 +256,18 @@ north/
     │       │   └── filter_help.rs # FilterHelpPage (DSL syntax reference, single file)
     │       ├── containers/             # Complex stateful domain components
     │       │   ├── autocomplete/       # Container/view pattern (tag/project autocomplete)
+    │       │   ├── inline_task_input/  # Container/view pattern (borderless inline input for rapid subtask creation)
     │       │   ├── project_picker/     # Container/view pattern (supports icon_only prop)
     │       │   ├── sidebar/            # Container/view pattern (sidebar navigation)
     │       │   ├── tag_picker/         # Container/view pattern (supports icon_only prop)
+    │       │   ├── task_create_modal/  # Container/view pattern (modal for task creation)
     │       │   ├── task_detail_modal/  # Container/view pattern (modal for task details)
-    │       │   ├── task_inline_form/   # Container/controller/view (inline task creation)
+    │       │   ├── task_list/          # Container/view pattern (provides ExtraVisibleIds context)
     │       │   └── task_list_item/     # Container/controller/view (single task row + inline subtask list)
     │       └── components/
-    │           ├── task_list/          # Container/view pattern
     │           ├── date_picker/        # Container/view pattern (supports icon_only prop)
     │           ├── filter_autocomplete/ # DSL autocomplete for filter page
     │           ├── task_meta.rs        # Pure view (date, project, tags display)
-    │           ├── task_form.rs        # Self-contained form widget
     │           ├── drag_drop.rs        # Drag and drop utilities
     │           ├── theme_toggle.rs     # Dark/light theme toggle
     │           └── layout.rs           # AppLayout (auth guard, context providers, sidebar + main shell)
@@ -298,7 +298,7 @@ north/
 - **`repositories`** — Thin async facade (`north-repositories`). Decouples stores from server function details. No business logic — pure pass-through. Makes transport swappable for testing. Includes `TaskRepository`, `ProjectRepository`, `FilterRepository`, `TagRepository`, `SettingsRepository`.
 - **`server-fns`** — Leptos `#[server]` RPC boundary (`north-server-fns`). Each function extracts `DbPool` from context and `user_id` from JWT, then delegates to core. The `#[server]` macro generates client stubs (HTTP POST) and server handlers automatically. Covers tasks, projects, filters, tags, and settings.
 - **`ui`** — Generic UI component library (`north-ui`). No dto dependencies — only `leptos`, `pulldown-cmark`, `ammonia`. Components: `Icon`/`IconKind`, `DropdownMenu`/`DropdownItem`, `Popover`, `Modal`, `Checkbox`, `MarkdownView`/`render_markdown()`, `AutocompleteDropdown`/`SuggestionItem`, `Spinner`. Used by `app` crate for reusable UI primitives.
-- **`app`** — Leptos library crate. Features: `hydrate` (WASM client), `ssr` (server-side, pulls in north-core/north-server-fns/argon2/jsonwebtoken). Pages follow container/controller/view pattern and interact with stores for data. Complex stateful domain components live in `containers/` (pickers, sidebar, autocomplete, task list item, inline form, detail modal). Simpler/presentational components live in `components/`. **`atoms/`** contains UI Kit atoms — semantic multi-dimension prop components (Text, Button, Badge, etc.) based on Material Design 3 type scale. Atoms use `enum.classes() -> &'static str` pattern for variant/color/size mapping. Prefer atoms over raw Tailwind for text, buttons, badges.
+- **`app`** — Leptos library crate. Features: `hydrate` (WASM client), `ssr` (server-side, pulls in north-core/north-server-fns/argon2/jsonwebtoken). Pages follow container/controller/view pattern and interact with stores for data. Complex stateful domain components live in `containers/` (pickers, sidebar, autocomplete, task list, task list item, inline task input, create modal, detail modal). Simpler/presentational components live in `components/`. **`atoms/`** contains UI Kit atoms — semantic multi-dimension prop components (Text, Button, Badge, etc.) based on Material Design 3 type scale. Atoms use `enum.classes() -> &'static str` pattern for variant/color/size mapping. Prefer atoms over raw Tailwind for text, buttons, badges.
 - **`server`** — Axum binary. Depends on `north-app` with `ssr` feature. Auth middleware injects `AuthUser { id, role }` into request extensions. Route handlers delegate to `north-core` for all services (tasks, projects, stats).
 
 ### REST API Routes
@@ -346,10 +346,10 @@ Triggers: `update_updated_at()` on users, projects, tasks.
 - **Context providers:** Use `provide_context()` directly in containers/controllers — no wrapper methods like `.provide()`. Views and child components consume via `expect_context::<T>()` or typed helpers like `use_app_store()`.
 - **Page data ownership:** Each page owns its data loading. Pages call `refetch()` or create their own `Resource` on mount. The layout does not pre-fetch data for pages.
 - **Container/controller/view pattern:** Pages with state management use a three-file pattern: `container.rs` (component entry, wires controller to view via inline `Callback` props), `controller.rs` (business logic, data loading, store interaction), `view.rs` (pure rendering). Simpler components use two-file container/view. Pure presentational components stay as single files. Callbacks are inlined directly into view props — no intermediate variables. Picker components (date, project, tag) support `icon_only` prop for compact action bar rendering in task cards.
-- **Containers vs components:** `containers/` holds complex stateful domain components that wire together stores, repositories, and rich interactions (pickers, sidebar, autocomplete, task list item, inline form, detail modal). `components/` holds simpler or more presentational components (task list, date picker, layout, filter autocomplete).
+- **Containers vs components:** `containers/` holds complex stateful domain components that wire together stores, repositories, and rich interactions (pickers, sidebar, autocomplete, task list, task list item, inline task input, create modal, detail modal). `components/` holds simpler or more presentational components (date picker, layout, filter autocomplete, drag_drop, task_meta).
 - **Atoms:** `atoms/` contains UI Kit atom components — semantic, multi-dimension prop components based on Material Design 3 type scale. Each atom enum prop has `fn classes(self) -> &'static str` mapping Tailwind classes. Variant never includes color — color is always a separate prop. Each variant declares `default_tag()` for HTML element, overridable via `tag` prop. Prefer `<Text variant=TextVariant::HeadingLg>` over raw `<h1 class="text-2xl font-semibold ...">`. See `docs/UI_KIT.md` for the full component catalog.
 - **Three-layer client architecture:** `server-fns` (RPC boundary) → `repositories` (thin facade) → `stores` (reactive state + business logic). Stores call repositories, never server-fns directly. Pages/controllers call stores, never repositories directly.
-- **TaskStore:** Reactive store (`stores/task_store.rs`) that owns task state and mutations (complete, delete, update, set/clear start_at, refetch). `AppStore` wraps `TaskStore` for global context. Inbox uses `AppStore`; other pages create local stores with their own `Resource`.
+- **TaskStore:** Reactive store (`stores/task_store.rs`) that owns task state and mutations (complete, delete, update, set/clear start_at, refetch). `AppStore` wraps `TaskStore` for global context. Inbox uses `AppStore`; other pages create local stores with their own `Resource`. Two creation methods: `create_task()` (fire-and-forget, updates parent's subtask_count for modal use) and `create_task_async()` (async, skips parent update to avoid re-rendering the parent task item — used by inline input).
 - **TagStore / SavedFilterStore:** Individual reactive stores for tags and saved filters, cached globally via `AppStore`. Used by pickers and navigation.
 - **TaskDetailModalStore:** Manages task detail modal state, navigation between tasks, and subtask handling. Provided via `AppStore`.
 - **FilterDslStore:** Manages filter DSL query lifecycle: text input, server-side validation, autocompletion suggestions, query execution, and results. Provided via `AppStore`.
@@ -359,6 +359,8 @@ Triggers: `update_updated_at()` on users, projects, tasks.
 - **FilterDslStore:** Centralized reactive store for DSL query state (query text, parse error, suggestions, execution results, loading state). Delegates async validation and autocompletion to server via `FilterRepository`. The filter page controller is thin — manages only saved filter CRUD and UI state (title editing, save modal), delegating all DSL state to this store.
 - **Filter page search bar:** Filter results execute when the user explicitly clicks Search or presses Enter, not on every keystroke. Save modal (`Modal` component) prompts for title when creating new filters.
 - **Completed tasks toggle:** Task list pages (inbox, today, all_tasks, project) pass an optional `completed_resource` to `TaskList`. The `CompletedSection` component renders a toggle button with count and dimmed completed tasks below the active list.
+- **ExtraVisibleIds:** Context type (`ExtraVisibleIds(RwSignal<Vec<i64>>)`) provided by `TaskList` container and `TaskDetailModal`. Keeps inline-created subtasks visible even when they exceed the sequential_limit. Scoped to the container's lifecycle — clears automatically on page navigation or modal close.
+- **Inline subtask input:** `InlineTaskInput` container renders a borderless input inside the subtask list for rapid task creation. Enter creates a subtask (inheriting parent's project_id), clears input, keeps it open and focused. Escape or blur hides the input. Input value is stored in the parent `InlineSubtaskList` so it persists across open/close. Created task IDs are pushed to `ExtraVisibleIds` to stay visible.
 
 ## Code Conventions
 
