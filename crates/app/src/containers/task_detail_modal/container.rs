@@ -2,6 +2,7 @@ use leptos::prelude::*;
 use north_stores::use_task_detail_modal_store;
 
 use super::view::TaskDetailModalView;
+use crate::containers::task_list::ExtraVisibleIds;
 
 #[component]
 pub fn TaskDetailModal() -> impl IntoView {
@@ -10,7 +11,10 @@ pub fn TaskDetailModal() -> impl IntoView {
 
     view! {
         <Show when=move || is_open.get()>
-            <TaskDetailModalView store=store/>
+            {
+                provide_context(ExtraVisibleIds(RwSignal::new(vec![])));
+                view! { <TaskDetailModalView store=store/> }
+            }
         </Show>
     }
 }

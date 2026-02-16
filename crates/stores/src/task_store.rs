@@ -1,12 +1,12 @@
 use chrono::Utc;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use north_domain::{CreateTask, TaskWithMeta, UpdateTask};
+use north_dto::{CreateTask, Task, UpdateTask};
 use north_repositories::TaskRepository;
 
 #[derive(Clone, Copy)]
 pub struct TaskStore {
-    tasks: RwSignal<Vec<TaskWithMeta>>,
+    tasks: RwSignal<Vec<Task>>,
     loaded: RwSignal<bool>,
 }
 
@@ -41,7 +41,7 @@ impl TaskStore {
 
     // ── Reactive state methods ──────────────────────────────────
 
-    pub fn load(&self, tasks: Vec<TaskWithMeta>) {
+    pub fn load(&self, tasks: Vec<Task>) {
         self.tasks.set(tasks);
         self.loaded.set(true);
     }
@@ -50,9 +50,13 @@ impl TaskStore {
         self.loaded.get_untracked()
     }
 
-    pub fn get_by_id(&self, id: i64) -> Memo<Option<TaskWithMeta>> {
+    pub fn loaded_signal(&self) -> Signal<bool> {
+        self.loaded.into()
+    }
+
+    pub fn get_by_id(&self, id: i64) -> Memo<Option<Task>> {
         let tasks = self.tasks;
-        Memo::new(move |_| tasks.get().into_iter().find(|t| t.task.id == id))
+        Memo::new(move |_| tasks.get().into_iter().find(|t| t.id == id))
     }
 
     /// Walk parent_id chain from the store. Returns `(id, title, subtask_count)` list
@@ -63,20 +67,16 @@ impl TaskStore {
         let mut current_id = id;
 
         for _ in 0..10 {
-            let Some(task) = all.iter().find(|t| t.task.id == current_id) else {
+            let Some(task) = all.iter().find(|t| t.id == current_id) else {
                 break;
             };
-            let Some(parent_id) = task.task.parent_id else {
+            let Some(parent_id) = task.parent_id else {
                 break;
             };
-            let Some(parent) = all.iter().find(|t| t.task.id == parent_id) else {
+            let Some(parent) = all.iter().find(|t| t.id == parent_id) else {
                 break;
             };
-            ancestors.push((
-                parent.task.id,
-                parent.task.title.clone(),
-                parent.subtask_count,
-            ));
+            ancestors.push((parent.id, parent.title.clone(), parent.subtask_count));
             current_id = parent_id;
         }
 
@@ -84,7 +84,7 @@ impl TaskStore {
         ancestors
     }
 
-    pub fn filtered(&self, filter: TaskStoreFilter) -> Memo<Vec<TaskWithMeta>> {
+    pub fn filtered(&self, filter: TaskStoreFilter) -> Memo<Vec<Task>> {
         let tasks = self.tasks;
         Memo::new(move |_| {
             tasks
@@ -92,26 +92,26 @@ impl TaskStore {
                 .into_iter()
                 .filter(|t| match &filter.project_id {
                     IdFilter::Any => true,
-                    IdFilter::IsNull => t.task.project_id.is_none(),
-                    IdFilter::Is(id) => t.task.project_id == Some(*id),
+                    IdFilter::IsNull => t.project_id.is_none(),
+                    IdFilter::Is(id) => t.project_id == Some(*id),
                 })
                 .filter(|t| match &filter.parent_id {
                     IdFilter::Any => true,
-                    IdFilter::IsNull => t.task.parent_id.is_none(),
-                    IdFilter::Is(id) => t.task.parent_id == Some(*id),
+                    IdFilter::IsNull => t.parent_id.is_none(),
+                    IdFilter::Is(id) => t.parent_id == Some(*id),
                 })
                 .filter(|t| match filter.is_completed {
                     None => true,
-                    Some(true) => t.task.completed_at.is_some(),
-                    Some(false) => t.task.completed_at.is_none(),
+                    Some(true) => t.completed_at.is_some(),
+                    Some(false) => t.completed_at.is_none(),
                 })
                 .collect()
         })
     }
 
-    pub fn update_in_place(&self, id: i64, f: impl FnOnce(&mut TaskWithMeta)) {
+    pub fn update_in_place(&self, id: i64, f: impl FnOnce(&mut Task)) {
         self.tasks.update(|tasks| {
-            if let Some(t) = tasks.iter_mut().find(|t| t.task.id == id) {
+            if let Some(t) = tasks.iter_mut().find(|t| t.id == id) {
                 f(t);
             }
         });
@@ -119,11 +119,11 @@ impl TaskStore {
 
     pub fn remove(&self, id: i64) {
         self.tasks.update(|tasks| {
-            tasks.retain(|t| t.task.id != id);
+            tasks.retain(|t| t.id != id);
         });
     }
 
-    pub fn add(&self, task: TaskWithMeta) {
+    pub fn add(&self, task: Task) {
         self.tasks.update(|tasks| {
             tasks.push(task);
         });
@@ -143,7 +143,7 @@ impl TaskStore {
     pub fn toggle_complete(&self, id: i64, was_completed: bool) {
         let store = *self;
         if was_completed {
-            store.update_in_place(id, |t| t.task.completed_at = None);
+            store.update_in_place(id, |t| t.completed_at = None);
             spawn_local(async move {
                 if TaskRepository::uncomplete(id).await.is_ok() {
                     store.refetch_async().await;
@@ -152,7 +152,7 @@ impl TaskStore {
         } else {
             let now = Utc::now();
             store.update_in_place(id, |t| {
-                t.task.completed_at = Some(now);
+                t.completed_at = Some(now);
             });
             spawn_local(async move {
                 if TaskRepository::complete(id).await.is_ok() {
@@ -186,10 +186,26 @@ impl TaskStore {
     pub fn create_task(&self, input: CreateTask) {
         let store = *self;
         spawn_local(async move {
-            if TaskRepository::create(input).await.is_ok() {
-                store.refetch_async().await;
+            if let Ok(task) = TaskRepository::create(input).await {
+                if let Some(pid) = task.parent_id {
+                    store.update_in_place(pid, |t| t.subtask_count += 1);
+                }
+                store.add(task);
             }
         });
+    }
+
+    /// Create a task and return it. Does NOT update the parent's subtask_count
+    /// to avoid triggering a re-render of the parent task item (which would
+    /// destroy any inline input that is currently focused).
+    pub async fn create_task_async(&self, input: CreateTask) -> Option<Task> {
+        match TaskRepository::create(input).await {
+            Ok(task) => {
+                self.add(task.clone());
+                Some(task)
+            }
+            Err(_) => None,
+        }
     }
 
     pub fn set_start_at(&self, id: i64, start_at: String) {
@@ -261,7 +277,7 @@ impl TaskStore {
         let store = *self;
         let today = Utc::now().date_naive();
         store.update_in_place(id, move |t| {
-            t.task.reviewed_at = Some(today);
+            t.reviewed_at = Some(today);
         });
         spawn_local(async move {
             let input = UpdateTask {

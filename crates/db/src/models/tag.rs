@@ -19,9 +19,9 @@ pub struct NewTag<'a> {
     pub color: &'a str,
 }
 
-impl From<TagRow> for north_domain::Tag {
+impl From<TagRow> for north_dto::Tag {
     fn from(row: TagRow) -> Self {
-        north_domain::Tag {
+        north_dto::Tag {
             id: row.id,
             user_id: row.user_id,
             name: row.name,
@@ -30,9 +30,9 @@ impl From<TagRow> for north_domain::Tag {
     }
 }
 
-impl From<&TagRow> for north_domain::TagInfo {
+impl From<&TagRow> for north_dto::TagInfo {
     fn from(row: &TagRow) -> Self {
-        north_domain::TagInfo {
+        north_dto::TagInfo {
             name: row.name.clone(),
             color: row.color.clone(),
         }

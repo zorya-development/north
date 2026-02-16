@@ -1,7 +1,7 @@
 use axum::extract::State;
 use axum::Json;
-use north_services::stats_service::Stats;
-use north_services::StatsService;
+use north_core::stats_service::Stats;
+use north_core::StatsService;
 
 use crate::auth::AuthUser;
 use crate::error::AppError;

@@ -1,12 +1,10 @@
 use leptos::prelude::*;
-use north_domain::TagInfo;
+use north_dto::TagInfo;
 use north_ui::{Icon, IconKind};
 
 #[component]
 pub fn TaskMeta(
     start_at: Option<chrono::DateTime<chrono::Utc>>,
-    #[prop(default = true)] show_project: bool,
-    project_title: Option<String>,
     due_date: Option<chrono::NaiveDate>,
     tags: Vec<TagInfo>,
     #[prop(default = None)] reviewed_at: Option<chrono::NaiveDate>,
@@ -14,9 +12,9 @@ pub fn TaskMeta(
     #[prop(default = 0)] subtask_count: i64,
     #[prop(default = 0)] completed_subtask_count: i64,
     #[prop(optional)] on_toggle_subtasks: Option<Callback<()>>,
+    #[prop(default = "")] class: &'static str,
 ) -> impl IntoView {
     let has_meta = start_at.is_some()
-        || (show_project && project_title.is_some())
         || due_date.is_some()
         || !tags.is_empty()
         || (show_review && reviewed_at.is_some())
@@ -24,8 +22,9 @@ pub fn TaskMeta(
 
     has_meta.then(|| {
         view! {
-            <div class="mt-0.5 ml-6 flex items-center gap-2 text-xs \
-                        text-text-tertiary flex-wrap">
+            <div class=format!(
+                "flex items-center gap-2 text-xs text-text-tertiary flex-wrap {class}"
+            )>
                 {start_at.map(|dt| {
                     let is_overdue = dt < chrono::Utc::now();
                     let class = if is_overdue {
@@ -68,22 +67,6 @@ pub fn TaskMeta(
                         </span>
                     }
                 })}
-                {if show_project {
-                    project_title.map(|title| {
-                        view! {
-                            <span class="inline-flex items-center gap-1 \
-                                         text-text-secondary">
-                                <span
-                                    class="w-2 h-2 rounded-full \
-                                           bg-text-tertiary flex-shrink-0"
-                                />
-                                {title}
-                            </span>
-                        }
-                    })
-                } else {
-                    None
-                }}
                 {due_date.map(|d| {
                     let is_overdue = d < chrono::Utc::now().date_naive();
                     let class = if is_overdue {

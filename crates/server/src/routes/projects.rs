@@ -1,7 +1,7 @@
 use axum::extract::{Path, Query, State};
 use axum::Json;
-use north_domain::{CreateProject, Project, ProjectFilter, UpdateProject};
-use north_services::ProjectService;
+use north_core::ProjectService;
+use north_dto::{CreateProject, Project, ProjectFilter, UpdateProject};
 
 use crate::auth::AuthUser;
 use crate::error::AppError;

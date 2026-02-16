@@ -1,6 +1,6 @@
 use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
-use north_domain::UserRole;
+use north_dto::UserRole;
 use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;

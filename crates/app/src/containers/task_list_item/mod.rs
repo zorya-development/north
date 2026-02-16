@@ -1,3 +1,4 @@
+pub mod components;
 mod container;
 mod controller;
 mod view;

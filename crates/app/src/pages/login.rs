@@ -1,6 +1,8 @@
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 
+use crate::atoms::{Text, TextVariant};
+
 #[server(Login, "/api")]
 pub async fn login(email: String, password: String) -> Result<(), ServerFnError> {
     use argon2::{Argon2, PasswordHash, PasswordVerifier};
@@ -15,9 +17,9 @@ pub async fn login(email: String, password: String) -> Result<(), ServerFnError>
         exp: usize,
     }
 
-    let pool = expect_context::<north_services::DbPool>();
+    let pool = expect_context::<north_core::DbPool>();
 
-    let row = north_services::UserService::find_by_email(&pool, &email)
+    let row = north_core::UserService::get_by_email(&pool, &email)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?
         .ok_or_else(|| ServerFnError::new("Invalid credentials".to_string()))?;
@@ -32,10 +34,10 @@ pub async fn login(email: String, password: String) -> Result<(), ServerFnError>
     let jwt_secret =
         std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret-change-me".to_string());
 
-    let role: north_domain::UserRole = row.role.into();
+    let role: north_dto::UserRole = row.role.into();
     let role_str = match role {
-        north_domain::UserRole::Admin => "admin",
-        north_domain::UserRole::User => "user",
+        north_dto::UserRole::Admin => "admin",
+        north_dto::UserRole::User => "user",
     };
 
     let exp = Utc::now() + Duration::days(7);
@@ -99,9 +101,9 @@ pub fn LoginPage() -> impl IntoView {
     view! {
         <div class="min-h-screen bg-bg-primary flex items-center justify-center px-4">
             <div class="w-full max-w-sm bg-bg-secondary rounded-2xl border border-border shadow-lg p-8">
-                <h1 class="text-2xl font-semibold tracking-tight text-text-primary text-center mb-6">
+                <Text variant=TextVariant::HeadingLg class="text-center mb-6">
                     "North"
-                </h1>
+                </Text>
 
                 {move || {
                     error_message().map(|msg| {

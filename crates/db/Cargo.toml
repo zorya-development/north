@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-north-domain = { path = "../domain" }
+north-dto = { path = "../dto" }
 diesel = { version = "2.2", features = ["postgres", "chrono", "serde_json"] }
 diesel-async = { version = "0.5", features = ["postgres", "deadpool"] }
 diesel-derive-enum = { version = "2.1", features = ["postgres"] }

@@ -40,9 +40,9 @@ pub struct ProjectChangeset<'a> {
     pub status: Option<ProjectStatusMapping>,
 }
 
-impl From<ProjectRow> for north_domain::Project {
+impl From<ProjectRow> for north_dto::Project {
     fn from(row: ProjectRow) -> Self {
-        north_domain::Project {
+        north_dto::Project {
             id: row.id,
             user_id: row.user_id,
             title: row.title,

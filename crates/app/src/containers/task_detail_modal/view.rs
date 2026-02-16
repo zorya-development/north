@@ -1,11 +1,13 @@
 use leptos::prelude::*;
 use north_stores::TaskDetailModalStore;
 
+use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::date_picker::DateTimePicker;
-use crate::components::project_picker::ProjectPicker;
-use crate::components::subtask_list::SubtaskList;
-use crate::components::tag_picker::TagPicker;
-use north_ui::{Checkbox, Icon, IconKind, MarkdownView};
+use crate::containers::project_picker::ProjectPicker;
+use crate::containers::tag_picker::TagPicker;
+use crate::containers::task_checkbox::TaskCheckbox;
+use crate::containers::task_list_item::components::InlineSubtaskList;
+use north_ui::{Icon, IconKind, MarkdownView};
 
 #[component]
 pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
@@ -13,6 +15,8 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
     let (editing_body, set_editing_body) = signal(false);
     let (title_draft, set_title_draft) = signal(String::new());
     let (body_draft, set_body_draft) = signal(String::new());
+    let subtask_show_non_actionable = RwSignal::new(false);
+    let subtask_show_completed = RwSignal::new(false);
 
     view! {
         <div
@@ -31,7 +35,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                 on:click=move |_| store.close()
             />
             <div
-                class="relative z-10 border border-border/60 \
+                class="relative border border-(--border-muted) \
                        rounded-2xl shadow-2xl max-w-3xl w-full mx-4 \
                        max-h-[85vh] flex flex-col"
                 style="background-color: var(--bg-secondary)"
@@ -41,18 +45,15 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                     let ancestor_list = store.ancestors();
                     let has_stack_val = store.has_stack();
 
-                    let task_id = task.task.id;
-                    let title = task.task.title.clone();
-                    let body = task.task.body.clone();
-                    let project_id = task.task.project_id;
+                    let task_id = task.id;
+                    let title = task.title.clone();
+                    let body = task.body.clone();
+                    let project_id = task.project_id;
                     let project_title = task.project_title.clone();
                     let tags = task.tags.clone();
-                    let start_at = task.task.start_at;
-                    let due_date = task.task.due_date;
-                    let is_completed = task.task.completed_at.is_some();
-                    let sequential_limit = task.task.sequential_limit;
-
-                    let (completed_sig, set_completed_sig) = signal(is_completed);
+                    let start_at = task.start_at;
+                    let due_date = task.due_date;
+                    let sequential_limit = task.sequential_limit;
 
                     set_title_draft.set(title.clone());
                     set_body_draft.set(body.clone().unwrap_or_default());
@@ -62,7 +63,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                     Some(view! {
                         // Header
                         <div class="flex items-center justify-between \
-                                    px-4 py-3 border-b border-border \
+                                    px-4 py-3 border-b border-(--border-muted) \
                                     flex-shrink-0">
                             <div class="flex items-center gap-1 \
                                         text-xs text-text-tertiary \
@@ -74,9 +75,9 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                             class="w-3.5 h-3.5 text-text-tertiary \
                                                    flex-shrink-0"
                                         />
-                                        <span class="text-text-secondary">
+                                        <Text variant=TextVariant::BodySm color=TextColor::Secondary>
                                             {pt}
-                                        </span>
+                                        </Text>
                                     }
                                 })}
                             </div>
@@ -147,7 +148,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                 <div class="flex items-center gap-1 \
                                             px-4 py-2 text-xs \
                                             text-text-tertiary \
-                                            border-b border-border \
+                                            border-b border-(--border-muted) \
                                             flex-shrink-0 overflow-x-auto">
                                     {ancestor_list.into_iter().map(
                                         |(aid, atitle, acount)| {
@@ -184,20 +185,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                 // Title
                                 <div class="flex items-start gap-2">
                                     <div class="pt-0.5">
-                                        <Checkbox
-                                            checked=completed_sig
-                                            on_toggle=Callback::new(
-                                                move |()| {
-                                                    let was = completed_sig
-                                                        .get_untracked();
-                                                    set_completed_sig
-                                                        .set(!was);
-                                                    store.toggle_complete();
-                                                },
-                                            )
-                                            checked_label="Mark incomplete"
-                                            unchecked_label="Complete task"
-                                        />
+                                        <TaskCheckbox task_id=task_id/>
                                     </div>
                                     <Show
                                         when=move || editing_title.get()
@@ -334,11 +322,9 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                                         let bd = body_draft.get();
                                                         if bd.trim().is_empty() {
                                                             view! {
-                                                                <span class="text-sm \
-                                                                            text-text-tertiary \
-                                                                            italic">
+                                                                <Text variant=TextVariant::BodyMd color=TextColor::Tertiary class="italic">
                                                                     "Add description..."
-                                                                </span>
+                                                                </Text>
                                                             }.into_any()
                                                         } else {
                                                             view! {
@@ -402,144 +388,69 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                 </div>
 
                                 // Subtask area
-                                <div class="ml-6">
-                                    <SubtaskList
-                                        parent_id=task_id
-                                        parent_sequential_limit=sequential_limit
-                                        depth=0
-                                        project_id=project_id
-                                        on_navigate_to=Callback::new(move |id| {
-                                            store.navigate_to_subtask(id)
-                                        })
-                                        on_parent_refetch=Callback::new(move |()| {})
-                                    />
-                                </div>
+                                <InlineSubtaskList
+                                    parent_id=task_id
+                                    sequential_limit=99
+                                    on_click=Callback::new(move |id| {
+                                        store.navigate_to_subtask(id)
+                                    })
+                                    add_btn_class="ml-6"
+                                    show_non_actionable=subtask_show_non_actionable
+                                    show_completed=subtask_show_completed
+                                />
                             </div>
 
                             // Right sidebar
-                            <div class="w-52 border-l border-border \
+                            <div class="w-52 border-l border-(--border-muted) \
                                         px-3 py-3 space-y-2 \
                                         overflow-y-auto flex-shrink-0">
                                 // Project
                                 <SidebarRow label="Project">
-                                    <div class="flex items-center gap-1.5">
-                                        <ProjectPicker
-                                            task_id=task_id
-                                            project_id=project_id
-                                            project_title=project_title.clone()
-                                            on_set_project=Callback::new(
-                                                move |(_task_id, project_id): (i64, i64)| {
-                                                    store.set_project(project_id)
-                                                },
-                                            )
-                                            on_clear_project=Callback::new(
-                                                move |_id: i64| store.clear_project(),
-                                            )
-                                            icon_only=true
-                                        />
-                                        <span class="text-xs text-text-secondary \
-                                                     truncate flex-1">
-                                            {project_title
-                                                .unwrap_or_else(
-                                                    || "None".to_string(),
-                                                )}
-                                        </span>
-                                        {project_id.map(|_| {
-                                            view! {
-                                                <button
-                                                    class="p-0.5 text-text-tertiary \
-                                                           hover:text-text-primary \
-                                                           transition-colors \
-                                                           flex-shrink-0"
-                                                    on:click=move |_| {
-                                                        store.clear_project()
-                                                    }
-                                                    title="Clear project"
-                                                >
-                                                    <Icon
-                                                        kind=IconKind::Close
-                                                        class="w-3 h-3"
-                                                    />
-                                                </button>
-                                            }
-                                        })}
-                                    </div>
+                                    <ProjectPicker
+                                        task_id=task_id
+                                        project_id=project_id
+                                        project_title=project_title.clone()
+                                        on_set_project=Callback::new(
+                                            move |(_task_id, project_id): (i64, i64)| {
+                                                store.set_project(project_id)
+                                            },
+                                        )
+                                        on_clear_project=Callback::new(
+                                            move |_id: i64| store.clear_project(),
+                                        )
+                                        always_visible=true
+                                    />
                                 </SidebarRow>
 
                                 // Tags
                                 <SidebarRow label="Tags">
-                                    <div class="flex items-center gap-1.5">
-                                        <TagPicker
-                                            task_id=task_id
-                                            tags=tags.clone()
-                                            on_set_tags=Callback::new(
-                                                move |(_task_id, tags): (i64, Vec<String>)| {
-                                                    store.set_tags(tags)
-                                                },
-                                            )
-                                            icon_only=true
-                                        />
-                                        <span class="text-xs text-text-secondary \
-                                                     truncate flex-1">
-                                            {if tags.is_empty() {
-                                                "None".to_string()
-                                            } else {
-                                                tags.iter()
-                                                    .map(|t| t.name.as_str())
-                                                    .collect::<Vec<_>>()
-                                                    .join(", ")
-                                            }}
-                                        </span>
-                                    </div>
+                                    <TagPicker
+                                        task_id=task_id
+                                        tags=tags.clone()
+                                        on_set_tags=Callback::new(
+                                            move |(_task_id, tags): (i64, Vec<String>)| {
+                                                store.set_tags(tags)
+                                            },
+                                        )
+                                        always_visible=true
+                                    />
                                 </SidebarRow>
 
                                 // Start date
                                 <SidebarRow label="Start date">
-                                    <div class="flex items-center gap-1.5">
-                                        <DateTimePicker
-                                            task_id=task_id
-                                            start_at=start_at
-                                            on_set_start_at=Callback::new(
-                                                move |(_id, start_at): (i64, String)| {
-                                                    store.set_start_at(start_at)
-                                                },
-                                            )
-                                            on_clear_start_at=Callback::new(
-                                                move |_id: i64| store.clear_start_at(),
-                                            )
-                                            icon_only=true
-                                        />
-                                        <span class="text-xs text-text-secondary \
-                                                     truncate flex-1">
-                                            {start_at
-                                                .map(|dt| {
-                                                    dt.format("%b %d, %l:%M %p")
-                                                        .to_string()
-                                                })
-                                                .unwrap_or_else(
-                                                    || "Not set".to_string(),
-                                                )}
-                                        </span>
-                                        {start_at.map(|_| {
-                                            view! {
-                                                <button
-                                                    class="p-0.5 text-text-tertiary \
-                                                           hover:text-text-primary \
-                                                           transition-colors \
-                                                           flex-shrink-0"
-                                                    on:click=move |_| {
-                                                        store.clear_start_at()
-                                                    }
-                                                    title="Clear start date"
-                                                >
-                                                    <Icon
-                                                        kind=IconKind::Close
-                                                        class="w-3 h-3"
-                                                    />
-                                                </button>
-                                            }
-                                        })}
-                                    </div>
+                                    <DateTimePicker
+                                        task_id=task_id
+                                        start_at=start_at
+                                        on_set_start_at=Callback::new(
+                                            move |(_id, start_at): (i64, String)| {
+                                                store.set_start_at(start_at)
+                                            },
+                                        )
+                                        on_clear_start_at=Callback::new(
+                                            move |_id: i64| store.clear_start_at(),
+                                        )
+                                        always_visible=true
+                                    />
                                 </SidebarRow>
 
                                 // Due date
@@ -570,10 +481,9 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
 fn SidebarRow(label: &'static str, children: Children) -> impl IntoView {
     view! {
         <div>
-            <div class="text-[11px] text-text-tertiary mb-0.5 \
-                        uppercase tracking-wide">
+            <Text variant=TextVariant::LabelSm color=TextColor::Tertiary class="block mb-0.5">
                 {label}
-            </div>
+            </Text>
             {children()}
         </div>
     }

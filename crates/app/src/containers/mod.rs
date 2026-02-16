@@ -1,3 +1,10 @@
+pub mod autocomplete;
+pub mod inline_task_input;
+pub mod project_picker;
+pub mod sidebar;
+pub mod tag_picker;
+pub mod task_checkbox;
+pub mod task_create_modal;
 pub mod task_detail_modal;
-pub mod task_inline_form;
+pub mod task_list;
 pub mod task_list_item;

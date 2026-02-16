@@ -8,6 +8,6 @@ ssr = ["north-server-fns/ssr"]
 hydrate = ["north-server-fns/hydrate"]
 
 [dependencies]
-north-domain = { workspace = true }
+north-dto = { workspace = true }
 north-server-fns = { workspace = true }
 leptos = "0.7"

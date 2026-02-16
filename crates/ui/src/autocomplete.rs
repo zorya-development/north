@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SuggestionItem {
     pub name: String,
     pub color: String,

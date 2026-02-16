@@ -27,11 +27,11 @@ pub struct NewUser<'a> {
     pub settings: serde_json::Value,
 }
 
-impl From<UserRow> for north_domain::User {
+impl From<UserRow> for north_dto::User {
     fn from(row: UserRow) -> Self {
-        let settings: north_domain::UserSettings =
+        let settings: north_dto::UserSettings =
             serde_json::from_value(row.settings).unwrap_or_default();
-        north_domain::User {
+        north_dto::User {
             id: row.id,
             email: row.email,
             name: row.name,

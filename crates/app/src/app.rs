@@ -24,6 +24,12 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 </script>
                 <AutoReload options=options.clone()/>
                 <HydrationScripts options/>
+                <link rel="preconnect" href="https://fonts.googleapis.com"/>
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
+                <link
+                    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+                    rel="stylesheet"
+                />
                 <link rel="stylesheet" id="leptos" href="/pkg/north.css"/>
             </head>
             <body class="bg-bg-primary text-text-primary font-sans antialiased">

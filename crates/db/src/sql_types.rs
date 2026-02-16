@@ -27,56 +27,56 @@ pub enum ProjectStatusMapping {
     Archived,
 }
 
-impl From<UserRoleMapping> for north_domain::UserRole {
+impl From<UserRoleMapping> for north_dto::UserRole {
     fn from(val: UserRoleMapping) -> Self {
         match val {
-            UserRoleMapping::Admin => north_domain::UserRole::Admin,
-            UserRoleMapping::User => north_domain::UserRole::User,
+            UserRoleMapping::Admin => north_dto::UserRole::Admin,
+            UserRoleMapping::User => north_dto::UserRole::User,
         }
     }
 }
 
-impl From<north_domain::UserRole> for UserRoleMapping {
-    fn from(val: north_domain::UserRole) -> Self {
+impl From<north_dto::UserRole> for UserRoleMapping {
+    fn from(val: north_dto::UserRole) -> Self {
         match val {
-            north_domain::UserRole::Admin => UserRoleMapping::Admin,
-            north_domain::UserRole::User => UserRoleMapping::User,
+            north_dto::UserRole::Admin => UserRoleMapping::Admin,
+            north_dto::UserRole::User => UserRoleMapping::User,
         }
     }
 }
 
-impl From<ProjectViewTypeMapping> for north_domain::ProjectViewType {
+impl From<ProjectViewTypeMapping> for north_dto::ProjectViewType {
     fn from(val: ProjectViewTypeMapping) -> Self {
         match val {
-            ProjectViewTypeMapping::List => north_domain::ProjectViewType::List,
-            ProjectViewTypeMapping::Kanban => north_domain::ProjectViewType::Kanban,
+            ProjectViewTypeMapping::List => north_dto::ProjectViewType::List,
+            ProjectViewTypeMapping::Kanban => north_dto::ProjectViewType::Kanban,
         }
     }
 }
 
-impl From<north_domain::ProjectViewType> for ProjectViewTypeMapping {
-    fn from(val: north_domain::ProjectViewType) -> Self {
+impl From<north_dto::ProjectViewType> for ProjectViewTypeMapping {
+    fn from(val: north_dto::ProjectViewType) -> Self {
         match val {
-            north_domain::ProjectViewType::List => ProjectViewTypeMapping::List,
-            north_domain::ProjectViewType::Kanban => ProjectViewTypeMapping::Kanban,
+            north_dto::ProjectViewType::List => ProjectViewTypeMapping::List,
+            north_dto::ProjectViewType::Kanban => ProjectViewTypeMapping::Kanban,
         }
     }
 }
 
-impl From<ProjectStatusMapping> for north_domain::ProjectStatus {
+impl From<ProjectStatusMapping> for north_dto::ProjectStatus {
     fn from(val: ProjectStatusMapping) -> Self {
         match val {
-            ProjectStatusMapping::Active => north_domain::ProjectStatus::Active,
-            ProjectStatusMapping::Archived => north_domain::ProjectStatus::Archived,
+            ProjectStatusMapping::Active => north_dto::ProjectStatus::Active,
+            ProjectStatusMapping::Archived => north_dto::ProjectStatus::Archived,
         }
     }
 }
 
-impl From<north_domain::ProjectStatus> for ProjectStatusMapping {
-    fn from(val: north_domain::ProjectStatus) -> Self {
+impl From<north_dto::ProjectStatus> for ProjectStatusMapping {
+    fn from(val: north_dto::ProjectStatus) -> Self {
         match val {
-            north_domain::ProjectStatus::Active => ProjectStatusMapping::Active,
-            north_domain::ProjectStatus::Archived => ProjectStatusMapping::Archived,
+            north_dto::ProjectStatus::Active => ProjectStatusMapping::Active,
+            north_dto::ProjectStatus::Archived => ProjectStatusMapping::Archived,
         }
     }
 }

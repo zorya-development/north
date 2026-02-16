@@ -6,7 +6,7 @@ use diesel_async::RunQueryDsl;
 use north_db::models::{NewTask, TagRow, TaskChangeset, TaskRow};
 use north_db::schema::{projects, tags, task_tags, tasks, users};
 use north_db::DbPool;
-use north_domain::{CreateTask, TagInfo, Task, TaskFilter, TaskWithMeta, UpdateTask, UserSettings};
+use north_dto::{CreateTask, TagInfo, Task, TaskFilter, UpdateTask, UserSettings};
 
 use crate::{ServiceError, ServiceResult};
 
@@ -17,7 +17,7 @@ impl TaskService {
         pool: &DbPool,
         user_id: i64,
         filter: &TaskFilter,
-    ) -> ServiceResult<Vec<TaskWithMeta>> {
+    ) -> ServiceResult<Vec<Task>> {
         let mut conn = pool.get().await?;
 
         let mut query = tasks::table
@@ -132,7 +132,7 @@ impl TaskService {
         Ok(results)
     }
 
-    pub async fn get_by_id(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<TaskWithMeta> {
+    pub async fn get_by_id(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<Task> {
         let mut conn = pool.get().await?;
         let row = tasks::table
             .filter(tasks::id.eq(id))
@@ -145,7 +145,7 @@ impl TaskService {
         let mut results = Self::load_with_meta(pool, vec![row]).await?;
 
         if let Some(item) = results.first_mut() {
-            item.actionable = Self::compute_actionable_single(pool, &item.task).await?;
+            item.actionable = Self::compute_actionable_single(pool, item).await?;
         }
 
         results
@@ -187,7 +187,7 @@ impl TaskService {
                 .await
                 .optional()?
         };
-        let sort_key = north_domain::sort_key_after(last_key.as_deref());
+        let sort_key = north_dto::sort_key_after(last_key.as_deref());
 
         let row = diesel::insert_into(tasks::table)
             .values(&NewTask {
@@ -204,7 +204,22 @@ impl TaskService {
             .get_result(&mut conn)
             .await?;
 
-        Ok(Task::from(row))
+        let mut task = Task::from(row);
+
+        // Enrich with project_title
+        if let Some(pid) = task.project_id {
+            task.project_title = projects::table
+                .filter(projects::id.eq(pid))
+                .select(projects::title)
+                .first::<String>(&mut conn)
+                .await
+                .ok();
+        }
+
+        // Compute actionable for new task
+        task.actionable = Self::compute_actionable_single(pool, &task).await?;
+
+        Ok(task)
     }
 
     pub async fn update(
@@ -293,7 +308,7 @@ impl TaskService {
                     .await
                     .optional()?
             };
-            new_sort_key = north_domain::sort_key_after(last_key.as_deref());
+            new_sort_key = north_dto::sort_key_after(last_key.as_deref());
             changeset.sort_key = Some(&new_sort_key);
         }
         if let Some(sequential_limit) = input.sequential_limit {
@@ -358,7 +373,7 @@ impl TaskService {
                             .await
                             .optional()?
                     };
-                    uncomplete_sort_key = north_domain::sort_key_after(last_key.as_deref());
+                    uncomplete_sort_key = north_dto::sort_key_after(last_key.as_deref());
                     changeset.sort_key = Some(&uncomplete_sort_key);
                 }
             }
@@ -438,10 +453,7 @@ impl TaskService {
 
     // ── Internal helpers ───────────────────────────────────────────
 
-    async fn load_with_meta(
-        pool: &DbPool,
-        task_rows: Vec<TaskRow>,
-    ) -> ServiceResult<Vec<TaskWithMeta>> {
+    async fn load_with_meta(pool: &DbPool, task_rows: Vec<TaskRow>) -> ServiceResult<Vec<Task>> {
         if task_rows.is_empty() {
             return Ok(vec![]);
         }
@@ -513,14 +525,18 @@ impl TaskService {
             .into_iter()
             .map(|row| {
                 let id = row.id;
-                TaskWithMeta {
-                    project_title: row.project_id.and_then(|pid| proj_map.get(&pid).cloned()),
-                    tags: tags_map.remove(&id).unwrap_or_default(),
-                    subtask_count: count_map.get(&id).copied().unwrap_or(0),
-                    completed_subtask_count: completed_count_map.get(&id).copied().unwrap_or(0),
-                    actionable: row.completed_at.is_none(),
-                    task: Task::from(row),
-                }
+                let project_title = row.project_id.and_then(|pid| proj_map.get(&pid).cloned());
+                let tags = tags_map.remove(&id).unwrap_or_default();
+                let subtask_count = count_map.get(&id).copied().unwrap_or(0);
+                let completed_subtask_count = completed_count_map.get(&id).copied().unwrap_or(0);
+                let actionable = row.completed_at.is_none();
+                let mut task = Task::from(row);
+                task.project_title = project_title;
+                task.tags = tags;
+                task.subtask_count = subtask_count;
+                task.completed_subtask_count = completed_subtask_count;
+                task.actionable = actionable;
+                task
             })
             .collect())
     }
@@ -559,15 +575,12 @@ impl TaskService {
         Ok(siblings_before < parent_limit as i64)
     }
 
-    async fn compute_actionable_batch(
-        pool: &DbPool,
-        results: &mut [TaskWithMeta],
-    ) -> ServiceResult<()> {
+    async fn compute_actionable_batch(pool: &DbPool, results: &mut [Task]) -> ServiceResult<()> {
         let today = Utc::now().date_naive();
 
         let parent_ids: Vec<i64> = results
             .iter()
-            .filter_map(|r| r.task.parent_id)
+            .filter_map(|r| r.parent_id)
             .collect::<std::collections::HashSet<_>>()
             .into_iter()
             .collect();
@@ -586,18 +599,17 @@ impl TaskService {
         };
 
         for item in results.iter_mut() {
-            let task = &item.task;
-            if task.completed_at.is_some() {
+            if item.completed_at.is_some() {
                 item.actionable = false;
                 continue;
             }
-            if let Some(start) = task.start_at {
+            if let Some(start) = item.start_at {
                 if start.date_naive() > today {
                     item.actionable = false;
                     continue;
                 }
             }
-            if task.parent_id.is_none() {
+            if item.parent_id.is_none() {
                 item.actionable = true;
                 continue;
             }
@@ -605,5 +617,98 @@ impl TaskService {
         }
 
         Ok(())
+    }
+
+    pub async fn review_all(pool: &DbPool, user_id: i64) -> ServiceResult<()> {
+        let mut conn = pool.get().await?;
+        let today = Utc::now().date_naive();
+
+        let settings_val: serde_json::Value = users::table
+            .filter(users::id.eq(user_id))
+            .select(users::settings)
+            .first(&mut conn)
+            .await?;
+        let settings: UserSettings = serde_json::from_value(settings_val).unwrap_or_default();
+        let cutoff =
+            Utc::now().date_naive() - chrono::Duration::days(settings.review_interval_days as i64);
+
+        diesel::update(
+            tasks::table
+                .filter(tasks::user_id.eq(user_id))
+                .filter(tasks::parent_id.is_null())
+                .filter(tasks::completed_at.is_null())
+                .filter(
+                    tasks::reviewed_at
+                        .is_null()
+                        .or(tasks::reviewed_at.le(cutoff)),
+                ),
+        )
+        .set(tasks::reviewed_at.eq(Some(today)))
+        .execute(&mut conn)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn execute_dsl_filter(
+        pool: &DbPool,
+        user_id: i64,
+        query_str: &str,
+    ) -> ServiceResult<Vec<Task>> {
+        let parsed = crate::filter::parse_filter(query_str).map_err(|errs| {
+            ServiceError::BadRequest(
+                errs.into_iter()
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>()
+                    .join("; "),
+            )
+        })?;
+
+        let mut conn = pool.get().await?;
+
+        let matching_ids: Vec<i64> = if let Some(ref expr) = parsed.expression {
+            let ids = crate::filter::eval_expr(pool, user_id, expr).await?;
+            ids.into_iter().collect()
+        } else {
+            tasks::table
+                .filter(tasks::user_id.eq(user_id))
+                .filter(tasks::parent_id.is_null())
+                .select(tasks::id)
+                .load(&mut conn)
+                .await?
+        };
+
+        if matching_ids.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let rows: Vec<TaskRow> = tasks::table
+            .filter(tasks::id.eq_any(&matching_ids))
+            .select(TaskRow::as_select())
+            .load(&mut conn)
+            .await?;
+
+        let mut results = Self::load_with_meta(pool, rows).await?;
+        Self::compute_actionable_batch(pool, &mut results).await?;
+
+        if let Some(ref order_by) = parsed.order_by {
+            use crate::filter::dsl::{FilterField, SortDirection};
+            results.sort_by(|a, b| {
+                let cmp = match order_by.field {
+                    FilterField::Title => a.title.to_lowercase().cmp(&b.title.to_lowercase()),
+                    FilterField::DueDate => a.due_date.cmp(&b.due_date),
+                    FilterField::StartAt => a.start_at.cmp(&b.start_at),
+                    FilterField::Created => a.created_at.cmp(&b.created_at),
+                    FilterField::Updated => a.updated_at.cmp(&b.updated_at),
+                    _ => a.sort_key.cmp(&b.sort_key),
+                };
+                match order_by.direction {
+                    SortDirection::Asc => cmp,
+                    SortDirection::Desc => cmp.reverse(),
+                }
+            });
+        }
+
+        Ok(results)
     }
 }

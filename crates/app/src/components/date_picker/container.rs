@@ -10,6 +10,7 @@ pub fn DateTimePicker(
     on_set_start_at: Callback<(i64, String)>,
     on_clear_start_at: Callback<i64>,
     #[prop(default = false)] icon_only: bool,
+    #[prop(default = false)] always_visible: bool,
 ) -> impl IntoView {
     let has_start_at = start_at.is_some();
     let is_overdue = start_at.map(|dt| dt < Utc::now()).unwrap_or(false);
@@ -42,6 +43,7 @@ pub fn DateTimePicker(
             on_set_start_at=on_set_start_at
             on_clear_start_at=on_clear_start_at
             icon_only=icon_only
+            always_visible=always_visible
         />
     }
 }

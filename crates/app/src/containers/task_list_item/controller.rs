@@ -1,48 +1,26 @@
 use leptos::prelude::*;
-use north_domain::TaskWithMeta;
+use north_dto::Task;
 use north_stores::AppStore;
 
 #[derive(Clone, Copy)]
 pub struct TaskListItemController {
     app_store: AppStore,
     task_id: i64,
-    pub task: Memo<Option<TaskWithMeta>>,
-    pub editing: (ReadSignal<bool>, WriteSignal<bool>),
-    pub menu_open: (ReadSignal<bool>, WriteSignal<bool>),
+    pub task: Memo<Option<Task>>,
 }
 
 impl TaskListItemController {
     pub fn new(app_store: AppStore, task_id: i64) -> Self {
         let task = app_store.tasks.get_by_id(task_id);
-        let editing = signal(false);
-        let menu_open = signal(false);
         Self {
             app_store,
             task_id,
             task,
-            editing,
-            menu_open,
         }
-    }
-
-    pub fn toggle_complete(&self) {
-        let was_completed = self
-            .task
-            .get_untracked()
-            .map(|t| t.task.completed_at.is_some())
-            .unwrap_or(false);
-        self.app_store
-            .tasks
-            .toggle_complete(self.task_id, was_completed);
     }
 
     pub fn delete(&self) {
         self.app_store.tasks.delete_task(self.task_id);
-    }
-
-    pub fn update(&self, title: String, body: Option<String>) {
-        self.editing.1.set(false);
-        self.app_store.tasks.update_task(self.task_id, title, body);
     }
 
     pub fn set_start_at(&self, start_at: String) {

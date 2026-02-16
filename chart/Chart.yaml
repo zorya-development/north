@@ -1,0 +1,15 @@
+apiVersion: v2
+name: north
+description: GTD-inspired task management system built with Rust/Leptos
+type: application
+version: 0.1.0
+appVersion: "0.2.0"
+home: https://github.com/zorya-development/north
+sources:
+  - https://github.com/zorya-development/north
+
+dependencies:
+  - name: postgresql
+    version: "~16.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled

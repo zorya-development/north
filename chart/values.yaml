@@ -1,0 +1,160 @@
+# Allow bitnamisecure/ images (free post-Aug-2025 registry)
+global:
+  security:
+    allowInsecureImages: true
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/zorya-development/north
+  pullPolicy: IfNotPresent
+  # Defaults to appVersion from Chart.yaml
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# --- App config (non-sensitive) ---
+app:
+  logLevel: "info"
+  siteAddr: "0.0.0.0:5000"
+  siteRoot: "site"
+  uploadDir: "/app/uploads"
+
+# --- Secrets ---
+secret:
+  # Auto-generated if empty, preserved across upgrades
+  jwtSecret: ""
+  # Override: takes precedence over postgresql/externalDatabase
+  databaseUrl: ""
+
+# Reference a pre-created Secret (keys: database-url, jwt-secret)
+existingSecret:
+  name: ""
+
+# --- In-cluster PostgreSQL (Bitnami subchart) ---
+postgresql:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: bitnamisecure/postgresql
+  auth:
+    database: north
+    username: north
+    # Auto-generated if empty
+    password: ""
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+
+# --- External database (when postgresql.enabled=false) ---
+externalDatabase:
+  host: ""
+  port: 5432
+  database: north
+  username: north
+  password: ""
+  existingSecret: ""
+  existingSecretKey: "password"
+
+# --- Migration Job (pre-install/pre-upgrade hook) ---
+migration:
+  enabled: true
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+
+# --- Uploads persistence ---
+persistence:
+  enabled: true
+  existingClaim: ""
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 5Gi
+
+# --- Networking ---
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 5000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: north.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# --- Security ---
+podSecurityContext:
+  fsGroup: 1001
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+# --- Resources (homelab-friendly) ---
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# --- Probes ---
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 30
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 3
+
+startupProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 10
+
+# --- Service Account ---
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# --- Autoscaling ---
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+extraEnv: []
+podAnnotations: {}
+podLabels: {}

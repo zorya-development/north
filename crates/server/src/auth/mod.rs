@@ -1,7 +1,7 @@
 pub mod jwt;
 pub mod middleware;
 
-use north_domain::UserRole;
+use north_dto::UserRole;
 
 #[derive(Debug, Clone)]
 pub struct AuthUser {

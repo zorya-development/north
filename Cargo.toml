@@ -3,10 +3,10 @@ resolver = "2"
 members = ["crates/*"]
 
 [workspace.package]
-version = "0.1.2"
+version = "0.2.0"
 
 [workspace.dependencies]
-north-domain = { path = "crates/domain" }
+north-dto = { path = "crates/dto" }
 north-app = { path = "crates/app" }
 north-ui = { path = "crates/ui" }
 north-stores = { path = "crates/stores" }

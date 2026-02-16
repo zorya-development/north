@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use north_domain::{CreateProject, Project, ProjectFilter, ProjectStatus, UpdateProject};
+use north_dto::{CreateProject, Project, ProjectFilter, ProjectStatus, UpdateProject};
 use north_repositories::ProjectRepository;
 
 #[derive(Clone, Copy)]

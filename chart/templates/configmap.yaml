@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "north.fullname" . }}
+  labels:
+    {{- include "north.labels" . | nindent 4 }}
+data:
+  RUST_LOG: {{ .Values.app.logLevel | quote }}
+  LEPTOS_SITE_ADDR: {{ .Values.app.siteAddr | quote }}
+  LEPTOS_SITE_ROOT: {{ .Values.app.siteRoot | quote }}
+  UPLOAD_DIR: {{ .Values.app.uploadDir | quote }}

@@ -7,3 +7,4 @@ uploads/
 .DS_Store
 .playwright-mcp/
 .docs/
+chart/charts/

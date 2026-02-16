@@ -1,16 +1,6 @@
-pub mod autocomplete;
 pub mod date_picker;
 pub mod drag_drop;
 pub mod filter_autocomplete;
 pub mod layout;
-pub mod nav;
-pub mod project_picker;
-pub mod subtask_form;
-pub mod subtask_list;
-pub mod tag_picker;
-pub mod task_card;
-pub mod task_detail_modal;
-pub mod task_form;
-pub mod task_list;
 pub mod task_meta;
 pub mod theme_toggle;

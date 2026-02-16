@@ -1,11 +1,11 @@
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
-use north_stores::{AppStore, TaskDetailModalStore};
+use north_stores::AppStore;
 
-use crate::components::nav::Sidebar;
+use crate::containers::sidebar::Sidebar;
+use crate::containers::task_create_modal::TaskCreateModal;
 use crate::containers::task_detail_modal::TaskDetailModal;
-use crate::server_fns::auth::check_auth;
-use crate::stores::lookup_store::LookupStore;
+use north_server_fns::auth::check_auth;
 
 #[component]
 pub fn AppLayout(children: Children) -> impl IntoView {
@@ -14,11 +14,8 @@ pub fn AppLayout(children: Children) -> impl IntoView {
 
     let app_store = AppStore::new();
     provide_context(app_store);
-
-    let task_detail_modal_store = TaskDetailModalStore::new(app_store);
-    provide_context(task_detail_modal_store);
-
-    provide_context(LookupStore::new());
+    provide_context(app_store.task_detail_modal);
+    provide_context(app_store.task_create_modal);
 
     Effect::new(move || {
         if let Some(Err(_)) = auth_check.get() {
@@ -27,7 +24,7 @@ pub fn AppLayout(children: Children) -> impl IntoView {
     });
 
     Effect::new(move || {
-        app_store.projects.refetch();
+        app_store.refetch();
     });
 
     view! {
@@ -38,5 +35,6 @@ pub fn AppLayout(children: Children) -> impl IntoView {
             </main>
         </div>
         <TaskDetailModal/>
+        <TaskCreateModal/>
     }
 }
