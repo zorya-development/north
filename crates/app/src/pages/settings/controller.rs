@@ -1,5 +1,6 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
+use north_dto::UpdateSettings;
 use north_repositories::SettingsRepository;
 
 #[derive(Clone, Copy)]
@@ -39,10 +40,11 @@ impl SettingsController {
         if let Ok(days) = interval_str.parse::<i16>() {
             if days >= 1 {
                 spawn_local(async move {
-                    if SettingsRepository::update_review_interval(days)
-                        .await
-                        .is_ok()
-                    {
+                    let input = UpdateSettings {
+                        review_interval_days: Some(days),
+                        ..Default::default()
+                    };
+                    if SettingsRepository::update(input).await.is_ok() {
                         set_saved.set(true);
                     }
                 });
