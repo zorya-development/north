@@ -48,11 +48,9 @@ domain        (pure data types, no IO — compiled for both server and WASM)
   ↑
   db          (Diesel schema, models, pool type)
   ↑
-services      (business logic, Diesel queries — full-featured)
+core          (business logic layer — all services, Diesel queries)
   ↑
-core          (simplified service layer — subset of services, used by REST routes)
-  ↑
-server-fns    (Leptos #[server] functions — RPC boundary, delegates to services + core)
+server-fns    (Leptos #[server] functions — RPC boundary, delegates to core)
   ↑
 repositories  (thin async facade, hides transport)
   ↑
@@ -62,7 +60,7 @@ stores        (reactive state, optimistic updates)
   ↑
   ui          (generic UI components — leptos only, no domain deps)
 
-server        (Axum binary, REST API routes — calls core + services directly)
+server        (Axum binary, REST API routes — calls core directly)
 ```
 
 ### Client-Server Architecture
@@ -87,7 +85,7 @@ Layer rules:
 - Pages talk to Stores, never deeper
 - Stores talk to Repositories, never server functions directly
 - Repositories talk to Server Functions, nothing else
-- Services are reused by both Server Functions and REST API routes
+- Core is reused by both Server Functions and REST API routes
 - Domain types are the shared language across every layer and both runtimes
 
 Why each layer exists:
@@ -98,9 +96,8 @@ Why each layer exists:
 | **Store** | Reactive state (RwSignal) so UI updates automatically. Optimistic updates for instant feedback. Client-side filtered Memos let multiple pages share one dataset. |
 | **Repository** | Decouples stores from transport. Stores don't know #[server] exists. Swappable for testing. |
 | **Server Fn** | Leptos RPC boundary — #[server] macro generates a client stub (serializes args, HTTP POST) and a server handler (deserializes, executes). Neither side sees HTTP directly. |
-| **Service** | Single home for business logic. Reused by server fns AND REST API routes. No duplication. |
-| **Core** | Simplified service subset (TaskService, ProjectService only). Used by REST API routes for basic CRUD. Delegates to Diesel directly. |
-| **DB Layer** | Type-safe Diesel schema, model structs, enum mappings. Services build queries against these types. |
+| **Core** | Single home for business logic. All services (Task, Project, Tag, User, Filter, Stats). Reused by server fns AND REST API routes. No duplication. |
+| **DB Layer** | Type-safe Diesel schema, model structs, enum mappings. Core builds queries against these types. |
 | **Domain** | Pure data types compiled to both WASM and server. The contract everyone agrees on. |
 
 ### Data Flow
@@ -122,7 +119,7 @@ View → Callback → Store.update_task()
 
 REST API (used by external clients):
 ```
-HTTP Request → Axum Router → Auth Middleware → Route Handler → Core/Service → Diesel → PG
+HTTP Request → Axum Router → Auth Middleware → Route Handler → Core → Diesel → PG
 ```
 
 ## Project Structure
@@ -180,9 +177,9 @@ north/
     │           ├── image.rs    # ImageRow, NewImage
     │           └── saved_filter.rs # SavedFilterRow, NewSavedFilter, SavedFilterChangeset
     │
-    ├── services/               # Business logic layer (full-featured)
+    ├── core/                   # Business logic layer (north-core)
     │   └── src/
-    │       ├── lib.rs          # ServiceError, ServiceResult, re-exports (DbPool, services)
+    │       ├── lib.rs          # ServiceError, ServiceResult, re-exports (DbPool, UserRow, all services)
     │       ├── task_service.rs # CRUD, enrich(), actionable computation, filtering, batch operations
     │       ├── project_service.rs # CRUD, find_by_title, archive/unarchive
     │       ├── tag_service.rs  # CRUD, sync_task_tags (full replace), add_task_tags (additive)
@@ -190,12 +187,6 @@ north/
     │       ├── stats_service.rs # Aggregated statistics
     │       ├── filter_service.rs # SavedFilter CRUD with query validation
     │       └── filter_translator.rs # AST → HashSet<i64> two-pass filter evaluation
-    │
-    ├── core/                   # Simplified service layer (north-core)
-    │   └── src/
-    │       ├── lib.rs          # ServiceError, ServiceResult, re-exports (DbPool, TaskService, ProjectService)
-    │       ├── task_service.rs # Basic CRUD + review (no enrich, no batch, no specialized queries)
-    │       └── project_service.rs # Basic CRUD + find_by_title
     │
     ├── stores/                 # Reactive client state (north-stores)
     │   └── src/
@@ -255,33 +246,27 @@ north/
     │       │   ├── filter/     # FilterPage (container/controller/view, saved filters + DSL search)
     │       │   └── filter_help.rs # FilterHelpPage (DSL syntax reference, single file)
     │       ├── containers/             # Complex stateful domain components
+    │       │   ├── autocomplete/       # Container/view pattern (tag/project autocomplete)
     │       │   ├── project_picker/     # Container/view pattern (supports icon_only prop)
+    │       │   ├── sidebar/            # Container/view pattern (sidebar navigation)
     │       │   ├── tag_picker/         # Container/view pattern (supports icon_only prop)
     │       │   ├── task_detail_modal/  # Container/view pattern (modal for task details)
     │       │   ├── task_inline_form/   # Container/controller/view (inline task creation)
     │       │   └── task_list_item/     # Container/controller/view (single task row + inline subtask list)
-    │       ├── components/
-    │       │   ├── task_list/          # Container/view pattern
-    │       │   ├── date_picker/        # Container/view pattern (supports icon_only prop)
-    │       │   ├── filter_autocomplete/ # DSL autocomplete for filter page
-    │       │   ├── autocomplete/       # Container/view pattern
-    │       │   ├── task_meta.rs        # Pure view (date, project, tags display)
-    │       │   ├── task_form.rs        # Self-contained form widget
-    │       │   ├── drag_drop.rs        # Drag and drop utilities
-    │       │   ├── theme_toggle.rs     # Dark/light theme toggle
-    │       │   ├── layout.rs           # AppLayout (auth guard, context providers, sidebar + main shell)
-    │       │   └── nav.rs              # Sidebar navigation (projects, filters, archive)
-    │       └── server_fns/
-    │           ├── auth.rs     # check_auth(), get_auth_user_id()
-    │           ├── tasks.rs    # Task CRUD → calls north_services/north_core
-    │           ├── projects.rs # Project CRUD → calls north_services/north_core
-    │           ├── settings.rs # User settings → calls north_services::UserService
-    │           └── filters.rs  # Filter CRUD + execute → calls FilterService/TaskService
+    │       └── components/
+    │           ├── task_list/          # Container/view pattern
+    │           ├── date_picker/        # Container/view pattern (supports icon_only prop)
+    │           ├── filter_autocomplete/ # DSL autocomplete for filter page
+    │           ├── task_meta.rs        # Pure view (date, project, tags display)
+    │           ├── task_form.rs        # Self-contained form widget
+    │           ├── drag_drop.rs        # Drag and drop utilities
+    │           ├── theme_toggle.rs     # Dark/light theme toggle
+    │           └── layout.rs           # AppLayout (auth guard, context providers, sidebar + main shell)
     │
     └── server/                 # Axum binary
         └── src/
             ├── main.rs         # Tokio main, Diesel pool, Leptos SSR router
-            ├── error.rs        # AppError (NotFound, Unauthorized, Forbidden, BadRequest, Internal, Service, CoreService)
+            ├── error.rs        # AppError (NotFound, Unauthorized, Forbidden, BadRequest, Internal, Service)
             ├── seed.rs         # seed_admin() via UserService
             ├── auth/
             │   ├── mod.rs      # AuthUser { id, role } struct
@@ -291,22 +276,21 @@ north/
                 ├── mod.rs      # public_api_router(), protected_api_router()
                 ├── auth.rs     # POST /api/auth/login, /api/auth/logout
                 ├── tasks.rs    # CRUD + review endpoints → north_core::TaskService
-                ├── projects.rs # CRUD → north_services::ProjectService
-                └── stats.rs    # GET /api/stats → north_services::StatsService
+                ├── projects.rs # CRUD → north_core::ProjectService
+                └── stats.rs    # GET /api/stats → north_core::StatsService
 ```
 
 ### Crate Details
 
 - **`domain`** — Pure data types with serde + chrono, no IO. Compiled for both server and WASM. Key types: `Task` (includes enrichment fields: project_title, tags, subtask_count, completed_subtask_count, actionable), `TaskFilter` (complex query object), `ProjectFilter`, `ProjectStatus` (Active, Archived), `UserSettings` (review_interval_days, default_sequential_limit), `FilterQuery`/`FilterExpr` (filter DSL AST), `SavedFilter`. Includes `parse_filter()` recursive descent parser for the filter DSL (runs in WASM for client-side validation). Also includes `detect_completion_context()` for DSL autocomplete — tokenizes text up to cursor position and returns `DslCompletionContext` (FieldName, FieldValue, ArrayValue, Keyword, None) to drive autocomplete suggestions. Utility modules: `serde_helpers` (three-state Option serialization), `sort_key` (fractional indexing for item ordering).
 - **`db`** — Diesel infrastructure: `schema.rs` (auto-generated by `diesel print-schema`), model structs (`XxxRow` for reading, `NewXxx` for inserting, `XxxChangeset` for updating), PG enum mappings via `diesel-derive-enum` (`UserRoleMapping`, `ProjectViewTypeMapping`, `ProjectStatusMapping`), `DbPool` type alias for `diesel_async::deadpool::Pool<AsyncPgConnection>`.
-- **`services`** — Full-featured business logic layer. Each service is a struct with static async methods that use Diesel's query builder directly. Key patterns: `TaskService::enrich()` for batch metadata loading (projects, tags, subtask counts), `compute_actionable()` for sequential task logic in Rust, `into_boxed()` for dynamic filtering, `execute_dsl_filter()` for filter DSL evaluation via `filter_translator`. `FilterService` for saved filter CRUD. Re-exports `DbPool` so consumers only depend on `north-services`.
-- **`core`** — Simplified service layer (`north-core`). Contains only `TaskService` and `ProjectService` with basic CRUD operations. Does not include enrich(), specialized queries (get_inbox, get_today), or tag/user/filter/stats services. Used by REST API route handlers. Re-exports `DbPool`.
+- **`core`** — Full-featured business logic layer (`north-core`). Contains all services: `TaskService`, `ProjectService`, `TagService`, `UserService`, `StatsService`, `FilterService`, plus `filter_translator`. Each service is a struct with static async methods that use Diesel's query builder directly. Key patterns: `TaskService::enrich()` for batch metadata loading (projects, tags, subtask counts), `compute_actionable()` for sequential task logic in Rust, `into_boxed()` for dynamic filtering, `execute_dsl_filter()` for filter DSL evaluation via `filter_translator`. `FilterService` for saved filter CRUD. Re-exports `DbPool` and `UserRow`.
 - **`stores`** — Reactive client state (`north-stores`). `AppStore` wraps `TaskStore` + `ProjectStore` + `TagStore` + `SavedFilterStore` + `TaskDetailModalStore`, provided globally via context. `TaskStore` holds tasks in `RwSignal<Vec<Task>>` — pages create filtered `Memo`s over the shared data. Supports optimistic updates (immediate UI, async sync). Individual stores (`TagStore`, `SavedFilterStore`) cache domain data for pickers and navigation.
 - **`repositories`** — Thin async facade (`north-repositories`). Decouples stores from server function details. No business logic — pure pass-through. Makes transport swappable for testing. Includes `TaskRepository`, `ProjectRepository`, `FilterRepository`, `TagRepository`, `SettingsRepository`.
-- **`server-fns`** — Leptos `#[server]` RPC boundary (`north-server-fns`). Each function extracts `DbPool` from context and `user_id` from JWT, then delegates to services. The `#[server]` macro generates client stubs (HTTP POST) and server handlers automatically. Covers tasks, projects, filters, tags, and settings.
+- **`server-fns`** — Leptos `#[server]` RPC boundary (`north-server-fns`). Each function extracts `DbPool` from context and `user_id` from JWT, then delegates to core. The `#[server]` macro generates client stubs (HTTP POST) and server handlers automatically. Covers tasks, projects, filters, tags, and settings.
 - **`ui`** — Generic UI component library (`north-ui`). No domain dependencies — only `leptos`, `pulldown-cmark`, `ammonia`. Components: `Icon`/`IconKind`, `DropdownMenu`/`DropdownItem`, `Popover`, `Modal`, `Checkbox`, `MarkdownView`/`render_markdown()`, `AutocompleteDropdown`/`SuggestionItem`, `Spinner`. Used by `app` crate for reusable UI primitives.
-- **`app`** — Leptos library crate. Features: `hydrate` (WASM client), `ssr` (server-side, pulls in north-services/north-core/argon2/jsonwebtoken). Pages follow container/controller/view pattern and interact with stores for data. Complex stateful domain components live in `containers/` (pickers, task list item, inline form, detail modal). Simpler/presentational components live in `components/`. Legacy server functions in `app/server_fns/` for auth, tasks, projects, settings, filters.
-- **`server`** — Axum binary. Depends on `north-app` with `ssr` feature. Auth middleware injects `AuthUser { id, role }` into request extensions. Route handlers delegate to `north-core` (tasks) and `north-services` (projects, stats).
+- **`app`** — Leptos library crate. Features: `hydrate` (WASM client), `ssr` (server-side, pulls in north-core/north-server-fns/argon2/jsonwebtoken). Pages follow container/controller/view pattern and interact with stores for data. Complex stateful domain components live in `containers/` (pickers, sidebar, autocomplete, task list item, inline form, detail modal). Simpler/presentational components live in `components/`.
+- **`server`** — Axum binary. Depends on `north-app` with `ssr` feature. Auth middleware injects `AuthUser { id, role }` into request extensions. Route handlers delegate to `north-core` for all services (tasks, projects, stats).
 
 ### REST API Routes
 
@@ -353,17 +337,16 @@ Triggers: `update_updated_at()` on users, projects, tasks.
 - **Context providers:** Use `provide_context()` directly in containers/controllers — no wrapper methods like `.provide()`. Views and child components consume via `expect_context::<T>()` or typed helpers like `use_app_store()`.
 - **Page data ownership:** Each page owns its data loading. Pages call `refetch()` or create their own `Resource` on mount. The layout does not pre-fetch data for pages.
 - **Container/controller/view pattern:** Pages with state management use a three-file pattern: `container.rs` (component entry, wires controller to view via inline `Callback` props), `controller.rs` (business logic, data loading, store interaction), `view.rs` (pure rendering). Simpler components use two-file container/view. Pure presentational components stay as single files. Callbacks are inlined directly into view props — no intermediate variables. Picker components (date, project, tag) support `icon_only` prop for compact action bar rendering in task cards.
-- **Containers vs components:** `containers/` holds complex stateful domain components that wire together stores, repositories, and rich interactions (pickers, task list item, inline form, detail modal). `components/` holds simpler or more presentational components (task card, task list, date picker, layout, nav).
+- **Containers vs components:** `containers/` holds complex stateful domain components that wire together stores, repositories, and rich interactions (pickers, sidebar, autocomplete, task list item, inline form, detail modal). `components/` holds simpler or more presentational components (task list, date picker, layout, filter autocomplete).
 - **Three-layer client architecture:** `server-fns` (RPC boundary) → `repositories` (thin facade) → `stores` (reactive state + business logic). Stores call repositories, never server-fns directly. Pages/controllers call stores, never repositories directly.
 - **TaskStore:** Reactive store (`stores/task_store.rs`) that owns task state and mutations (complete, delete, update, set/clear start_at, refetch). `AppStore` wraps `TaskStore` for global context. Inbox uses `AppStore`; other pages create local stores with their own `Resource`.
 - **TagStore / SavedFilterStore:** Individual reactive stores for tags and saved filters, cached globally via `AppStore`. Used by pickers and navigation.
 - **TaskDetailModalStore:** Manages task detail modal state, navigation between tasks, and subtask handling. Provided via `AppStore`.
-- **Token parsing:** `parse_tokens()` in domain crate extracts `#tags` and `@project` references from task title/body text. Services resolve these to DB records.
-- **Filter DSL:** JQL-like query language parsed by hand-written recursive descent parser in domain crate (`parse_filter()`). Runs in WASM for client-side validation. Supports fields (title, body, project, tags, status, due_date, start_at, created, updated), operators (`=`, `!=`, `=~` glob, `>`, `<`, `>=`, `<=`, `is null`, `in [...]`), logical operators (`AND`, `OR`, `NOT`, parentheses), and `ORDER BY`. Two-pass evaluation in services: parse → AST, then recursively evaluate AST → `HashSet<i64>` of matching task IDs (AND=intersection, OR=union, NOT=difference).
+- **Token parsing:** `parse_tokens()` in domain crate extracts `#tags` and `@project` references from task title/body text. Core resolves these to DB records.
+- **Filter DSL:** JQL-like query language parsed by hand-written recursive descent parser in domain crate (`parse_filter()`). Runs in WASM for client-side validation. Supports fields (title, body, project, tags, status, due_date, start_at, created, updated), operators (`=`, `!=`, `=~` glob, `>`, `<`, `>=`, `<=`, `is null`, `in [...]`), logical operators (`AND`, `OR`, `NOT`, parentheses), and `ORDER BY`. Two-pass evaluation in core: parse → AST, then recursively evaluate AST → `HashSet<i64>` of matching task IDs (AND=intersection, OR=union, NOT=difference).
 - **DSL autocomplete:** `FilterAutocompleteTextarea` wraps a textarea with context-aware suggestions powered by `detect_completion_context()` from domain crate. Suggests field names, operators/keywords, and field-specific values (tags, projects, statuses) from stores. Uses `on_submit` callback for Enter-to-search.
 - **Filter page search bar:** Filter results use a `committed_query` signal — the resource only re-fetches when the user explicitly clicks Search or presses Enter, not on every keystroke. Save modal (`Modal` component) prompts for title when creating new filters.
 - **Completed tasks toggle:** Task list pages (inbox, today, all_tasks, project) pass an optional `completed_resource` to `TaskList`. The `CompletedSection` component renders a toggle button with count and dimmed completed tasks below the active list.
-- **Dual service crates:** `north-services` is the full-featured service layer (enrich, batch operations, filters, tags, users, stats). `north-core` is a simplified subset (basic CRUD for tasks/projects only). Server-fns mix both — this is a known inconsistency being consolidated.
 
 ## Code Conventions
 
@@ -387,16 +370,16 @@ Triggers: `update_updated_at()` on users, projects, tasks.
 4. Write `up.sql` and `down.sql`
 5. Run `just migrate` (auto-updates `schema.rs`)
 6. Add model structs in `crates/db/src/models/`
-7. Add service methods in `crates/services/src/`
+7. Add service methods in `crates/core/src/`
 
 ### Add New Page
 1. Create page directory in `crates/app/src/pages/<name>/` with `container.rs`, `controller.rs`, `view.rs`, `mod.rs`
 2. Controller loads its own data (calls `refetch()` or creates `Resource`) — layout does not pre-fetch
 3. Container wires controller to view with inline `Callback` props
 4. Export in `crates/app/src/pages/mod.rs`
-5. Add server functions in `crates/server-fns/src/` (or `crates/app/src/server_fns/` for legacy)
+5. Add server functions in `crates/server-fns/src/`
 6. Register route in `crates/app/src/app.rs`
-7. Add nav item in `crates/app/src/components/nav.rs`
+7. Add nav item in `crates/app/src/containers/sidebar/view.rs`
 
 ### Add New UI Primitive
 1. Create component file in `crates/ui/src/`
