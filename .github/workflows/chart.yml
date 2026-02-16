@@ -1,0 +1,61 @@
+name: chart
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "chart/**"
+
+env:
+  REGISTRY: ghcr.io
+  CHART_REPO: ghcr.io/zorya-development/north/charts
+
+jobs:
+  release:
+    name: Package & Push Chart
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read chart version
+        id: version
+        run: |
+          version=$(grep -m1 '^version:' chart/Chart.yaml | awk '{print $2}')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check if chart version already published
+        id: check
+        run: |
+          if helm pull oci://${{ env.CHART_REPO }}/north --version ${{ steps.version.outputs.version }} 2>/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Chart version ${{ steps.version.outputs.version }} already exists, skipping"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Will publish chart ${{ steps.version.outputs.version }}"
+          fi
+
+      - name: Login to OCI registry
+        if: steps.check.outputs.exists == 'false'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+
+      - name: Add Bitnami repository
+        if: steps.check.outputs.exists == 'false'
+        run: helm repo add bitnami https://charts.bitnami.com/bitnami
+
+      - name: Build chart dependencies
+        if: steps.check.outputs.exists == 'false'
+        run: helm dependency build chart/
+
+      - name: Package chart
+        if: steps.check.outputs.exists == 'false'
+        run: helm package chart/
+
+      - name: Push chart to OCI registry
+        if: steps.check.outputs.exists == 'false'
+        run: helm push north-${{ steps.version.outputs.version }}.tgz oci://${{ env.CHART_REPO }}
