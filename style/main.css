@@ -5,6 +5,7 @@
   --bg-tertiary: #E8E6E1;
   --bg-input: #EDECEA;
   --border: #E2E0DB;
+  --border-muted: #E2E0DBbb;
   --border-hover: #D1CFC8;
   --text-primary: #2C2C2E;
   --text-secondary: #6B6B6E;
@@ -30,6 +31,7 @@
   --bg-tertiary: #2F3045;
   --bg-input: #353650;
   --border: #3A3B50;
+  --border-muted: #3A3B5088;
   --border-hover: #4A4B60;
   --text-primary: #E8E6E1;
   --text-secondary: #8E8D96;

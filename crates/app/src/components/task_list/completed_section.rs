@@ -21,7 +21,7 @@ pub fn CompletedSection(
                 return None;
             }
             Some(view! {
-                <div class="mt-4 border-t border-border pt-3">
+                <div class="mt-4 border-t border-(--border-muted) pt-3">
                     <button
                         class="text-xs text-text-secondary \
                                hover:text-text-primary transition-colors"

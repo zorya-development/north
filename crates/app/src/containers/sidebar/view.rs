@@ -24,7 +24,7 @@ pub fn SidebarView(
     let (new_title, set_new_title) = signal(String::new());
 
     view! {
-        <aside class="w-60 bg-sidebar border-r border-border flex flex-col h-full">
+        <aside class="w-60 bg-sidebar border-r border-(--border-muted) flex flex-col h-full">
             <div class="px-5 pt-2 pb-2 mb-6 flex justify-center h-[140px]">
                 <div class="sidebar-logo w-full"/>
             </div>
@@ -160,7 +160,7 @@ pub fn SidebarView(
                 </div>
             </nav>
 
-            <div class="p-2 border-t border-border space-y-0.5">
+            <div class="p-2 border-t border-(--border-muted) space-y-0.5">
                 <NavItem href="/settings" label="Settings" icon=IconKind::Settings/>
                 <ThemeToggle/>
             </div>

@@ -31,7 +31,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                 on:click=move |_| store.close()
             />
             <div
-                class="relative border border-border/60 \
+                class="relative border border-(--border-muted) \
                        rounded-2xl shadow-2xl max-w-3xl w-full mx-4 \
                        max-h-[85vh] flex flex-col"
                 style="background-color: var(--bg-secondary)"
@@ -62,7 +62,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                     Some(view! {
                         // Header
                         <div class="flex items-center justify-between \
-                                    px-4 py-3 border-b border-border \
+                                    px-4 py-3 border-b border-(--border-muted) \
                                     flex-shrink-0">
                             <div class="flex items-center gap-1 \
                                         text-xs text-text-tertiary \
@@ -147,7 +147,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                 <div class="flex items-center gap-1 \
                                             px-4 py-2 text-xs \
                                             text-text-tertiary \
-                                            border-b border-border \
+                                            border-b border-(--border-muted) \
                                             flex-shrink-0 overflow-x-auto">
                                     {ancestor_list.into_iter().map(
                                         |(aid, atitle, acount)| {
@@ -414,7 +414,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                             </div>
 
                             // Right sidebar
-                            <div class="w-52 border-l border-border \
+                            <div class="w-52 border-l border-(--border-muted) \
                                         px-3 py-3 space-y-2 \
                                         overflow-y-auto flex-shrink-0">
                                 // Project
