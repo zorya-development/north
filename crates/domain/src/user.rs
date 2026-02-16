@@ -58,7 +58,7 @@ pub struct UpdateUser {
     pub password: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 pub struct UpdateSettings {
     pub review_interval_days: Option<i16>,
     pub default_sequential_limit: Option<i16>,

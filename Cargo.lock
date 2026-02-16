@@ -1735,9 +1735,10 @@ dependencies = [
  "leptos_axum",
  "leptos_meta",
  "leptos_router",
+ "north-core",
  "north-domain",
  "north-repositories",
- "north-services",
+ "north-server-fns",
  "north-stores",
  "north-ui",
  "serde",
@@ -1756,6 +1757,7 @@ dependencies = [
  "chrono",
  "diesel",
  "diesel-async",
+ "futures-util",
  "north-db",
  "north-domain",
  "serde",
@@ -1816,7 +1818,6 @@ dependencies = [
  "north-core",
  "north-db",
  "north-domain",
- "north-services",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -1833,30 +1834,14 @@ name = "north-server-fns"
 version = "0.1.0"
 dependencies = [
  "axum-extra",
+ "chrono",
  "http",
  "jsonwebtoken",
  "leptos",
  "leptos_axum",
  "north-core",
  "north-domain",
- "north-services",
  "serde",
-]
-
-[[package]]
-name = "north-services"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "diesel",
- "diesel-async",
- "futures-util",
- "north-db",
- "north-domain",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tracing",
 ]
 
 [[package]]

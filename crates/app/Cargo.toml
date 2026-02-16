@@ -7,13 +7,19 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-hydrate = ["leptos/hydrate", "north-repositories/hydrate", "north-stores/hydrate"]
+hydrate = [
+    "leptos/hydrate",
+    "north-repositories/hydrate",
+    "north-stores/hydrate",
+    "north-server-fns/hydrate",
+]
 ssr = [
     "leptos/ssr",
     "north-repositories/ssr",
     "north-stores/ssr",
+    "north-server-fns/ssr",
     "dep:leptos_axum",
-    "dep:north-services",
+    "dep:north-core",
     "dep:argon2",
     "dep:jsonwebtoken",
     "dep:tokio",
@@ -26,7 +32,8 @@ north-domain = { workspace = true }
 north-ui = { workspace = true }
 north-stores = { workspace = true }
 north-repositories = { workspace = true }
-north-services = { path = "../services", optional = true }
+north-server-fns = { workspace = true }
+north-core = { path = "../core", optional = true }
 
 leptos = "0.7"
 leptos_meta = "0.7"

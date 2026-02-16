@@ -3,7 +3,7 @@ use leptos_router::hooks::use_location;
 
 use crate::components::drag_drop::DragDropContext;
 use crate::components::theme_toggle::ThemeToggle;
-use north_stores::use_app_store;
+use north_domain::{Project, SavedFilter};
 use north_ui::{Icon, IconKind};
 
 const PRESET_COLORS: &[&str] = &[
@@ -12,8 +12,14 @@ const PRESET_COLORS: &[&str] = &[
 ];
 
 #[component]
-pub fn Sidebar() -> impl IntoView {
-    let app_store = use_app_store();
+pub fn SidebarView(
+    projects: Signal<Vec<Project>>,
+    saved_filters: Signal<Vec<SavedFilter>>,
+    on_create_project: Callback<String>,
+    on_archive_project: Callback<i64>,
+    on_edit_project: Callback<(i64, String, String)>,
+    on_drop_task_to_project: Callback<(i64, i64)>,
+) -> impl IntoView {
     let (creating, set_creating) = signal(false);
     let (new_title, set_new_title) = signal(String::new());
 
@@ -53,7 +59,7 @@ pub fn Sidebar() -> impl IntoView {
                                 ev.prevent_default();
                                 let title = new_title.get_untracked();
                                 if !title.trim().is_empty() {
-                                    app_store.projects.create(
+                                    on_create_project.run(
                                         title.trim().to_string(),
                                     );
                                     set_creating.set(false);
@@ -82,8 +88,7 @@ pub fn Sidebar() -> impl IntoView {
 
                     <div class="mt-1 space-y-0.5">
                         {move || {
-                            app_store
-                                .projects
+                            projects
                                 .get()
                                 .into_iter()
                                 .map(|p| {
@@ -96,13 +101,12 @@ pub fn Sidebar() -> impl IntoView {
                                             title=title
                                             color=color
                                             on_archive=move || {
-                                                app_store.projects.archive(pid);
+                                                on_archive_project.run(pid);
                                             }
                                             on_edit=move |id, t, c| {
-                                                app_store
-                                                    .projects
-                                                    .update_details(id, t, c);
+                                                on_edit_project.run((id, t, c));
                                             }
+                                            on_drop_task=on_drop_task_to_project
                                         />
                                     }
                                 })
@@ -133,8 +137,7 @@ pub fn Sidebar() -> impl IntoView {
 
                     <div class="mt-1 space-y-0.5">
                         {move || {
-                            app_store
-                                .saved_filters
+                            saved_filters
                                 .get()
                                 .into_iter()
                                 .map(|f| {
@@ -172,8 +175,8 @@ fn ProjectItem(
     color: String,
     on_archive: impl Fn() + Send + Sync + 'static,
     on_edit: impl Fn(i64, String, String) + Send + Sync + 'static,
+    on_drop_task: Callback<(i64, i64)>,
 ) -> impl IntoView {
-    let app_store = use_app_store();
     let (hover, set_hover) = signal(false);
     let (drag_over, set_drag_over) = signal(false);
     let (editing, set_editing) = signal(false);
@@ -236,7 +239,7 @@ fn ProjectItem(
                                     if let Some(task_id) =
                                         ctx.dragging_task_id.get_untracked()
                                     {
-                                        app_store.tasks.set_project(task_id, id);
+                                        on_drop_task.run((task_id, id));
                                         ctx.dragging_task_id.set(None);
                                         ctx.drop_target.set(None);
                                     }

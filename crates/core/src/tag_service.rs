@@ -10,7 +10,7 @@ use crate::ServiceResult;
 pub struct TagService;
 
 impl TagService {
-    pub async fn get_all(pool: &DbPool, user_id: i64) -> ServiceResult<Vec<Tag>> {
+    pub async fn list(pool: &DbPool, user_id: i64) -> ServiceResult<Vec<Tag>> {
         let mut conn = pool.get().await?;
         let rows = tags::table
             .inner_join(task_tags::table.on(task_tags::tag_id.eq(tags::id)))
@@ -31,7 +31,6 @@ impl TagService {
         task_id: i64,
         names: &[String],
     ) -> ServiceResult<()> {
-        // Upsert all tags
         for name in names {
             diesel::insert_into(tags::table)
                 .values(&NewTag {
@@ -45,12 +44,10 @@ impl TagService {
                 .await?;
         }
 
-        // Remove old associations
         diesel::delete(task_tags::table.filter(task_tags::task_id.eq(task_id)))
             .execute(conn)
             .await?;
 
-        // Link new tags
         if !names.is_empty() {
             let tag_ids: Vec<i64> = tags::table
                 .filter(tags::user_id.eq(user_id))
@@ -95,7 +92,6 @@ impl TagService {
             return Ok(());
         }
 
-        // Upsert all tags
         for name in names {
             diesel::insert_into(tags::table)
                 .values(&NewTag {
@@ -109,7 +105,6 @@ impl TagService {
                 .await?;
         }
 
-        // Get tag IDs
         let tag_ids: Vec<i64> = tags::table
             .filter(tags::user_id.eq(user_id))
             .filter(tags::name.eq_any(names))
@@ -117,7 +112,6 @@ impl TagService {
             .load(conn)
             .await?;
 
-        // Insert links, ignoring conflicts
         let new_links: Vec<NewTaskTag> = tag_ids
             .into_iter()
             .map(|tag_id| NewTaskTag { task_id, tag_id })

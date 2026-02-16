@@ -3,14 +3,14 @@ use diesel_async::RunQueryDsl;
 use north_db::models::UserRow;
 use north_db::schema::users;
 use north_db::DbPool;
-use north_domain::UserSettings;
+use north_domain::{UpdateSettings, UserSettings};
 
 use crate::{ServiceError, ServiceResult};
 
 pub struct UserService;
 
 impl UserService {
-    pub async fn find_by_email(pool: &DbPool, email: &str) -> ServiceResult<Option<UserRow>> {
+    pub async fn get_by_email(pool: &DbPool, email: &str) -> ServiceResult<Option<UserRow>> {
         let mut conn = pool.get().await?;
         let row = users::table
             .filter(users::email.eq(email))
@@ -34,29 +34,26 @@ impl UserService {
     pub async fn update_settings(
         pool: &DbPool,
         user_id: i64,
-        settings: serde_json::Value,
+        input: &UpdateSettings,
     ) -> ServiceResult<()> {
+        let mut settings = Self::get_settings(pool, user_id).await?;
+
+        if let Some(days) = input.review_interval_days {
+            settings.review_interval_days = days;
+        }
+
+        let val =
+            serde_json::to_value(&settings).map_err(|e| ServiceError::BadRequest(e.to_string()))?;
+
         let mut conn = pool.get().await?;
         let affected = diesel::update(users::table.filter(users::id.eq(user_id)))
-            .set(users::settings.eq(settings))
+            .set(users::settings.eq(val))
             .execute(&mut conn)
             .await?;
         if affected == 0 {
             return Err(ServiceError::NotFound("User not found".into()));
         }
         Ok(())
-    }
-
-    pub async fn update_review_interval(
-        pool: &DbPool,
-        user_id: i64,
-        days: i16,
-    ) -> ServiceResult<()> {
-        let mut settings = Self::get_settings(pool, user_id).await?;
-        settings.review_interval_days = days;
-        let val =
-            serde_json::to_value(&settings).map_err(|e| ServiceError::BadRequest(e.to_string()))?;
-        Self::update_settings(pool, user_id, val).await
     }
 
     pub async fn admin_exists(pool: &DbPool) -> ServiceResult<bool> {

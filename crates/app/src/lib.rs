@@ -4,8 +4,6 @@ pub mod app;
 pub mod components;
 pub mod containers;
 pub mod pages;
-pub mod server_fns;
-pub mod stores;
 
 pub use app::*;
 

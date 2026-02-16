@@ -618,4 +618,99 @@ impl TaskService {
 
         Ok(())
     }
+
+    pub async fn review_all(pool: &DbPool, user_id: i64) -> ServiceResult<()> {
+        let mut conn = pool.get().await?;
+        let today = Utc::now().date_naive();
+
+        let settings_val: serde_json::Value = users::table
+            .filter(users::id.eq(user_id))
+            .select(users::settings)
+            .first(&mut conn)
+            .await?;
+        let settings: UserSettings = serde_json::from_value(settings_val).unwrap_or_default();
+        let cutoff =
+            Utc::now().date_naive() - chrono::Duration::days(settings.review_interval_days as i64);
+
+        diesel::update(
+            tasks::table
+                .filter(tasks::user_id.eq(user_id))
+                .filter(tasks::parent_id.is_null())
+                .filter(tasks::completed_at.is_null())
+                .filter(
+                    tasks::reviewed_at
+                        .is_null()
+                        .or(tasks::reviewed_at.le(cutoff)),
+                ),
+        )
+        .set(tasks::reviewed_at.eq(Some(today)))
+        .execute(&mut conn)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn execute_dsl_filter(
+        pool: &DbPool,
+        user_id: i64,
+        query_str: &str,
+    ) -> ServiceResult<Vec<Task>> {
+        let parsed = north_domain::parse_filter(query_str).map_err(|errs| {
+            ServiceError::BadRequest(
+                errs.into_iter()
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>()
+                    .join("; "),
+            )
+        })?;
+
+        let mut conn = pool.get().await?;
+
+        let matching_ids: Vec<i64> = if let Some(ref expr) = parsed.expression {
+            let ids = crate::filter_translator::eval_expr(pool, user_id, expr).await?;
+            ids.into_iter().collect()
+        } else {
+            tasks::table
+                .filter(tasks::user_id.eq(user_id))
+                .filter(tasks::parent_id.is_null())
+                .select(tasks::id)
+                .load(&mut conn)
+                .await?
+        };
+
+        if matching_ids.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let rows: Vec<TaskRow> = tasks::table
+            .filter(tasks::id.eq_any(&matching_ids))
+            .select(TaskRow::as_select())
+            .load(&mut conn)
+            .await?;
+
+        let mut results = Self::load_with_meta(pool, rows).await?;
+        Self::compute_actionable_batch(pool, &mut results).await?;
+
+        if let Some(ref order_by) = parsed.order_by {
+            use north_domain::SortDirection;
+            results.sort_by(|a, b| {
+                let cmp = match order_by.field {
+                    north_domain::FilterField::Title => {
+                        a.title.to_lowercase().cmp(&b.title.to_lowercase())
+                    }
+                    north_domain::FilterField::DueDate => a.due_date.cmp(&b.due_date),
+                    north_domain::FilterField::StartAt => a.start_at.cmp(&b.start_at),
+                    north_domain::FilterField::Created => a.created_at.cmp(&b.created_at),
+                    north_domain::FilterField::Updated => a.updated_at.cmp(&b.updated_at),
+                    _ => a.sort_key.cmp(&b.sort_key),
+                };
+                match order_by.direction {
+                    SortDirection::Asc => cmp,
+                    SortDirection::Desc => cmp.reverse(),
+                }
+            });
+        }
+
+        Ok(results)
+    }
 }

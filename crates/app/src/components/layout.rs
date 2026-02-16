@@ -2,9 +2,9 @@ use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 use north_stores::AppStore;
 
-use crate::components::nav::Sidebar;
+use crate::containers::sidebar::Sidebar;
 use crate::containers::task_detail_modal::TaskDetailModal;
-use crate::server_fns::auth::check_auth;
+use north_server_fns::auth::check_auth;
 
 #[component]
 pub fn AppLayout(children: Children) -> impl IntoView {

@@ -3,7 +3,7 @@ use leptos::html;
 use leptos::prelude::*;
 use leptos::wasm_bindgen::JsCast;
 
-use north_stores::AppStore;
+use north_domain::{Project, ProjectStatus, Tag};
 use north_ui::{AutocompleteDropdown, SuggestionItem};
 
 #[derive(Clone)]
@@ -35,33 +35,33 @@ fn find_trigger(value: &str, cursor: usize) -> Option<TriggerState> {
     None
 }
 
-fn get_suggestions(app_store: &AppStore, trigger: char, query: &str) -> Vec<SuggestionItem> {
+fn get_suggestions(
+    tags: &[Tag],
+    projects: &[Project],
+    trigger: char,
+    query: &str,
+) -> Vec<SuggestionItem> {
     let query_lower = query.to_lowercase();
     match trigger {
-        '#' => {
-            let tags = app_store.tags.get();
-            tags.into_iter()
-                .filter(|t| query_lower.is_empty() || t.name.to_lowercase().contains(&query_lower))
-                .map(|t| SuggestionItem {
-                    name: t.name,
-                    color: t.color,
-                })
-                .collect()
-        }
-        '@' => {
-            let projects = app_store.projects.get();
-            projects
-                .into_iter()
-                .filter(|p| {
-                    p.status == north_domain::ProjectStatus::Active
-                        && (query_lower.is_empty() || p.title.to_lowercase().contains(&query_lower))
-                })
-                .map(|p| SuggestionItem {
-                    name: p.title,
-                    color: p.color,
-                })
-                .collect()
-        }
+        '#' => tags
+            .iter()
+            .filter(|t| query_lower.is_empty() || t.name.to_lowercase().contains(&query_lower))
+            .map(|t| SuggestionItem {
+                name: t.name.clone(),
+                color: t.color.clone(),
+            })
+            .collect(),
+        '@' => projects
+            .iter()
+            .filter(|p| {
+                p.status == ProjectStatus::Active
+                    && (query_lower.is_empty() || p.title.to_lowercase().contains(&query_lower))
+            })
+            .map(|p| SuggestionItem {
+                name: p.title.clone(),
+                color: p.color.clone(),
+            })
+            .collect(),
         _ => vec![],
     }
 }
@@ -77,15 +77,16 @@ fn insert_completion(value: &str, trigger_start: usize, trigger: char, name: &st
 }
 
 #[component]
-pub fn AutocompleteInput(
+pub fn AutocompleteInputView(
     value: ReadSignal<String>,
     set_value: WriteSignal<String>,
     #[prop(optional)] placeholder: &'static str,
     #[prop(optional)] class: &'static str,
-    #[prop(optional)] on_keydown: Option<std::sync::Arc<dyn Fn(KeyboardEvent) + Send + Sync>>,
+    on_keydown: Option<std::sync::Arc<dyn Fn(KeyboardEvent) + Send + Sync>>,
     #[prop(optional)] autofocus: bool,
+    tags: Signal<Vec<Tag>>,
+    projects: Signal<Vec<Project>>,
 ) -> impl IntoView {
-    let app_store = use_context::<AppStore>();
     let (trigger_state, set_trigger_state) = signal(None::<TriggerState>);
     let (highlighted, set_highlighted) = signal(0_usize);
     let (suggestions, set_suggestions) = signal(Vec::<SuggestionItem>::new());
@@ -100,14 +101,12 @@ pub fn AutocompleteInput(
     }
 
     let update_suggestions = move |val: &str, cursor: usize| {
-        if let Some(ref app_store) = &app_store {
-            if let Some(ts) = find_trigger(val, cursor) {
-                let items = get_suggestions(app_store, ts.trigger, &ts.query);
-                set_suggestions.set(items);
-                set_trigger_state.set(Some(ts));
-                set_highlighted.set(0);
-                return;
-            }
+        if let Some(ts) = find_trigger(val, cursor) {
+            let items = get_suggestions(&tags.get(), &projects.get(), ts.trigger, &ts.query);
+            set_suggestions.set(items);
+            set_trigger_state.set(Some(ts));
+            set_highlighted.set(0);
+            return;
         }
         set_suggestions.set(vec![]);
         set_trigger_state.set(None);
@@ -202,28 +201,27 @@ pub fn AutocompleteInput(
 }
 
 #[component]
-pub fn AutocompleteTextarea(
+pub fn AutocompleteTextareaView(
     value: ReadSignal<String>,
     set_value: WriteSignal<String>,
     #[prop(optional)] placeholder: &'static str,
     #[prop(optional)] class: &'static str,
     #[prop(optional, default = 3)] rows: u32,
-    #[prop(optional)] on_keydown: Option<std::sync::Arc<dyn Fn(KeyboardEvent) + Send + Sync>>,
+    on_keydown: Option<std::sync::Arc<dyn Fn(KeyboardEvent) + Send + Sync>>,
+    tags: Signal<Vec<Tag>>,
+    projects: Signal<Vec<Project>>,
 ) -> impl IntoView {
-    let app_store = use_context::<AppStore>();
     let (trigger_state, set_trigger_state) = signal(None::<TriggerState>);
     let (highlighted, set_highlighted) = signal(0_usize);
     let (suggestions, set_suggestions) = signal(Vec::<SuggestionItem>::new());
 
     let update_suggestions = move |val: &str, cursor: usize| {
-        if let Some(ref app_store) = &app_store {
-            if let Some(ts) = find_trigger(val, cursor) {
-                let items = get_suggestions(app_store, ts.trigger, &ts.query);
-                set_suggestions.set(items);
-                set_trigger_state.set(Some(ts));
-                set_highlighted.set(0);
-                return;
-            }
+        if let Some(ts) = find_trigger(val, cursor) {
+            let items = get_suggestions(&tags.get(), &projects.get(), ts.trigger, &ts.query);
+            set_suggestions.set(items);
+            set_trigger_state.set(Some(ts));
+            set_highlighted.set(0);
+            return;
         }
         set_suggestions.set(vec![]);
         set_trigger_state.set(None);

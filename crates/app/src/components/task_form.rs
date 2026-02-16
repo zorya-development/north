@@ -3,7 +3,7 @@ use leptos::prelude::*;
 
 use north_ui::MarkdownView;
 
-use crate::components::autocomplete::{AutocompleteInput, AutocompleteTextarea};
+use crate::containers::autocomplete::{AutocompleteInput, AutocompleteTextarea};
 
 #[component]
 pub fn InlineTaskForm<F>(on_submit: F) -> impl IntoView

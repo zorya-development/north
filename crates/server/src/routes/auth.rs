@@ -3,8 +3,8 @@ use axum::extract::State;
 use axum::Json;
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
+use north_core::UserService;
 use north_domain::{AuthResponse, LoginRequest, User, UserRole, UserSettings};
-use north_services::UserService;
 use time::Duration;
 
 use crate::error::AppError;
@@ -15,7 +15,7 @@ pub async fn login(
     jar: CookieJar,
     Json(body): Json<LoginRequest>,
 ) -> Result<(CookieJar, Json<AuthResponse>), AppError> {
-    let row = UserService::find_by_email(&state.pool, &body.email)
+    let row = UserService::get_by_email(&state.pool, &body.email)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?
         .ok_or_else(|| AppError::Unauthorized("Invalid email or password".to_string()))?;

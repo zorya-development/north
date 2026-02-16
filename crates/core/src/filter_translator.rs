@@ -142,7 +142,6 @@ async fn eval_text_field(
             query = query.filter(tasks::body.not_ilike(pattern));
         }
         (TextField::Title, FilterOp::Is) if cond.value == FilterValue::Null => {
-            // title is never null, return empty
             return Ok(HashSet::new());
         }
         (TextField::Body, FilterOp::Is) if cond.value == FilterValue::Null => {
@@ -242,7 +241,6 @@ async fn eval_project(
 
     let project_name = value_as_str(&cond.value).unwrap_or("");
 
-    // Resolve project name(s) to IDs
     let project_ids: Vec<i64> = match cond.op {
         FilterOp::Eq => {
             projects::table
@@ -253,7 +251,6 @@ async fn eval_project(
                 .await?
         }
         FilterOp::Ne => {
-            // Get tasks NOT in this project
             let matching_pids: Vec<i64> = projects::table
                 .filter(projects::user_id.eq(user_id))
                 .filter(projects::title.ilike(project_name))
@@ -330,7 +327,6 @@ async fn eval_project(
 async fn eval_tags(pool: &DbPool, user_id: i64, cond: &Condition) -> ServiceResult<HashSet<i64>> {
     let mut conn = pool.get().await?;
 
-    // Find matching tag IDs
     let tag_ids: Vec<i64> = match cond.op {
         FilterOp::Eq => {
             let name = value_as_str(&cond.value).unwrap_or("");
@@ -350,7 +346,6 @@ async fn eval_tags(pool: &DbPool, user_id: i64, cond: &Condition) -> ServiceResu
                 .load(&mut conn)
                 .await?;
 
-            // Tasks NOT tagged with this tag
             let tagged_task_ids: Vec<i64> = task_tags::table
                 .filter(task_tags::tag_id.eq_any(&matching_tag_ids))
                 .select(task_tags::task_id)
@@ -420,14 +415,12 @@ async fn eval_tags(pool: &DbPool, user_id: i64, cond: &Condition) -> ServiceResu
         _ => return Ok(HashSet::new()),
     };
 
-    // Find task IDs with these tags
     let task_ids: Vec<i64> = task_tags::table
         .filter(task_tags::tag_id.eq_any(&tag_ids))
         .select(task_tags::task_id)
         .load(&mut conn)
         .await?;
 
-    // Intersect with user's top-level tasks
     let all = all_user_task_ids(pool, user_id).await?;
     let tagged: HashSet<i64> = task_ids.into_iter().collect();
     Ok(all.intersection(&tagged).copied().collect())
@@ -448,7 +441,6 @@ async fn eval_date_field(
 ) -> ServiceResult<HashSet<i64>> {
     let mut conn = pool.get().await?;
 
-    // Handle IS NULL / IS NOT NULL
     if cond.value == FilterValue::Null {
         let mut query = tasks::table
             .filter(tasks::user_id.eq(user_id))
@@ -574,12 +566,10 @@ async fn eval_date_field(
 }
 
 fn parse_datetime(s: &str) -> Result<chrono::DateTime<chrono::Utc>, chrono::ParseError> {
-    // Try date-only first (YYYY-MM-DD), convert to start of day UTC
     if let Ok(date) = chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d") {
         let dt = date.and_hms_opt(0, 0, 0).unwrap().and_utc();
         return Ok(dt);
     }
-    // Try ISO datetime
     if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S") {
         return Ok(dt.and_utc());
     }

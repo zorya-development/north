@@ -15,9 +15,9 @@ pub async fn login(email: String, password: String) -> Result<(), ServerFnError>
         exp: usize,
     }
 
-    let pool = expect_context::<north_services::DbPool>();
+    let pool = expect_context::<north_core::DbPool>();
 
-    let row = north_services::UserService::find_by_email(&pool, &email)
+    let row = north_core::UserService::get_by_email(&pool, &email)
         .await
         .map_err(|e| ServerFnError::new(e.to_string()))?
         .ok_or_else(|| ServerFnError::new("Invalid credentials".to_string()))?;

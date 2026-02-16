@@ -7,11 +7,11 @@ edition = "2021"
 ssr = [
     "leptos/ssr",
     "dep:leptos_axum",
-    "dep:north-services",
     "dep:north-core",
     "dep:jsonwebtoken",
     "dep:axum-extra",
     "dep:http",
+    "dep:chrono",
 ]
 hydrate = ["leptos/hydrate"]
 
@@ -22,8 +22,8 @@ serde = { workspace = true }
 
 # SSR-only
 leptos_axum = { version = "0.7", optional = true }
-north-services = { path = "../services", optional = true }
 north-core = { path = "../core", optional = true }
+chrono = { version = "0.4", optional = true }
 jsonwebtoken = { version = "9", optional = true }
 axum-extra = { version = "0.9", optional = true, features = ["cookie"] }
 http = { version = "1", optional = true }

@@ -10,7 +10,7 @@ use crate::{ServiceError, ServiceResult};
 pub struct FilterService;
 
 impl FilterService {
-    pub async fn get_all(pool: &DbPool, user_id: i64) -> ServiceResult<Vec<SavedFilter>> {
+    pub async fn list(pool: &DbPool, user_id: i64) -> ServiceResult<Vec<SavedFilter>> {
         let mut conn = pool.get().await?;
         let rows = saved_filters::table
             .filter(saved_filters::user_id.eq(user_id))
@@ -40,7 +40,6 @@ impl FilterService {
         title: &str,
         query: &str,
     ) -> ServiceResult<SavedFilter> {
-        // Validate query parses
         north_domain::parse_filter(query).map_err(|errs| {
             ServiceError::BadRequest(
                 errs.into_iter()
@@ -52,7 +51,6 @@ impl FilterService {
 
         let mut conn = pool.get().await?;
 
-        // Get next position
         let max_pos: Option<i32> = saved_filters::table
             .filter(saved_filters::user_id.eq(user_id))
             .select(diesel::dsl::max(saved_filters::position))
@@ -82,7 +80,6 @@ impl FilterService {
         query: Option<&str>,
         position: Option<i32>,
     ) -> ServiceResult<SavedFilter> {
-        // Validate query if provided
         if let Some(q) = query {
             north_domain::parse_filter(q).map_err(|errs| {
                 ServiceError::BadRequest(

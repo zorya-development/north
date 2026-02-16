@@ -21,7 +21,6 @@ impl StatsService {
     pub async fn get_stats(pool: &DbPool, user_id: i64) -> ServiceResult<Stats> {
         let mut conn = pool.get().await?;
 
-        // Use raw SQL for COUNT FILTER which Diesel doesn't natively support
         let row: (i64, i64, i64, i64, i64, i64) = diesel::sql_query(
             "SELECT \
                 COUNT(*) FILTER (WHERE created_at::date = CURRENT_DATE) as created_today, \
