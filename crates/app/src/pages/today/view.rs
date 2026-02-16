@@ -3,7 +3,7 @@ use north_dto::Task;
 
 use super::controller::GroupedTasks;
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
-use crate::components::task_list::{CompletedSection, TaskList};
+use crate::containers::task_list::{CompletedSection, TaskList};
 
 #[component]
 pub fn TodayView(

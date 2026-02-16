@@ -4,6 +4,9 @@ use north_dto::Task;
 use super::view::TaskListView;
 use crate::components::drag_drop::DragDropContext;
 
+#[derive(Clone, Copy)]
+pub struct ExtraVisibleIds(pub RwSignal<Vec<i64>>);
+
 #[component]
 pub fn TaskList(
     active_task_ids: Memo<Vec<i64>>,
@@ -20,6 +23,7 @@ pub fn TaskList(
     if !compact {
         provide_context(DragDropContext::new());
     }
+    provide_context(ExtraVisibleIds(RwSignal::new(vec![])));
 
     view! {
         <TaskListView

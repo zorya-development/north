@@ -47,366 +47,366 @@ pub fn TaskListItemView(
     });
 
     view! {
-        {move || {
-            let Some(t) = task.get() else {
-                return view! { <div/> }.into_any();
-            };
+            {move || {
+                let Some(t) = task.get() else {
+                    return view! { <div/> }.into_any();
+                };
 
-            let task_id = t.id;
-            let title = t.title.clone();
-            let body = t.body.clone();
-            let sort_key = t.sort_key.clone();
-            let project_id = t.project_id;
-            let project_title = t.project_title.clone();
-            let due_date = t.due_date;
-            let start_at = t.start_at;
-            let reviewed_at = t.reviewed_at;
-            let tags = t.tags.clone();
-            let subtask_count = t.subtask_count;
-            let sequential_limit = t.sequential_limit;
-            let has_subtasks = subtask_count > 0;
+                let task_id = t.id;
+                let title = t.title.clone();
+                let body = t.body.clone();
+                let sort_key = t.sort_key.clone();
+                let project_id = t.project_id;
+                let project_title = t.project_title.clone();
+                let due_date = t.due_date;
+                let start_at = t.start_at;
+                let reviewed_at = t.reviewed_at;
+                let tags = t.tags.clone();
+                let subtask_count = t.subtask_count;
+                let sequential_limit = t.sequential_limit;
+                let has_subtasks = subtask_count > 0;
 
-            view! {
-                <div
-                    on:mouseenter=move |_| set_hovered.set(true)
-                    on:mouseleave=move |_| set_hovered.set(false)
-                    on:click=move |_| {
-                        if let Some(cb) = on_click {
-                            cb.run(task_id);
-                        }
-                    }
-                    class=move || {
-                        let mut classes = format!(
-                            "px-4 \
-                             hover:bg-hover-overlay transition-colors \
-                             cursor-pointer {indent_class}"
-                        );
-                        if let Some(ctx) = drag_ctx {
-                            if ctx.dragging_task_id.get() == Some(task_id) {
-                                classes.push_str(" opacity-30");
-                            }
-                            match ctx.drop_target.get() {
-                                Some((id, DropZone::Above)) if id == task_id => {
-                                    classes.push_str(" dnd-drop-above");
-                                }
-                                Some((id, DropZone::Below)) if id == task_id => {
-                                    classes.push_str(" dnd-drop-below");
-                                }
-                                Some((id, DropZone::Nest)) if id == task_id => {
-                                    classes.push_str(" dnd-drop-nest");
-                                }
-                                _ => {}
+                view! {
+                    <div
+                        on:mouseenter=move |_| set_hovered.set(true)
+                        on:mouseleave=move |_| set_hovered.set(false)
+                        on:click=move |_| {
+                            if let Some(cb) = on_click {
+                                cb.run(task_id);
                             }
                         }
-                        classes
-                    }
-                    draggable=move || {
-                        if draggable { "true" } else { "false" }
-                    }
-                    on:dragstart={
-                        let sort_key = sort_key.clone();
-                        move |ev: web_sys::DragEvent| {
-                            if !draggable { return; }
+                        class=move || {
+                            let mut classes = format!(
+                                "px-4 \
+                                 hover:bg-hover-overlay transition-colors \
+                                 cursor-pointer {indent_class}"
+                            );
                             if let Some(ctx) = drag_ctx {
-                                ctx.dragging_task_id.set(Some(task_id));
+                                if ctx.dragging_task_id.get() == Some(task_id) {
+                                    classes.push_str(" opacity-30");
+                                }
+                                match ctx.drop_target.get() {
+                                    Some((id, DropZone::Above)) if id == task_id => {
+                                        classes.push_str(" dnd-drop-above");
+                                    }
+                                    Some((id, DropZone::Below)) if id == task_id => {
+                                        classes.push_str(" dnd-drop-below");
+                                    }
+                                    Some((id, DropZone::Nest)) if id == task_id => {
+                                        classes.push_str(" dnd-drop-nest");
+                                    }
+                                    _ => {}
+                                }
                             }
-                            if let Some(dt) = ev.data_transfer() {
-                                let _ = dt.set_data(
-                                    "text/plain",
-                                    &format!("{}|{}", task_id, sort_key),
-                                );
-                                dt.set_effect_allowed("move");
+                            classes
+                        }
+                        draggable=move || {
+                            if draggable { "true" } else { "false" }
+                        }
+                        on:dragstart={
+                            let sort_key = sort_key.clone();
+                            move |ev: web_sys::DragEvent| {
+                                if !draggable { return; }
+                                if let Some(ctx) = drag_ctx {
+                                    ctx.dragging_task_id.set(Some(task_id));
+                                }
+                                if let Some(dt) = ev.data_transfer() {
+                                    let _ = dt.set_data(
+                                        "text/plain",
+                                        &format!("{}|{}", task_id, sort_key),
+                                    );
+                                    dt.set_effect_allowed("move");
+                                }
                             }
                         }
-                    }
-                    on:dragend=move |_: web_sys::DragEvent| {
-                        if let Some(ctx) = drag_ctx {
-                            ctx.dragging_task_id.set(None);
-                            ctx.drop_target.set(None);
-                        }
-                    }
-                    on:dragover=move |ev: web_sys::DragEvent| {
-                        if drag_ctx.is_none() { return; }
-                        let ctx = drag_ctx.unwrap();
-                        if ctx.dragging_task_id.get_untracked()
-                            == Some(task_id)
-                        {
-                            return;
-                        }
-                        ev.prevent_default();
-                        if let Some(target) = ev
-                            .current_target()
-                            .and_then(|t| {
-                                t.dyn_into::<web_sys::HtmlElement>().ok()
-                            })
-                        {
-                            let rect = target.get_bounding_client_rect();
-                            let y = ev.client_y() as f64 - rect.top();
-                            let h = rect.height();
-                            let zone = if y < h * 0.25 {
-                                DropZone::Above
-                            } else if y > h * 0.75 {
-                                DropZone::Below
-                            } else {
-                                DropZone::Nest
-                            };
-                            ctx.drop_target.set(Some((task_id, zone)));
-                        }
-                    }
-                    on:dragleave=move |_: web_sys::DragEvent| {
-                        if let Some(ctx) = drag_ctx {
-                            if ctx.drop_target.get_untracked()
-                                .map(|(id, _)| id) == Some(task_id)
-                            {
+                        on:dragend=move |_: web_sys::DragEvent| {
+                            if let Some(ctx) = drag_ctx {
+                                ctx.dragging_task_id.set(None);
                                 ctx.drop_target.set(None);
                             }
                         }
-                    }
-                >
-                    <div class="flex items-center gap-2">
-                        {if draggable {
-                            Some(view! {
-                                <span
-                                    class=move || format!(
-                                        "dnd-handle {} cursor-grab \
-                                         active:cursor-grabbing \
-                                         transition-opacity",
-                                        if hovered.get() {
-                                            "opacity-60"
-                                        } else {
-                                            "opacity-0"
-                                        },
-                                    )
-                                    on:click=move |ev| ev.stop_propagation()
-                                    on:mousedown=move |ev| ev.stop_propagation()
-                                >
-                                    <Icon
-                                        kind=IconKind::DragHandle
-                                        class="w-4 h-4 text-text-tertiary"
-                                    />
-                                </span>
-                            })
-                        } else {
-                            None
-                        }}
-                        <div
-                            class="flex items-center"
-                            on:click=move |ev| ev.stop_propagation()
-                        >
-                            <Checkbox
-                                checked=is_completed
-                                on_toggle=Callback::new(move |()| {
-                                    on_toggle_complete.run(())
-                                })
-                                checked_label="Mark task incomplete"
-                                unchecked_label="Complete task"
-                            />
-                        </div>
-                        {move || {
-                            let completed = is_completed.get();
-                            let t = title.clone();
-                            view! {
-                                <Text
-                                    variant=TextVariant::BodyLg
-                                    color={if completed {
-                                        TextColor::Tertiary
-                                    } else {
-                                        TextColor::Primary
-                                    }}
-                                    line_through=completed
-                                    class="flex-1 pt-0.5"
-                                >
-                                    {t}
-                                </Text>
+                        on:dragover=move |ev: web_sys::DragEvent| {
+                            if drag_ctx.is_none() { return; }
+                            let ctx = drag_ctx.unwrap();
+                            if ctx.dragging_task_id.get_untracked()
+                                == Some(task_id)
+                            {
+                                return;
                             }
-                        }}
-                        {if show_review {
-                            Some(view! {
-                                <button
-                                    on:click=move |ev| {
-                                        ev.stop_propagation();
-                                        on_review.run(());
-                                    }
-                                    class="px-2 py-0.5 text-xs rounded \
-                                           border border-border \
-                                           text-text-secondary \
-                                           hover:bg-bg-tertiary \
-                                           hover:text-text-primary \
-                                           transition-colors"
-                                >
-                                    "Reviewed"
-                                </button>
-                            })
-                        } else {
-                            None
-                        }}
-                        {if !compact {
-                            Some(view! {
-                                <div
-                                    class=move || format!(
-                                        "{} transition-opacity \
-                                         flex items-center",
-                                        if hovered.get() {
-                                            "opacity-100"
-                                        } else {
-                                            "opacity-0"
-                                        },
-                                    )
-                                    on:click=move |ev| ev.stop_propagation()
-                                >
-                                    <DateTimePicker
-                                        task_id=task_id
-                                        start_at=start_at
-                                        on_set_start_at=Callback::new(
-                                            move |(_, sa)| {
-                                                on_set_start_at.run(sa)
+                            ev.prevent_default();
+                            if let Some(target) = ev
+                                .current_target()
+                                .and_then(|t| {
+                                    t.dyn_into::<web_sys::HtmlElement>().ok()
+                                })
+                            {
+                                let rect = target.get_bounding_client_rect();
+                                let y = ev.client_y() as f64 - rect.top();
+                                let h = rect.height();
+                                let zone = if y < h * 0.25 {
+                                    DropZone::Above
+                                } else if y > h * 0.75 {
+                                    DropZone::Below
+                                } else {
+                                    DropZone::Nest
+                                };
+                                ctx.drop_target.set(Some((task_id, zone)));
+                            }
+                        }
+                        on:dragleave=move |_: web_sys::DragEvent| {
+                            if let Some(ctx) = drag_ctx {
+                                if ctx.drop_target.get_untracked()
+                                    .map(|(id, _)| id) == Some(task_id)
+                                {
+                                    ctx.drop_target.set(None);
+                                }
+                            }
+                        }
+                    >
+                        <div class="flex items-center gap-2">
+                            {if draggable {
+                                Some(view! {
+                                    <span
+                                        class=move || format!(
+                                            "dnd-handle {} cursor-grab \
+                                             active:cursor-grabbing \
+                                             transition-opacity",
+                                            if hovered.get() {
+                                                "opacity-60"
+                                            } else {
+                                                "opacity-0"
                                             },
                                         )
-                                        on_clear_start_at=Callback::new(
-                                            move |_| on_clear_start_at.run(()),
-                                        )
-                                        icon_only=true
-                                    />
-                                    <ProjectPicker
-                                        task_id=task_id
-                                        project_id=project_id
-                                        project_title=project_title.clone()
-                                        on_set_project=Callback::new(
-                                            move |(_, pid)| {
-                                                on_set_project.run(pid)
-                                            },
-                                        )
-                                        on_clear_project=Callback::new(
-                                            move |_| on_clear_project.run(()),
-                                        )
-                                        icon_only=true
-                                    />
-                                    <TagPicker
-                                        task_id=task_id
-                                        tags=tags.clone()
-                                        on_set_tags=Callback::new(
-                                            move |(_, tags)| {
-                                                on_set_tags.run(tags)
-                                            },
-                                        )
-                                        icon_only=true
-                                    />
-                                    <DropdownMenu
-                                        open=menu_open
-                                        set_open=set_menu_open
-                                        trigger=Box::new(move || {
-                                            view! {
-                                                <button
-                                                    on:click=move |ev| {
-                                                        ev.stop_propagation();
-                                                        set_menu_open
-                                                            .update(|o| {
-                                                                *o = !*o
-                                                            });
-                                                    }
-                                                    class="p-1 rounded \
-                                                           hover:bg-bg-input \
-                                                           text-text-tertiary \
-                                                           hover:text-text-secondary \
-                                                           transition-colors"
-                                                    aria-label="Task actions"
-                                                >
-                                                    <Icon
-                                                        kind=IconKind::KebabMenu
-                                                        class="w-4 h-4"
-                                                    />
-                                                </button>
-                                            }.into_any()
-                                        })
+                                        on:click=move |ev| ev.stop_propagation()
+                                        on:mousedown=move |ev| ev.stop_propagation()
                                     >
-                                        <DropdownItem
-                                            label="Delete"
-                                            on_click=move || {
-                                                set_menu_open.set(false);
-                                                on_delete.run(());
-                                            }
-                                            danger=true
+                                        <Icon
+                                            kind=IconKind::DragHandle
+                                            class="w-4 h-4 text-text-tertiary"
                                         />
-                                    </DropdownMenu>
+                                    </span>
+                                })
+                            } else {
+                                None
+                            }}
+                            <div
+                                class="flex items-center"
+                                on:click=move |ev| ev.stop_propagation()
+                            >
+                                <Checkbox
+                                    checked=is_completed
+                                    on_toggle=Callback::new(move |()| {
+                                        on_toggle_complete.run(())
+                                    })
+                                    checked_label="Mark task incomplete"
+                                    unchecked_label="Complete task"
+                                />
+                            </div>
+                            {move || {
+                                let completed = is_completed.get();
+                                let t = title.clone();
+                                view! {
+                                    <Text
+                                        variant=TextVariant::BodyLg
+                                        color={if completed {
+                                            TextColor::Tertiary
+                                        } else {
+                                            TextColor::Primary
+                                        }}
+                                        line_through=completed
+                                        class="flex-1 pt-0.5"
+                                    >
+                                        {t}
+                                    </Text>
+                                }
+                            }}
+                            {if show_review {
+                                Some(view! {
+                                    <button
+                                        on:click=move |ev| {
+                                            ev.stop_propagation();
+                                            on_review.run(());
+                                        }
+                                        class="px-2 py-0.5 text-xs rounded \
+                                               border border-border \
+                                               text-text-secondary \
+                                               hover:bg-bg-tertiary \
+                                               hover:text-text-primary \
+                                               transition-colors"
+                                    >
+                                        "Reviewed"
+                                    </button>
+                                })
+                            } else {
+                                None
+                            }}
+                            {if !compact {
+                                Some(view! {
+                                    <div
+                                        class=move || format!(
+                                            "{} transition-opacity \
+                                             flex items-center",
+                                            if hovered.get() {
+                                                "opacity-100"
+                                            } else {
+                                                "opacity-0"
+                                            },
+                                        )
+                                        on:click=move |ev| ev.stop_propagation()
+                                    >
+                                        <DateTimePicker
+                                            task_id=task_id
+                                            start_at=start_at
+                                            on_set_start_at=Callback::new(
+                                                move |(_, sa)| {
+                                                    on_set_start_at.run(sa)
+                                                },
+                                            )
+                                            on_clear_start_at=Callback::new(
+                                                move |_| on_clear_start_at.run(()),
+                                            )
+                                            icon_only=true
+                                        />
+                                        <ProjectPicker
+                                            task_id=task_id
+                                            project_id=project_id
+                                            project_title=project_title.clone()
+                                            on_set_project=Callback::new(
+                                                move |(_, pid)| {
+                                                    on_set_project.run(pid)
+                                                },
+                                            )
+                                            on_clear_project=Callback::new(
+                                                move |_| on_clear_project.run(()),
+                                            )
+                                            icon_only=true
+                                        />
+                                        <TagPicker
+                                            task_id=task_id
+                                            tags=tags.clone()
+                                            on_set_tags=Callback::new(
+                                                move |(_, tags)| {
+                                                    on_set_tags.run(tags)
+                                                },
+                                            )
+                                            icon_only=true
+                                        />
+                                        <DropdownMenu
+                                            open=menu_open
+                                            set_open=set_menu_open
+                                            trigger=Box::new(move || {
+                                                view! {
+                                                    <button
+                                                        on:click=move |ev| {
+                                                            ev.stop_propagation();
+                                                            set_menu_open
+                                                                .update(|o| {
+                                                                    *o = !*o
+                                                                });
+                                                        }
+                                                        class="p-1 rounded \
+                                                               hover:bg-bg-input \
+                                                               text-text-tertiary \
+                                                               hover:text-text-secondary \
+                                                               transition-colors"
+                                                        aria-label="Task actions"
+                                                    >
+                                                        <Icon
+                                                            kind=IconKind::KebabMenu
+                                                            class="w-4 h-4"
+                                                        />
+                                                    </button>
+                                                }.into_any()
+                                            })
+                                        >
+                                            <DropdownItem
+                                                label="Delete"
+                                                on_click=move || {
+                                                    set_menu_open.set(false);
+                                                    on_delete.run(());
+                                                }
+                                                danger=true
+                                            />
+                                        </DropdownMenu>
+                                    </div>
+                                })
+                            } else {
+                                None
+                            }}
+                        </div>
+
+                        {body.map(|b| {
+                            view! {
+                                <div class="mt-1 ml-6 pl-6 lh-1.5">
+                                    <MarkdownView content=b/>
                                 </div>
+                            }
+                        })}
+
+                        <TaskMeta
+                            start_at=start_at
+                            due_date=due_date
+                            tags=tags
+                            reviewed_at=reviewed_at
+                            show_review=show_review
+                            class="pl-12"
+                        />
+                        {if has_subtasks && !compact {
+                            Some(view! {
+                                <Show when=move || subtasks_expanded.get()>
+                                    <div
+                                        on:mouseenter=move |_| {
+                                            set_hovered.set(false)
+                                        }
+                                        on:mouseleave=move |_| {
+                                            set_hovered.set(true)
+                                        }
+                                        on:click=|ev: web_sys::MouseEvent| {
+                                            ev.stop_propagation()
+                                        }
+                                        on:dragstart=|ev: web_sys::DragEvent| {
+                                            ev.stop_propagation()
+                                        }
+                                        on:dragover=|ev: web_sys::DragEvent| {
+                                            ev.stop_propagation()
+                                        }
+                                        on:dragleave=|ev: web_sys::DragEvent| {
+                                            ev.stop_propagation()
+                                        }
+                                    >
+                                        {if let Some(cb) = on_click {
+                                            view! {
+                                                <InlineSubtaskList
+                                                    parent_id=task_id
+                                                    sequential_limit=sequential_limit
+    show_project={false}
+                                                    draggable=draggable
+                                                    depth={depth + 1}
+                                                    on_click=cb
+                                                    class="my-2"
+                                                    add_btn_class="ml-12"
+                                                />
+                                            }.into_any()
+                                        } else {
+                                            view! {
+                                                <InlineSubtaskList
+                                                    parent_id=task_id
+                                                    sequential_limit=sequential_limit
+    show_project=show_project
+                                                    draggable=draggable
+                                                    depth={depth + 1}
+                                                />
+                                            }.into_any()
+                                        }}
+                                    </div>
+                                </Show>
                             })
                         } else {
                             None
                         }}
                     </div>
-
-                    {body.map(|b| {
-                        view! {
-                            <div class="mt-1 ml-6 pl-6 lh-1.5">
-                                <MarkdownView content=b/>
-                            </div>
-                        }
-                    })}
-
-                    <TaskMeta
-                        start_at=start_at
-                        due_date=due_date
-                        tags=tags
-                        reviewed_at=reviewed_at
-                        show_review=show_review
-                        class="pl-12"
-                    />
-                    {if has_subtasks && !compact {
-                        Some(view! {
-                            <Show when=move || subtasks_expanded.get()>
-                                <div
-                                    on:mouseenter=move |_| {
-                                        set_hovered.set(false)
-                                    }
-                                    on:mouseleave=move |_| {
-                                        set_hovered.set(true)
-                                    }
-                                    on:click=|ev: web_sys::MouseEvent| {
-                                        ev.stop_propagation()
-                                    }
-                                    on:dragstart=|ev: web_sys::DragEvent| {
-                                        ev.stop_propagation()
-                                    }
-                                    on:dragover=|ev: web_sys::DragEvent| {
-                                        ev.stop_propagation()
-                                    }
-                                    on:dragleave=|ev: web_sys::DragEvent| {
-                                        ev.stop_propagation()
-                                    }
-                                >
-                                    {if let Some(cb) = on_click {
-                                        view! {
-                                            <InlineSubtaskList
-                                                parent_id=task_id
-                                                sequential_limit=sequential_limit
-                                                show_project={false}
-                                                draggable=draggable
-                                                depth={depth + 1}
-                                                on_click=cb
-                                                class="my-2"
-                                                add_btn_class="ml-12"
-                                            />
-                                        }.into_any()
-                                    } else {
-                                        view! {
-                                            <InlineSubtaskList
-                                                parent_id=task_id
-                                                sequential_limit=sequential_limit
-                                                show_project=show_project
-                                                draggable=draggable
-                                                depth={depth + 1}
-                                            />
-                                        }.into_any()
-                                    }}
-                                </div>
-                            </Show>
-                        })
-                    } else {
-                        None
-                    }}
-                </div>
-            }
-            .into_any()
-        }}
-    }
+                }
+                .into_any()
+            }}
+        }
 }

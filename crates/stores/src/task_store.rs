@@ -195,6 +195,19 @@ impl TaskStore {
         });
     }
 
+    /// Create a task and return it. Does NOT update the parent's subtask_count
+    /// to avoid triggering a re-render of the parent task item (which would
+    /// destroy any inline input that is currently focused).
+    pub async fn create_task_async(&self, input: CreateTask) -> Option<Task> {
+        match TaskRepository::create(input).await {
+            Ok(task) => {
+                self.add(task.clone());
+                Some(task)
+            }
+            Err(_) => None,
+        }
+    }
+
     pub fn set_start_at(&self, id: i64, start_at: String) {
         let store = *self;
         spawn_local(async move {

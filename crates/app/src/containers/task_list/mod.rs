@@ -3,4 +3,4 @@ mod container;
 mod view;
 
 pub use completed_section::CompletedSection;
-pub use container::TaskList;
+pub use container::{ExtraVisibleIds, TaskList};

@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 
 use crate::atoms::{Text, TextVariant};
-use crate::components::task_list::TaskList;
+use crate::containers::task_list::TaskList;
 
 #[component]
 pub fn ReviewView(

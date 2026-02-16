@@ -1,6 +1,8 @@
 use leptos::prelude::*;
-use north_stores::{use_app_store, IdFilter, TaskCreateModalStore, TaskStoreFilter};
+use north_stores::{use_app_store, IdFilter, TaskStoreFilter};
 
+use crate::containers::inline_task_input::InlineTaskInput;
+use crate::containers::task_list::ExtraVisibleIds;
 use crate::containers::task_list_item::TaskListItem;
 
 #[component]
@@ -15,9 +17,11 @@ pub fn InlineSubtaskList(
     #[prop(default = "")] add_btn_class: &'static str,
 ) -> impl IntoView {
     let app_store = use_app_store();
-    let task_create_modal = expect_context::<TaskCreateModalStore>();
     let (show_non_actionable, set_show_non_actionable) = signal(false);
     let (show_completed, set_show_completed) = signal(false);
+    let (show_inline_input, set_show_inline_input) = signal(false);
+    let input_value = RwSignal::new(String::new());
+    let extra_visible_ids = expect_context::<ExtraVisibleIds>().0;
     let limit = sequential_limit as usize;
 
     let all_subtasks = app_store.tasks.filtered(TaskStoreFilter {
@@ -40,11 +44,18 @@ pub fn InlineSubtaskList(
     let visible_ids = Memo::new(move |_| {
         let tasks = uncompleted.get();
         let total = tasks.len();
+        let extra = extra_visible_ids.get();
         let mut ids: Vec<i64> = if !show_non_actionable.get() && limit > 0 && total > limit {
             tasks.iter().take(limit).map(|t| t.id).collect()
         } else {
             tasks.iter().map(|t| t.id).collect()
         };
+        // Always include extra visible IDs (never hide them)
+        for id in &extra {
+            if !ids.contains(id) && tasks.iter().any(|t| t.id == *id) {
+                ids.push(*id);
+            }
+        }
         if show_completed.get() {
             ids.extend(completed.get().iter().map(|t| t.id));
         }
@@ -83,26 +94,46 @@ pub fn InlineSubtaskList(
                     })
                     .collect_view()
             }}
+            // Inline task input
+            <Show when=move || show_inline_input.get()>
+                <InlineTaskInput
+                    parent_id=parent_id
+                    value=input_value
+                    on_created=Callback::new(move |id| {
+                        extra_visible_ids.update(|ids| {
+                            if !ids.contains(&id) {
+                                ids.push(id);
+                            }
+                        });
+                    })
+                    on_close=Callback::new(move |()| {
+                        set_show_inline_input.set(false);
+                    })
+                    class=add_btn_class
+                />
+            </Show>
             // Add subtask button
-            <button
-                class=format!(
-                    "{add_btn_class} my-3 text-xs text-accent \
-                     hover:text-accent-hover \
-                     hover:underline cursor-pointer \
-                     transition-colors"
-                )
-                on:click=move |_| {
-                    task_create_modal.open(None, Some(parent_id));
-                }
-            >
-                "+ Add subtask"
-            </button>
+            <Show when=move || !show_inline_input.get()>
+                <button
+                    class=format!(
+                        "{add_btn_class} my-3 text-xs text-accent \
+                         hover:text-accent-hover \
+                         hover:underline cursor-pointer \
+                         transition-colors"
+                    )
+                    on:click=move |_| {
+                        set_show_inline_input.set(true);
+                    }
+                >
+                    "+ Add subtask"
+                </button>
+            </Show>
             // Toggle bar
             <Show when=move || {
                 non_actionable_count.get() > 0usize
                     || completed_count.get() > 0usize
             }>
-                <div class="ml-6 py-1 flex items-center gap-2 text-xs">
+                <div class="ml-12 py-1 flex items-center gap-2 text-xs">
                     // Show N More / Hide Non Actionable
                     <Show when=move || {
                         non_actionable_count.get() > 0usize

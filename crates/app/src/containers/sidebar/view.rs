@@ -429,7 +429,7 @@ fn NavItem(href: &'static str, label: &'static str, icon: IconKind) -> impl Into
     let is_active = move || location.pathname.get() == href;
 
     let class = move || {
-        let base = "flex items-center gap-2 px-3 py-2 rounded-lg text-sm \
+        let base = "flex items-center gap-2 px-3 py-0.5 rounded-lg text-sm \
                     text-text-primary hover:bg-bg-tertiary transition-colors";
         if is_active() {
             format!("{base} bg-bg-tertiary font-medium")

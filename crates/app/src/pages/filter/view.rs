@@ -5,7 +5,7 @@ use north_ui::{Icon, IconKind, Modal};
 use super::controller::FilterController;
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
 use crate::components::filter_autocomplete::FilterAutocompleteTextarea;
-use crate::components::task_list::TaskList;
+use crate::containers::task_list::TaskList;
 
 #[component]
 pub fn FilterView(

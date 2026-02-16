@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use north_dto::Task;
 
 use crate::atoms::{Text, TextVariant};
-use crate::components::task_list::{CompletedSection, TaskList};
+use crate::containers::task_list::{CompletedSection, TaskList};
 
 #[component]
 pub fn AllTasksView(
