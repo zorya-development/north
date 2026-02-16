@@ -1,99 +1,147 @@
 # North
 
-GTD-inspired task management system built with Rust. Sequential subtask workflows, configurable review cycles, kanban visualization, and a JQL-like filter DSL.
+![North screenshot](.assets/screenshot.jpg)
 
-## Stack
+A self-hosted, GTD-inspired task management system built entirely in Rust. North combines a full-stack Rust architecture with practical Getting Things Done workflows — sequential subtask execution, structured review cycles, and a powerful query language for filtering tasks.
 
-- **Backend + Frontend:** Rust — [Axum](https://github.com/tokio-rs/axum) + [Leptos](https://github.com/leptos-rs/leptos) (SSR + WASM hydration)
-- **Database:** PostgreSQL 17, [Diesel](https://diesel.rs/) ORM with [diesel-async](https://github.com/weiznich/diesel_async)
-- **Sessions:** Redis 7
-- **Styling:** TailwindCSS 4
-- **Migrations:** Diesel CLI (reversible up/down migrations)
+## Features
 
-## Prerequisites
+- **Inbox & Today views** — capture tasks quickly, then focus on what's actionable today
+- **Sequential subtasks** — configurable N-next visibility so you only see the tasks you should work on now
+- **GTD review cycles** — per-task review tracking with configurable intervals to keep your system current
+- **Projects & tags** — organize work with colored projects (list or kanban view) and user-defined tags
+- **Filter DSL** — JQL-like query language with autocomplete for building saved filters (`status = 'ACTIVE' AND tags =~ 'work:*' ORDER BY due_date ASC`)
+- **Inline parsing** — type `#tag` or `@project` directly in task titles to assign tags and projects on the fly
+- **Markdown support** — full CommonMark rendering in task descriptions with image uploads
+- **Drag and drop** — reorder tasks, nest subtasks, and assign to projects by dragging
+- **Dark & light themes** — respects system preference with manual toggle
+- **REST API** — full CRUD API for external integrations alongside the web UI
+- **Single binary** — one Rust binary serves both the server-rendered pages and the WASM-hydrated client
+
+## Tech Stack
+
+North is a full-stack Rust application — no JavaScript runtime, no Node.js, no npm.
+
+| Layer | Technology |
+|---|---|
+| Language | **Rust** (stable, edition 2021) |
+| Frontend | [Leptos](https://github.com/leptos-rs/leptos) 0.7 (SSR + WASM hydration) |
+| Backend | [Axum](https://github.com/tokio-rs/axum) |
+| Database | PostgreSQL 17 via [Diesel](https://diesel.rs/) (async) |
+| Styling | TailwindCSS 4 |
+| Cache | Redis 7 (reserved for future use) |
+| Auth | JWT (httpOnly cookies) with Argon2 password hashing |
+
+## Quick Start
+
+### Prerequisites
 
 - Docker & Docker Compose
 
-## Getting Started
+### Running with Docker Compose
 
 ```bash
-# Start db and redis
+# Clone the repository
+git clone https://github.com/zorya-development/north.git
+cd north
+
+# Build and start all services
+docker compose up -d
+
+# Run database migrations and seed the admin account
+docker compose exec app just migrate
+docker compose exec app just seed
+```
+
+The application will be available at **http://localhost:5000**.
+
+Default admin credentials: `admin@north.local` / `admin`
+
+> There is no self-registration. The admin account creates all other users.
+
+---
+
+## Development
+
+### Prerequisites
+
+- Docker & Docker Compose
+
+### Setup
+
+```bash
+# Build the base and dev images
+docker compose build
+
+# Start the database and Redis
 docker compose up -d db redis
 
-# Enter the app container (interactive shell)
+# Enter the app container
 docker compose run --rm -ti --service-ports app bash
 
 # Inside the container:
-just migrate          # Run database migrations
-just seed             # Seed admin account (admin@north.local / admin)
-just dev              # Start dev server (http://localhost:3000)
+just migrate          # Apply database migrations
+just seed             # Seed admin account
+just dev              # Start dev server with hot reload
 ```
 
-## Development Commands
+### Commands
 
-Run inside the app container (`docker compose run --rm -ti --service-ports app bash`):
+All commands run inside the app container via [just](https://github.com/casey/just):
 
-```bash
-just dev              # Dev server with hot reload
-just test             # Run tests
-just fmt              # Format code
-just lint             # Clippy
-just check            # fmt + lint + test
-just migrate          # Apply migrations
-just migration name   # Create new migration
-just migrate-revert   # Revert last migration
-just migrate-redo     # Revert + reapply (test reversibility)
-just build            # Release build
-```
+| Command | Description |
+|---|---|
+| `just dev` | Dev server with hot reload (cargo-leptos) |
+| `just test` | Run all tests |
+| `just test crate_name` | Run tests for a specific crate |
+| `just fmt` | Format code |
+| `just lint` | Run clippy |
+| `just check` | fmt + lint + test |
+| `just migrate` | Apply database migrations |
+| `just migration name` | Create a new migration |
+| `just migrate-revert` | Revert last migration |
+| `just migrate-redo` | Revert + reapply last migration |
+| `just build` | Release build |
+| `just seed` | Seed admin account |
 
-For CI or non-interactive use:
+For CI or non-interactive use: `docker compose exec app just <command>`
 
-```bash
-docker compose exec app just test
-```
+### Project Structure
 
-## Project Structure
+North is organized as a Cargo workspace with layered crates:
 
 ```
 north/
 ├── crates/
-│   ├── domain/     # Shared types (Task, Project, User, etc.) — no IO
-│   ├── db/         # Diesel schema, models, connection pool
-│   ├── services/   # Business logic (TaskService, ProjectService, etc.)
-│   ├── ui/         # Generic UI components (Icon, Dropdown, Popover, Checkbox, Markdown)
-│   ├── app/        # Leptos pages, domain components, server functions (uses north-ui)
-│   └── server/     # Axum binary, REST API, auth, middleware
-├── migrations/     # Diesel reversible migrations (up.sql + down.sql)
-├── style/          # TailwindCSS entry point
-├── public/         # Static assets
-├── docker/         # Dockerfiles
-└── docs/           # PRD, design system
+│   ├── dto/            # Shared data types (no IO) — compiled for server and WASM
+│   ├── db/             # Diesel schema, models, connection pool
+│   ├── core/           # Business logic, services, filter DSL engine
+│   ├── server-fns/     # Leptos #[server] RPC boundary
+│   ├── repositories/   # Thin async facade over server functions
+│   ├── stores/         # Reactive client state (signals, memos, optimistic updates)
+│   ├── ui/             # Generic UI component library (no domain deps)
+│   ├── app/            # Leptos pages, containers, components (SSR + WASM)
+│   └── server/         # Axum binary, REST API, auth middleware
+├── migrations/         # Diesel reversible migrations (up.sql + down.sql)
+├── style/              # TailwindCSS entry point
+├── public/             # Static assets
+├── docker/             # Base, dev, and prod Dockerfiles
+└── docs/               # Product requirements and design system
 ```
 
-## Features
-
-- **Inbox** — capture tasks, process later
-- **Today** — actionable tasks (start_at <= today)
-- **All Tasks** — overview of every task across projects
-- **Sequential tasks** — subtasks with configurable N-next visibility
-- **Projects** — list or kanban view, custom columns per project, dedicated project pages
-- **Archive** — archive/unarchive/delete projects; archived project tasks hidden from Today and All Tasks
-- **Reviews** — GTD-style, per-task reviewed_at tracking with configurable interval
-- **Tags** — per-user tags with inline `#tag` parsing in task titles
-- **Project references** — inline `@project` parsing to assign tasks to projects
-- **Settings** — configurable review interval, default columns, sequential limits
-- **Filter DSL** — JQL-like query language for saved filters (`status = 'ACTIVE' AND tags =~ 'work:*' ORDER BY due_date ASC`), with live results and client-side validation
-- **Completed tasks toggle** — show/hide completed tasks on any task list page
-- **Statistics** — open/closed today, week, total
-- **Markdown & images** — full CommonMark with image upload
-
-## Docker Images
+Data flows through the layers in one direction:
 
 ```
-docker/base/Dockerfile   → Rust toolchain, cargo-leptos, diesel_cli, wasm target
-docker/dev/Dockerfile    → Extends base, adds just + tailwindcss
-docker/prod/Dockerfile   → Multi-stage release (base → debian:bookworm-slim)
+Page → Store → Repository → ServerFn ──RPC──→ Service → Diesel → PostgreSQL
 ```
+
+### Docker Images
+
+| Image | Path | Purpose |
+|---|---|---|
+| **base** | `docker/base/Dockerfile` | Rust toolchain, cargo-leptos, diesel_cli, wasm32 target |
+| **dev** | `docker/dev/Dockerfile` | Extends base — adds just and tailwindcss CLI |
+| **prod** | `docker/prod/Dockerfile` | Runtime-only: debian:bookworm-slim with pre-built binary |
 
 Base image version is tracked in `docker/base/VERSION`. Bump with:
 
@@ -103,21 +151,19 @@ just bump-base minor    # 1.0.0 → 1.1.0
 just bump-base major    # 1.0.0 → 2.0.0
 ```
 
-## CI/CD
+### CI/CD
 
-- **test.yml** — runs on master push + PRs: fmt, clippy, test. Conditionally rebuilds base image if `docker/base/**` changed.
-- **release.yml** — runs on master push: builds prod Docker image, pushes to ghcr.io, creates GitHub release with auto-generated changelog (git-cliff).
+- **test.yml** — runs on pushes to master and all PRs: format check, clippy, tests. Conditionally rebuilds the base image if `docker/base/**` changed.
+- **release.yml** — runs on pushes to master: builds a production Docker image, pushes to ghcr.io, generates a changelog via git-cliff, and creates a GitHub release.
 
 ### Releasing
 
 1. Bump version: `just bump-version {major,minor,patch}`
-2. Push to master
-3. Release workflow creates tag `v<version>`, Docker image, and GitHub release automatically
+2. Push to master (via PR or direct push)
+3. The release workflow automatically builds and publishes the Docker image, changelog, and GitHub release
 
-## Auth
-
-No self-registration. Default admin account is seeded via `just seed`. Admin creates all other accounts.
+---
 
 ## License
 
-Private — Zorya Development
+Proprietary — Zorya Development
