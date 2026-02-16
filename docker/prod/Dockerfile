@@ -18,7 +18,7 @@ RUN mkdir -p /app/uploads && chown -R north:north /app
 
 COPY --from=tools /usr/local/cargo/bin/diesel /usr/local/bin/diesel
 
-COPY --chown=north:north target/release/north-server /app/north-server
+COPY --chown=north:north --chmod=755 target/release/north-server /app/north-server
 COPY --chown=north:north target/site /app/site
 COPY --chown=north:north Cargo.toml /app/
 COPY --chown=north:north migrations /app/migrations
