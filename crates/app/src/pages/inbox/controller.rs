@@ -10,7 +10,6 @@ pub struct InboxController {
     pub completed_task_ids: Memo<Vec<i64>>,
     pub completed_count: Memo<usize>,
     pub is_loaded: Signal<bool>,
-    pub is_new_task_form_open: (ReadSignal<bool>, WriteSignal<bool>),
     pub active_tasks_for_reorder: Memo<Vec<Task>>,
 }
 
@@ -43,8 +42,6 @@ impl InboxController {
 
         let is_loaded = app_store.tasks.loaded_signal();
 
-        let is_new_task_form_open = signal(false);
-
         let active_tasks_for_reorder = app_store.tasks.filtered(TaskStoreFilter {
             project_id: IdFilter::IsNull,
             parent_id: IdFilter::IsNull,
@@ -58,7 +55,6 @@ impl InboxController {
             completed_task_ids,
             completed_count,
             is_loaded,
-            is_new_task_form_open,
             active_tasks_for_reorder,
         }
     }
@@ -66,6 +62,10 @@ impl InboxController {
     pub fn open_detail(&self, task_id: i64) {
         let task_ids = self.active_task_ids.get_untracked();
         self.task_detail_modal_store.open(task_id, task_ids);
+    }
+
+    pub fn open_create(&self) {
+        self.app_store.task_create_modal.open(None, None);
     }
 
     pub fn reorder_task(&self, task_id: i64, sort_key: String, parent_id: Option<Option<i64>>) {

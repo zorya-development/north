@@ -8,7 +8,6 @@ use super::view::InboxView;
 pub fn InboxPage() -> impl IntoView {
     let app_store = use_app_store();
     let ctrl = InboxController::new(app_store);
-    let (is_form_open, set_form_open) = ctrl.is_new_task_form_open;
 
     view! {
         <InboxView
@@ -16,8 +15,7 @@ pub fn InboxPage() -> impl IntoView {
             completed_task_ids=ctrl.completed_task_ids
             completed_count=ctrl.completed_count
             is_loaded=ctrl.is_loaded
-            is_form_open=is_form_open
-            set_form_open=set_form_open
+            on_add_task=Callback::new(move |()| ctrl.open_create())
             on_task_click=Callback::new(move |id| ctrl.open_detail(id))
             on_reorder=Callback::new(move |(id, key, parent)| {
                 ctrl.reorder_task(id, key, parent)

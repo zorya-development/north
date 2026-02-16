@@ -19,18 +19,15 @@ pub fn ProjectPage() -> impl IntoView {
     });
 
     let ctrl = ProjectController::new(app_store, project_id);
-    let (is_form_open, set_form_open) = ctrl.is_new_task_form_open;
 
     view! {
         <ProjectView
             project=ctrl.project
-            project_id=ctrl.project_id
             active_task_ids=ctrl.active_task_ids
             completed_task_ids=ctrl.completed_task_ids
             completed_count=ctrl.completed_count
             is_loaded=ctrl.is_loaded
-            is_form_open=is_form_open
-            set_form_open=set_form_open
+            on_add_task=Callback::new(move |()| ctrl.open_create())
             on_task_click=Callback::new(move |id| ctrl.open_detail(id))
             on_reorder=Callback::new(move |(id, key, parent)| {
                 ctrl.reorder_task(id, key, parent)

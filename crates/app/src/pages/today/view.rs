@@ -4,7 +4,6 @@ use north_dto::Task;
 use super::controller::GroupedTasks;
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
 use crate::components::task_list::{CompletedSection, TaskList};
-use crate::containers::task_inline_form::TaskInlineForm;
 
 #[component]
 pub fn TodayView(
@@ -12,8 +11,7 @@ pub fn TodayView(
     completed_task_ids: Memo<Vec<i64>>,
     completed_count: Memo<usize>,
     is_loaded: Signal<bool>,
-    is_form_open: ReadSignal<bool>,
-    set_form_open: WriteSignal<bool>,
+    on_add_task: Callback<()>,
     on_task_click: Callback<i64>,
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
     active_tasks_for_reorder: Memo<Vec<Task>>,
@@ -25,19 +23,13 @@ pub fn TodayView(
             <div class="flex items-center justify-between">
                 <Text variant=TextVariant::HeadingLg>"Today"</Text>
                 <button
-                    on:click=move |_| set_form_open.set(!is_form_open.get_untracked())
+                    on:click=move |_| on_add_task.run(())
                     class="text-sm text-text-secondary hover:text-accent \
                            transition-colors cursor-pointer"
                 >
                     "+" " Add task"
                 </button>
             </div>
-
-            <Show when=move || is_form_open.get()>
-                <TaskInlineForm on_done=Callback::new(move |()| {
-                    set_form_open.set(false)
-                })/>
-            </Show>
 
             {move || {
                 if !is_loaded.get() {

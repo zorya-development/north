@@ -7,21 +7,15 @@ pub struct TaskListItemController {
     app_store: AppStore,
     task_id: i64,
     pub task: Memo<Option<Task>>,
-    pub editing: (ReadSignal<bool>, WriteSignal<bool>),
-    pub menu_open: (ReadSignal<bool>, WriteSignal<bool>),
 }
 
 impl TaskListItemController {
     pub fn new(app_store: AppStore, task_id: i64) -> Self {
         let task = app_store.tasks.get_by_id(task_id);
-        let editing = signal(false);
-        let menu_open = signal(false);
         Self {
             app_store,
             task_id,
             task,
-            editing,
-            menu_open,
         }
     }
 
@@ -38,11 +32,6 @@ impl TaskListItemController {
 
     pub fn delete(&self) {
         self.app_store.tasks.delete_task(self.task_id);
-    }
-
-    pub fn update(&self, title: String, body: Option<String>) {
-        self.editing.1.set(false);
-        self.app_store.tasks.update_task(self.task_id, title, body);
     }
 
     pub fn set_start_at(&self, start_at: String) {

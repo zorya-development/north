@@ -401,15 +401,14 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                 </div>
 
                                 // Subtask area
-                                <div class="ml-6">
-                                    <InlineSubtaskList
-                                        parent_id=task_id
-                                        sequential_limit=sequential_limit
-                                        on_click=Callback::new(move |id| {
-                                            store.navigate_to_subtask(id)
-                                        })
-                                    />
-                                </div>
+                                <InlineSubtaskList
+                                    parent_id=task_id
+                                    sequential_limit=99
+                                    on_click=Callback::new(move |id| {
+                                        store.navigate_to_subtask(id)
+                                    })
+                                    add_btn_class="ml-6"
+                                />
                             </div>
 
                             // Right sidebar

@@ -1,5 +1,6 @@
 use crate::{
-    FilterDslStore, ProjectStore, SavedFilterStore, TagStore, TaskDetailModalStore, TaskStore,
+    FilterDslStore, ProjectStore, SavedFilterStore, TagStore, TaskCreateModalStore,
+    TaskDetailModalStore, TaskStore,
 };
 
 #[derive(Clone, Copy)]
@@ -9,6 +10,7 @@ pub struct AppStore {
     pub tags: TagStore,
     pub saved_filters: SavedFilterStore,
     pub task_detail_modal: TaskDetailModalStore,
+    pub task_create_modal: TaskCreateModalStore,
     pub filter_dsl: FilterDslStore,
 }
 
@@ -25,6 +27,7 @@ impl AppStore {
         let tags = TagStore::new();
         let saved_filters = SavedFilterStore::new();
         let task_detail_modal = TaskDetailModalStore::new(tasks);
+        let task_create_modal = TaskCreateModalStore::new(tasks);
         let filter_dsl = FilterDslStore::new();
 
         Self {
@@ -33,6 +36,7 @@ impl AppStore {
             tags,
             saved_filters,
             task_detail_modal,
+            task_create_modal,
             filter_dsl,
         }
     }
