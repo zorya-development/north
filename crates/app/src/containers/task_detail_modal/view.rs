@@ -5,8 +5,9 @@ use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::date_picker::DateTimePicker;
 use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
+use crate::containers::task_checkbox::TaskCheckbox;
 use crate::containers::task_list_item::components::InlineSubtaskList;
-use north_ui::{Checkbox, Icon, IconKind, MarkdownView};
+use north_ui::{Icon, IconKind, MarkdownView};
 
 #[component]
 pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
@@ -14,6 +15,8 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
     let (editing_body, set_editing_body) = signal(false);
     let (title_draft, set_title_draft) = signal(String::new());
     let (body_draft, set_body_draft) = signal(String::new());
+    let subtask_show_non_actionable = RwSignal::new(false);
+    let subtask_show_completed = RwSignal::new(false);
 
     view! {
         <div
@@ -50,10 +53,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                     let tags = task.tags.clone();
                     let start_at = task.start_at;
                     let due_date = task.due_date;
-                    let is_completed = task.completed_at.is_some();
                     let sequential_limit = task.sequential_limit;
-
-                    let (completed_sig, set_completed_sig) = signal(is_completed);
 
                     set_title_draft.set(title.clone());
                     set_body_draft.set(body.clone().unwrap_or_default());
@@ -185,20 +185,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                 // Title
                                 <div class="flex items-start gap-2">
                                     <div class="pt-0.5">
-                                        <Checkbox
-                                            checked=completed_sig
-                                            on_toggle=Callback::new(
-                                                move |()| {
-                                                    let was = completed_sig
-                                                        .get_untracked();
-                                                    set_completed_sig
-                                                        .set(!was);
-                                                    store.toggle_complete();
-                                                },
-                                            )
-                                            checked_label="Mark incomplete"
-                                            unchecked_label="Complete task"
-                                        />
+                                        <TaskCheckbox task_id=task_id/>
                                     </div>
                                     <Show
                                         when=move || editing_title.get()
@@ -408,6 +395,8 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                         store.navigate_to_subtask(id)
                                     })
                                     add_btn_class="ml-6"
+                                    show_non_actionable=subtask_show_non_actionable
+                                    show_completed=subtask_show_completed
                                 />
                             </div>
 

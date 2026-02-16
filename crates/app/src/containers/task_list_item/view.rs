@@ -8,8 +8,9 @@ use crate::components::drag_drop::{DragDropContext, DropZone};
 use crate::components::task_meta::TaskMeta;
 use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
+use crate::containers::task_checkbox::TaskCheckbox;
 use north_dto::Task;
-use north_ui::{Checkbox, DropdownItem, DropdownMenu, Icon, IconKind, MarkdownView};
+use north_ui::{DropdownItem, DropdownMenu, Icon, IconKind, MarkdownView};
 
 #[component]
 pub fn TaskListItemView(
@@ -20,7 +21,6 @@ pub fn TaskListItemView(
     #[prop(default = false)] compact: bool,
     #[prop(default = 0)] depth: u8,
     on_click: Option<Callback<i64>>,
-    on_toggle_complete: Callback<()>,
     on_delete: Callback<()>,
     on_review: Callback<()>,
     on_set_start_at: Callback<String>,
@@ -33,6 +33,10 @@ pub fn TaskListItemView(
     let (subtasks_expanded, _set_subtasks_expanded) = signal(true);
     let (hovered, set_hovered) = signal(false);
     let (menu_open, set_menu_open) = signal(false);
+    // Lifted out of InlineSubtaskList so they survive reactive re-renders
+    // of the move || closure below (which recreates child components).
+    let subtask_show_non_actionable = RwSignal::new(false);
+    let subtask_show_completed = RwSignal::new(false);
 
     let indent_class = match depth {
         1 => "pl-6",
@@ -193,14 +197,7 @@ pub fn TaskListItemView(
                                 class="flex items-center"
                                 on:click=move |ev| ev.stop_propagation()
                             >
-                                <Checkbox
-                                    checked=is_completed
-                                    on_toggle=Callback::new(move |()| {
-                                        on_toggle_complete.run(())
-                                    })
-                                    checked_label="Mark task incomplete"
-                                    unchecked_label="Complete task"
-                                />
+                                <TaskCheckbox task_id=task_id/>
                             </div>
                             {move || {
                                 let completed = is_completed.get();
@@ -385,6 +382,8 @@ pub fn TaskListItemView(
                                                     on_click=cb
                                                     class="my-2"
                                                     add_btn_class="ml-12"
+                                                    show_non_actionable=subtask_show_non_actionable
+                                                    show_completed=subtask_show_completed
                                                 />
                                             }.into_any()
                                         } else {
@@ -395,6 +394,8 @@ pub fn TaskListItemView(
     show_project=show_project
                                                     draggable=draggable
                                                     depth={depth + 1}
+                                                    show_non_actionable=subtask_show_non_actionable
+                                                    show_completed=subtask_show_completed
                                                 />
                                             }.into_any()
                                         }}

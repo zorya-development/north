@@ -15,10 +15,16 @@ pub fn InlineSubtaskList(
     #[prop(optional)] on_click: Option<Callback<i64>>,
     #[prop(default = "")] class: &'static str,
     #[prop(default = "")] add_btn_class: &'static str,
+    /// Pass in from parent scope to survive reactive re-renders.
+    #[prop(optional)]
+    show_non_actionable: Option<RwSignal<bool>>,
+    /// Pass in from parent scope to survive reactive re-renders.
+    #[prop(optional)]
+    show_completed: Option<RwSignal<bool>>,
 ) -> impl IntoView {
     let app_store = use_app_store();
-    let (show_non_actionable, set_show_non_actionable) = signal(false);
-    let (show_completed, set_show_completed) = signal(false);
+    let show_non_actionable = show_non_actionable.unwrap_or_else(|| RwSignal::new(false));
+    let show_completed = show_completed.unwrap_or_else(|| RwSignal::new(false));
     let (show_inline_input, set_show_inline_input) = signal(false);
     let input_value = RwSignal::new(String::new());
     let extra_visible_ids = expect_context::<ExtraVisibleIds>().0;
@@ -143,7 +149,7 @@ pub fn InlineSubtaskList(
                                    hover:underline cursor-pointer \
                                    transition-colors"
                             on:click=move |_| {
-                                set_show_non_actionable
+                                show_non_actionable
                                     .update(|v| *v = !*v);
                             }
                         >
@@ -168,7 +174,7 @@ pub fn InlineSubtaskList(
                                    hover:underline cursor-pointer \
                                    transition-colors"
                             on:click=move |_| {
-                                set_show_completed
+                                show_completed
                                     .update(|v| *v = !*v);
                             }
                         >

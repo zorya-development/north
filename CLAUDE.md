@@ -80,9 +80,9 @@ Layer rules:
 
 Read (e.g. loading inbox):
 ```
-Page → Controller → Store.refetch() → Repository → ServerFn ──RPC──→ Service → Diesel → PG
-                                                                          │
-View ← Memo(filter) ← RwSignal ← store.load() ←──────────────────────────┘
+Page/Container → Controller → Store → Repository → ServerFn ──RPC──→ Service → Diesel → PG
+                                                               │
+View ← Memo(filter) ← RwSignal ← store.load() ←────────────────┘
 ```
 
 Write (e.g. updating a task):

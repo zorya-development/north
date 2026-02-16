@@ -26,7 +26,6 @@ pub fn TaskListItem(
             compact=compact
             depth=depth
             on_click=on_click
-            on_toggle_complete=Callback::new(move |()| ctrl.toggle_complete())
             on_delete=Callback::new(move |()| ctrl.delete())
             on_review=Callback::new(move |()| ctrl.review())
             on_set_start_at=Callback::new(move |sa| ctrl.set_start_at(sa))

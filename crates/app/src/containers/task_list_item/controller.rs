@@ -19,17 +19,6 @@ impl TaskListItemController {
         }
     }
 
-    pub fn toggle_complete(&self) {
-        let was_completed = self
-            .task
-            .get_untracked()
-            .map(|t| t.completed_at.is_some())
-            .unwrap_or(false);
-        self.app_store
-            .tasks
-            .toggle_complete(self.task_id, was_completed);
-    }
-
     pub fn delete(&self) {
         self.app_store.tasks.delete_task(self.task_id);
     }
