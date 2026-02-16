@@ -63,7 +63,7 @@ Service account name.
 App image with tag.
 */}}
 {{- define "north.image" -}}
-{{- $tag := default .Chart.AppVersion .Values.image.tag -}}
+{{- $tag := default (printf "v%s" .Chart.AppVersion) .Values.image.tag -}}
 {{- printf "%s:%s" .Values.image.repository $tag }}
 {{- end }}
 

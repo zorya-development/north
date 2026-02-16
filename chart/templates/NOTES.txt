@@ -15,7 +15,11 @@ Get the application URL by running:
 
 {{- end }}
 
-To seed the admin account:
+{{- if .Values.seed.enabled }}
+The admin account was seeded automatically.
+{{- else }}
+To seed the admin account manually:
   kubectl exec -it deploy/{{ include "north.fullname" . }} -n {{ .Release.Namespace }} -- /app/north-server --seed
+{{- end }}
 
 Default admin credentials: admin@north.app / admin (change immediately!)

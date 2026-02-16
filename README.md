@@ -82,12 +82,9 @@ helm install north oci://ghcr.io/zorya-development/north/charts/north \
 
 # Or from a local clone
 helm install north ./chart -n north --create-namespace
-
-# Seed the admin account after the pod is ready
-kubectl exec -it deploy/north -n north -- /app/north-server --seed
 ```
 
-Default admin credentials: `admin@north.app` / `admin` — change immediately after first login.
+The admin account is seeded automatically on first install. Default credentials: `admin@north.app` / `admin` — change immediately after first login.
 
 ### Configuration
 

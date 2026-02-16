@@ -65,6 +65,12 @@ migration:
   backoffLimit: 3
   ttlSecondsAfterFinished: 300
 
+# --- Seed Job (post-install hook, creates admin account) ---
+seed:
+  enabled: true
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+
 # --- Uploads persistence ---
 persistence:
   enabled: true
