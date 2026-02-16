@@ -63,6 +63,87 @@ Default admin credentials: `admin@north.local` / `admin`
 
 ---
 
+## Deploy with Helm
+
+The included Helm chart deploys North to any Kubernetes cluster with PostgreSQL, automatic migrations, uploads persistence, and optional ingress/TLS.
+
+### Prerequisites
+
+- Kubernetes 1.24+
+- Helm 3.x
+- `kubectl` configured for your cluster
+
+### Install
+
+```bash
+# Minimal — deploys North + in-cluster PostgreSQL
+helm install north ./chart -n north --create-namespace
+
+# Seed the admin account after the pod is ready
+kubectl exec -it deploy/north -n north -- /app/north-server --seed
+```
+
+Default admin credentials: `admin@north.app` / `admin` — change immediately after first login.
+
+### Configuration
+
+#### Custom domain with TLS
+
+```bash
+helm install north ./chart -n north --create-namespace \
+  --set ingress.enabled=true \
+  --set ingress.className=nginx \
+  --set ingress.hosts[0].host=tasks.example.com \
+  --set ingress.hosts[0].paths[0].path=/ \
+  --set ingress.hosts[0].paths[0].pathType=Prefix \
+  --set ingress.tls[0].hosts[0]=tasks.example.com \
+  --set ingress.tls[0].secretName=north-tls
+```
+
+#### External PostgreSQL
+
+```bash
+helm install north ./chart -n north --create-namespace \
+  --set postgresql.enabled=false \
+  --set externalDatabase.host=postgres.example.com \
+  --set externalDatabase.password=secret
+```
+
+#### Pre-created secrets
+
+```bash
+kubectl create secret generic north-secrets -n north \
+  --from-literal=database-url='postgres://user:pass@host:5432/north' \
+  --from-literal=jwt-secret='your-secret-here'
+
+helm install north ./chart -n north \
+  --set existingSecret.name=north-secrets
+```
+
+### Key values
+
+| Value | Default | Description |
+|---|---|---|
+| `image.tag` | Chart appVersion | Docker image tag |
+| `postgresql.enabled` | `true` | Deploy in-cluster PostgreSQL (Bitnami) |
+| `postgresql.auth.password` | auto-generated | PostgreSQL password |
+| `secret.jwtSecret` | auto-generated | JWT signing secret (preserved across upgrades) |
+| `secret.databaseUrl` | — | Explicit DATABASE_URL (overrides all other DB config) |
+| `existingSecret.name` | — | Use a pre-created Secret (keys: `database-url`, `jwt-secret`) |
+| `externalDatabase.host` | — | External PostgreSQL host (when `postgresql.enabled=false`) |
+| `ingress.enabled` | `false` | Create an Ingress resource |
+| `ingress.className` | — | Ingress class (e.g. `nginx`, `traefik`) |
+| `persistence.enabled` | `true` | PVC for uploads (`/app/uploads`) |
+| `persistence.size` | `5Gi` | Uploads volume size |
+| `migration.enabled` | `true` | Run Diesel migrations as a pre-install/pre-upgrade hook |
+| `autoscaling.enabled` | `false` | Enable HPA (scales 1–3 replicas on CPU) |
+| `resources.requests.memory` | `128Mi` | Memory request |
+| `resources.limits.memory` | `512Mi` | Memory limit |
+
+Full values reference: [`chart/values.yaml`](chart/values.yaml)
+
+---
+
 ## Development
 
 ### Prerequisites
