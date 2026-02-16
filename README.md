@@ -2,6 +2,8 @@
 
 ![North screenshot](.assets/screenshot.jpg)
 
+> **Disclaimer:** I started this project to see how far I could get with [Claude Code](https://claude.ai/claude-code) on a stack I've never worked with before. I deliberately chose Rust, Leptos, and Diesel so I'd have less temptation to write the code myself — I lead the architecture and design, and Claude Code writes the implementation, which turns out to be pretty close to a tech lead job. I've been quite impressed with the results, though I've also learned a lot about what AI-assisted development can and can't do. For context, I have 15 years of experience in web development — I know how to write code, design systems, deploy, and maintain things — but this project is an exercise in agentic coding. I do aim to bring it to a stable release, though it's not there yet, but I'm quite impressed with the result so far. **Use it at your own risk.**
+
 A self-hosted, GTD-inspired task management system built entirely in Rust. North combines a full-stack Rust architecture with practical Getting Things Done workflows — sequential subtask execution, structured review cycles, and a powerful query language for filtering tasks.
 
 ## Features
