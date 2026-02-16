@@ -65,40 +65,16 @@ server        (Axum binary, REST API routes — calls core directly)
 
 ### Client-Server Architecture
 
-```
-┌──────────┐    ┌────────────┐    ┌──────────────┐    ┌──────────────┐  ║  ┌──────────────┐    ┌──────────┐    ┌──────────┐
-│          │    │            │    │              │    │  Server Fn   │  ║  │  Server Fn   │    │          │    │          │
-│   Page   │───▶│   Store    │───▶│  Repository  │───▶│  (client)    │══RPC═▶│  (server)    │───▶│  Service │───▶│ DB/Diesel│──▶ PG
-│          │    │            │    │              │    │              │  ║  │              │    │          │    │          │
-└──────────┘    └────────────┘    └──────────────┘    └──────────────┘  ║  └──────────────┘    └──────────┘    └──────────┘
-                                                                       ║
- container/      reactive state,   thin facade,        #[server] macro ║   auth extraction,    business        models,
- controller/     optimistic        hides transport     generates HTTP   ║   context wiring      logic,          schema,
- view            updates,          details             POST stub        ║                       queries,        mappings
-                 client-side                                            ║                       enrichment
-                 filtering                             ◄── WASM ───────║────── Server ──►
-
-        ◄──────────────────── DTO types (pure data, no IO) shared across all layers ──────────────────────►
-```
+Request flow: Page → Store → Repository → ServerFn (client stub, WASM) ══RPC══ ServerFn (server handler) → Service → DB/Diesel → PG. DTO types are shared across all layers and both runtimes.
 
 Layer rules:
-- Pages talk to Stores, never deeper
-- Stores talk to Repositories, never server functions directly
-- Repositories talk to Server Functions, nothing else
-- Core is reused by both Server Functions and REST API routes
-- DTO types are the shared language across every layer and both runtimes
-
-Why each layer exists:
-
-| Layer | Why |
-|---|---|
-| **Page** | UI composition — wires store to view via callbacks |
-| **Store** | Reactive state (RwSignal) so UI updates automatically. Optimistic updates for instant feedback. Client-side filtered Memos let multiple pages share one dataset. |
-| **Repository** | Decouples stores from transport. Stores don't know #[server] exists. Swappable for testing. |
-| **Server Fn** | Leptos RPC boundary — #[server] macro generates a client stub (serializes args, HTTP POST) and a server handler (deserializes, executes). Neither side sees HTTP directly. |
-| **Core** | Single home for business logic. All services (Task, Project, Tag, User, Filter, Stats). Reused by server fns AND REST API routes. No duplication. |
-| **DB Layer** | Type-safe Diesel schema, model structs, enum mappings. Core builds queries against these types. |
-| **DTO** | Pure data types compiled to both WASM and server. The contract everyone agrees on. |
+- **Page** (container/controller/view) — UI composition, wires store to view via callbacks. Talks to Stores, never deeper.
+- **Store** — Reactive state (RwSignal), optimistic updates, client-side filtered Memos. Talks to Repositories, never server functions directly.
+- **Repository** — Thin facade, hides transport details. Talks to Server Functions, nothing else. Swappable for testing.
+- **Server Fn** — Leptos RPC boundary. `#[server]` macro generates client stub (HTTP POST) and server handler. Auth extraction + context wiring.
+- **Core** — Business logic, queries, enrichment. Reused by both Server Functions and REST API routes.
+- **DB** — Type-safe Diesel schema, model structs, enum mappings.
+- **DTO** — Pure data types compiled to both WASM and server. The shared contract.
 
 ### Data Flow
 
