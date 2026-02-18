@@ -199,7 +199,8 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                                border-none \
                                                px-1 -mx-1 flex-1 \
                                                w-full \
-                                               focus:outline-none"
+                                               focus:outline-none \
+                                               no-focus-ring"
                                         prop:value=move || {
                                             title_draft.get()
                                         }
