@@ -92,6 +92,22 @@ fn flatten_subtree(
     }
 }
 
+/// Build a flat list preserving input order — no child expansion.
+/// Used by filter page where results come from the server in a specific order.
+pub fn flatten_flat(root_ids: &[i64], all_tasks: &[Task], show_completed: bool) -> Vec<FlatNode> {
+    root_ids
+        .iter()
+        .filter_map(|&id| all_tasks.iter().find(|t| t.id == id))
+        .filter(|t| show_completed || t.completed_at.is_none())
+        .map(|t| FlatNode {
+            task_id: t.id,
+            parent_id: t.parent_id,
+            depth: 0,
+            is_completed: t.completed_at.is_some(),
+        })
+        .collect()
+}
+
 // ── Navigation helpers ─────────────────────────────────────────
 
 /// Previous sibling (same parent_id) in flat order.

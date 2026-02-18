@@ -19,6 +19,7 @@ pub fn TraversableTaskListView(
     let cursor_task_id = ctrl.cursor_task_id;
     let inline_mode = ctrl.inline_mode;
     let create_input_value = ctrl.create_input_value;
+    let show_review = ctrl.show_review;
 
     // Global keyboard listener — works regardless of focus.
     // Skips events when an input/textarea/contenteditable is focused.
@@ -144,6 +145,7 @@ pub fn TraversableTaskListView(
                                         <TaskListItem
                                             task_id=task_id
                                             show_project=show_project
+                                            show_review=show_review
                                             draggable=draggable
                                             hide_subtasks=true
                                             hide_body=true

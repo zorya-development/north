@@ -20,19 +20,21 @@ pub fn ProjectPage() -> impl IntoView {
 
     let ctrl = ProjectController::new(app_store, project_id);
 
+    let default_project_id = Signal::derive(move || Some(project_id.get()));
+
     view! {
         <ProjectView
             project=ctrl.project
-            active_task_ids=ctrl.active_task_ids
-            completed_task_ids=ctrl.completed_task_ids
+            root_task_ids=ctrl.root_task_ids
+            show_completed=ctrl.show_completed
             completed_count=ctrl.completed_count
             is_loaded=ctrl.is_loaded
+            default_project_id=default_project_id
             on_add_task=Callback::new(move |()| ctrl.open_create())
             on_task_click=Callback::new(move |id| ctrl.open_detail(id))
             on_reorder=Callback::new(move |(id, key, parent)| {
                 ctrl.reorder_task(id, key, parent)
             })
-            active_tasks_for_reorder=ctrl.active_tasks_for_reorder
         />
     }
 }

@@ -20,6 +20,11 @@ pub fn TraversableTaskList(
     )>,
     is_loaded: Signal<bool>,
     #[prop(optional)] show_keybindings_help: Option<RwSignal<bool>>,
+    #[prop(default = true)] allow_create: bool,
+    #[prop(default = true)] allow_reorder: bool,
+    #[prop(default = false)] show_review: bool,
+    #[prop(optional)] default_project_id: Option<Signal<Option<i64>>>,
+    #[prop(default = false)] flat: bool,
 ) -> impl IntoView {
     let app_store = use_app_store();
     provide_context(ExtraVisibleIds(RwSignal::new(vec![])));
@@ -33,6 +38,11 @@ pub fn TraversableTaskList(
         show_keybindings_help,
         on_task_click,
         on_reorder,
+        allow_create,
+        allow_reorder,
+        show_review,
+        default_project_id,
+        flat,
     );
 
     view! {

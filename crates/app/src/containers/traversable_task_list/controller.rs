@@ -15,12 +15,17 @@ pub struct TraversableTaskListController {
     pub create_input_value: RwSignal<String>,
     pub pending_delete: RwSignal<bool>,
     pub show_keybindings_help: RwSignal<bool>,
+    pub show_review: bool,
     app_store: AppStore,
+    allow_create: bool,
+    allow_reorder: bool,
+    default_project_id: Option<Signal<Option<i64>>>,
     on_task_click: Option<Callback<i64>>,
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
 }
 
 impl TraversableTaskListController {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         app_store: AppStore,
         root_task_ids: Memo<Vec<i64>>,
@@ -28,13 +33,22 @@ impl TraversableTaskListController {
         show_keybindings_help: RwSignal<bool>,
         on_task_click: Option<Callback<i64>>,
         on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
+        allow_create: bool,
+        allow_reorder: bool,
+        show_review: bool,
+        default_project_id: Option<Signal<Option<i64>>>,
+        flat: bool,
     ) -> Self {
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
 
         let flat_nodes = Memo::new(move |_| {
             let roots = root_task_ids.get();
             let tasks = all_tasks.get();
-            flatten_tree(&roots, &tasks, show_completed.get())
+            if flat {
+                flatten_flat(&roots, &tasks, show_completed.get())
+            } else {
+                flatten_tree(&roots, &tasks, show_completed.get())
+            }
         });
 
         let cursor_task_id = RwSignal::new(None::<i64>);
@@ -57,7 +71,11 @@ impl TraversableTaskListController {
             create_input_value,
             pending_delete,
             show_keybindings_help,
+            show_review,
             app_store,
+            allow_create,
+            allow_reorder,
+            default_project_id,
             on_task_click,
             on_reorder,
         }
@@ -196,12 +214,14 @@ impl TraversableTaskListController {
 
         let sort_key = compute_sort_key(&nodes, &tasks, anchor_task_id, placement, parent_id);
 
-        let project_id = parent_id.and_then(|pid| {
-            tasks
-                .iter()
-                .find(|t| t.id == pid)
-                .and_then(|t| t.project_id)
-        });
+        let project_id = parent_id
+            .and_then(|pid| {
+                tasks
+                    .iter()
+                    .find(|t| t.id == pid)
+                    .and_then(|t| t.project_id)
+            })
+            .or_else(|| self.default_project_id.and_then(|s| s.get_untracked()));
 
         let input = CreateTask {
             title,
@@ -477,46 +497,52 @@ impl TraversableTaskListController {
         match key.as_str() {
             "ArrowUp" => {
                 ev.prevent_default();
-                if ev.shift_key() {
+                if ev.shift_key() && self.allow_reorder {
                     self.reorder_up();
-                } else {
+                } else if !ev.shift_key() {
                     self.move_up();
                 }
             }
             "ArrowDown" => {
                 ev.prevent_default();
-                if ev.shift_key() {
+                if ev.shift_key() && self.allow_reorder {
                     self.reorder_down();
-                } else {
+                } else if !ev.shift_key() {
                     self.move_down();
                 }
             }
             "ArrowRight" => {
                 ev.prevent_default();
-                if ev.shift_key() {
+                if ev.shift_key() && self.allow_reorder {
                     self.reorder_right();
-                } else {
+                } else if !ev.shift_key() {
                     self.move_right();
                 }
             }
             "ArrowLeft" => {
                 ev.prevent_default();
-                if ev.shift_key() {
+                if ev.shift_key() && self.allow_reorder {
                     self.reorder_left();
-                } else {
+                } else if !ev.shift_key() {
                     self.move_left();
                 }
             }
             "Enter" => {
                 if (ev.ctrl_key() || ev.meta_key()) && ev.shift_key() {
-                    ev.prevent_default();
-                    self.start_create_inside();
+                    if self.allow_create {
+                        ev.prevent_default();
+                        self.start_create_inside();
+                    }
                 } else if ev.ctrl_key() || ev.meta_key() {
-                    ev.prevent_default();
-                    self.start_create(Placement::After);
+                    if self.allow_create {
+                        ev.prevent_default();
+                        self.start_create(Placement::After);
+                    }
                 } else if ev.shift_key() {
-                    ev.prevent_default();
-                    self.start_create(Placement::Before);
+                    if self.allow_create {
+                        ev.prevent_default();
+                        self.start_create(Placement::Before);
+                    }
                 } else if self.cursor_task_id.get_untracked().is_some() {
                     ev.prevent_default();
                     self.start_edit();
