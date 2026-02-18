@@ -22,21 +22,20 @@ pub fn TraversableTaskListView(
     let show_review = ctrl.show_review;
 
     // Global keyboard listener — works regardless of focus.
-    // Skips events when an input/textarea/contenteditable is focused,
-    // or when focus is inside a dialog/modal overlay.
+    // Skips when a dialog is open or an input/textarea is focused.
     window_event_listener(leptos::ev::keydown, move |ev| {
         if let Some(el) = document().active_element() {
             if let Some(html_el) = el.dyn_ref::<web_sys::HtmlElement>() {
-                let tag = html_el.tag_name().to_lowercase();
-                if tag == "input" || tag == "textarea" || html_el.is_content_editable() {
-                    return;
-                }
                 if html_el
                     .closest("[role=\"dialog\"]")
                     .ok()
                     .flatten()
                     .is_some()
                 {
+                    return;
+                }
+                let tag = html_el.tag_name().to_lowercase();
+                if tag == "input" || tag == "textarea" || html_el.is_content_editable() {
                     return;
                 }
             }
