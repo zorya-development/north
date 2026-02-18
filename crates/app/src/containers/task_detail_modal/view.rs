@@ -7,18 +7,23 @@ use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
 use crate::containers::task_checkbox::TaskCheckbox;
 use crate::containers::task_list_item::components::InlineSubtaskList;
-use north_ui::{Icon, IconKind, MarkdownView};
+use north_ui::{Icon, IconKind};
 
 #[component]
 pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
-    let (editing_title, set_editing_title) = signal(false);
-    let (editing_body, set_editing_body) = signal(false);
     let (title_draft, set_title_draft) = signal(String::new());
     let (body_draft, set_body_draft) = signal(String::new());
     let subtask_show_non_actionable = RwSignal::new(false);
     let subtask_show_completed = RwSignal::new(false);
 
-    let title_ref = NodeRef::<leptos::html::H2>::new();
+    let title_input_ref = NodeRef::<leptos::html::Input>::new();
+
+    let save = move || {
+        let t = title_draft.get_untracked();
+        let b = body_draft.get_untracked();
+        let b = if b.trim().is_empty() { None } else { Some(b) };
+        store.update(t, b);
+    };
 
     view! {
         <div class="fixed inset-0 z-50 flex items-center justify-center">
@@ -50,12 +55,10 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
 
                     set_title_draft.set(title.clone());
                     set_body_draft.set(body.clone().unwrap_or_default());
-                    set_editing_title.set(false);
-                    set_editing_body.set(false);
 
-                    // Focus title when modal content renders
+                    // Focus title input when modal content renders
                     request_animation_frame(move || {
-                        if let Some(el) = title_ref.get() {
+                        if let Some(el) = title_input_ref.get() {
                             let _ = el.focus();
                         }
                     });
@@ -184,219 +187,64 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                         space-y-4">
                                 // Title
                                 <div class="flex items-start gap-2">
-                                    <div class="pt-0.5">
+                                    <div class="pt-1">
                                         <TaskCheckbox task_id=task_id/>
                                     </div>
-                                    <Show
-                                        when=move || editing_title.get()
-                                        fallback=move || {
-                                            view! {
-                                                <h2
-                                                    node_ref=title_ref
-                                                    tabindex=0
-                                                    class="text-lg font-semibold \
-                                                           text-text-primary \
-                                                           cursor-pointer \
-                                                           hover:bg-bg-tertiary \
-                                                           rounded px-1 -mx-1 \
-                                                           flex-1 \
-                                                           focus:outline-none \
-                                                           focus-visible:ring-1 \
-                                                           focus-visible:ring-accent"
-                                                    on:click=move |_| {
-                                                        set_editing_title
-                                                            .set(true);
-                                                    }
-                                                    on:keydown=move |ev| {
-                                                        if ev.key() == "Enter" {
-                                                            ev.prevent_default();
-                                                            set_editing_title
-                                                                .set(true);
-                                                        }
-                                                    }
-                                                >
-                                                    {move || title_draft.get()}
-                                                </h2>
+                                    <input
+                                        type="text"
+                                        node_ref=title_input_ref
+                                        class="text-lg font-semibold \
+                                               text-text-primary \
+                                               bg-transparent \
+                                               border-none \
+                                               px-1 -mx-1 flex-1 \
+                                               w-full \
+                                               focus:outline-none"
+                                        prop:value=move || {
+                                            title_draft.get()
+                                        }
+                                        on:input=move |ev| {
+                                            set_title_draft
+                                                .set(event_target_value(&ev));
+                                        }
+                                        on:keydown=move |ev| {
+                                            if ev.key() == "Enter" {
+                                                ev.prevent_default();
+                                                save();
                                             }
                                         }
-                                    >
-                                        <input
-                                            type="text"
-                                            class="text-lg font-semibold \
-                                                   text-text-primary \
-                                                   bg-bg-input border \
-                                                   border-border rounded \
-                                                   px-1 -mx-1 flex-1 \
-                                                   w-full \
-                                                   focus:outline-none \
-                                                   focus:border-accent"
-                                            prop:value=move || {
-                                                title_draft.get()
-                                            }
-                                            on:input=move |ev| {
-                                                set_title_draft
-                                                    .set(
-                                                        event_target_value(
-                                                            &ev,
-                                                        ),
-                                                    );
-                                            }
-                                            on:keydown=move |ev| {
-                                                match ev.key().as_str() {
-                                                    "Enter" => {
-                                                        ev.prevent_default();
-                                                        set_editing_title
-                                                            .set(false);
-                                                        let t =
-                                                            title_draft
-                                                                .get_untracked();
-                                                        let b =
-                                                            body_draft
-                                                                .get_untracked();
-                                                        let b = if b
-                                                            .trim()
-                                                            .is_empty()
-                                                        {
-                                                            None
-                                                        } else {
-                                                            Some(b)
-                                                        };
-                                                        store.update(t, b);
-                                                    }
-                                                    "Escape" => {
-                                                        set_editing_title
-                                                            .set(false);
-                                                    }
-                                                    _ => {}
-                                                }
-                                            }
-                                            on:blur=move |_| {
-                                                if editing_title
-                                                    .get_untracked()
-                                                {
-                                                    set_editing_title
-                                                        .set(false);
-                                                    let t =
-                                                        title_draft
-                                                            .get_untracked();
-                                                    let b =
-                                                        body_draft
-                                                            .get_untracked();
-                                                    let b = if b
-                                                        .trim()
-                                                        .is_empty()
-                                                    {
-                                                        None
-                                                    } else {
-                                                        Some(b)
-                                                    };
-                                                    store.update(t, b);
-                                                }
-                                            }
-                                            node_ref={
-                                                let r = NodeRef::<
-                                                    leptos::html::Input,
-                                                >::new();
-                                                Effect::new(move || {
-                                                    if editing_title.get()
-                                                    {
-                                                        if let Some(el) =
-                                                            r.get()
-                                                        {
-                                                            let _ = el
-                                                                .focus();
-                                                        }
-                                                    }
-                                                });
-                                                r
-                                            }
-                                        />
-                                    </Show>
+                                        on:blur=move |_| {
+                                            save();
+                                        }
+                                    />
                                 </div>
 
                                 // Body
                                 <div class="ml-6">
-                                    <Show
-                                        when=move || editing_body.get()
-                                        fallback=move || {
-                                            view! {
-                                                <div
-                                                    class="cursor-pointer \
-                                                           hover:bg-bg-tertiary \
-                                                           rounded p-1 -m-1 \
-                                                           min-h-[2rem]"
-                                                    on:click=move |_| {
-                                                        set_editing_body
-                                                            .set(true);
-                                                    }
-                                                >
-                                                    {move || {
-                                                        let bd = body_draft.get();
-                                                        if bd.trim().is_empty() {
-                                                            view! {
-                                                                <Text variant=TextVariant::BodyMd color=TextColor::Tertiary class="italic">
-                                                                    "Add description..."
-                                                                </Text>
-                                                            }.into_any()
-                                                        } else {
-                                                            view! {
-                                                                <MarkdownView content=bd/>
-                                                            }.into_any()
-                                                        }
-                                                    }}
-                                                </div>
-                                            }
+                                    <textarea
+                                        class="w-full text-sm \
+                                               text-text-primary \
+                                               bg-transparent \
+                                               border-none \
+                                               p-1 -m-1 \
+                                               focus:outline-none \
+                                               resize-none \
+                                               min-h-[2rem] \
+                                               placeholder:text-text-tertiary \
+                                               placeholder:italic"
+                                        placeholder="Add description..."
+                                        prop:value=move || {
+                                            body_draft.get()
                                         }
-                                    >
-                                        <textarea
-                                            class="w-full text-sm \
-                                                   text-text-primary \
-                                                   bg-bg-input border \
-                                                   border-border \
-                                                   rounded p-2 \
-                                                   focus:outline-none \
-                                                   focus:border-accent \
-                                                   resize-y \
-                                                   min-h-[4rem]"
-                                            prop:value=move || {
-                                                body_draft.get()
-                                            }
-                                            on:input=move |ev| {
-                                                set_body_draft.set(
-                                                    event_target_value(&ev),
-                                                );
-                                            }
-                                            on:blur=move |_| {
-                                                set_editing_body.set(false);
-                                                let t = title_draft.get_untracked();
-                                                let b = body_draft.get_untracked();
-                                                let b = if b.trim().is_empty() {
-                                                    None
-                                                } else {
-                                                    Some(b)
-                                                };
-                                                store.update(t, b);
-                                            }
-                                            on:keydown=move |ev| {
-                                                if ev.key() == "Escape" {
-                                                    set_editing_body.set(false);
-                                                }
-                                            }
-                                            node_ref={
-                                                let r = NodeRef::<
-                                                    leptos::html::Textarea,
-                                                >::new();
-                                                Effect::new(move || {
-                                                    if editing_body.get() {
-                                                        if let Some(el) = r.get() {
-                                                            let _ = el.focus();
-                                                        }
-                                                    }
-                                                });
-                                                r
-                                            }
-                                        />
-                                    </Show>
+                                        on:input=move |ev| {
+                                            set_body_draft.set(
+                                                event_target_value(&ev),
+                                            );
+                                        }
+                                        on:blur=move |_| {
+                                            save();
+                                        }
+                                    />
                                 </div>
 
                                 // Subtask area
