@@ -18,6 +18,8 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
     let subtask_show_non_actionable = RwSignal::new(false);
     let subtask_show_completed = RwSignal::new(false);
 
+    let title_ref = NodeRef::<leptos::html::H2>::new();
+
     view! {
         <div class="fixed inset-0 z-50 flex items-center justify-center">
             <div
@@ -25,6 +27,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                 on:click=move |_| store.close()
             />
             <div
+                role="dialog"
                 class="relative border border-(--border-muted) \
                        rounded-2xl shadow-2xl max-w-3xl w-full mx-4 \
                        max-h-[85vh] flex flex-col"
@@ -49,6 +52,13 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                     set_body_draft.set(body.clone().unwrap_or_default());
                     set_editing_title.set(false);
                     set_editing_body.set(false);
+
+                    // Focus title when modal content renders
+                    request_animation_frame(move || {
+                        if let Some(el) = title_ref.get() {
+                            let _ = el.focus();
+                        }
+                    });
 
                     Some(view! {
                         // Header
@@ -182,15 +192,27 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                         fallback=move || {
                                             view! {
                                                 <h2
+                                                    node_ref=title_ref
+                                                    tabindex=0
                                                     class="text-lg font-semibold \
                                                            text-text-primary \
                                                            cursor-pointer \
                                                            hover:bg-bg-tertiary \
                                                            rounded px-1 -mx-1 \
-                                                           flex-1"
+                                                           flex-1 \
+                                                           focus:outline-none \
+                                                           focus-visible:ring-1 \
+                                                           focus-visible:ring-accent"
                                                     on:click=move |_| {
                                                         set_editing_title
                                                             .set(true);
+                                                    }
+                                                    on:keydown=move |ev| {
+                                                        if ev.key() == "Enter" {
+                                                            ev.prevent_default();
+                                                            set_editing_title
+                                                                .set(true);
+                                                        }
                                                     }
                                                 >
                                                     {move || title_draft.get()}
