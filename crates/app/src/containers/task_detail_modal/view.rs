@@ -220,6 +220,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                                border-none \
                                                p-1 -m-1 \
                                                focus:outline-none \
+                                               no-focus-ring \
                                                resize-none \
                                                min-h-[2rem] \
                                                placeholder:text-text-tertiary \
