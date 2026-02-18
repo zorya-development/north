@@ -62,6 +62,14 @@ pub fn TraversableTaskListView(
         }
     };
 
+    let on_focus = move |_: web_sys::FocusEvent| {
+        if scoped && cursor_task_id.get_untracked().is_none() {
+            if let Some(first) = flat_nodes.get_untracked().first() {
+                cursor_task_id.set(Some(first.task_id));
+            }
+        }
+    };
+
     view! {
         <div
             node_ref=container_ref
@@ -69,6 +77,7 @@ pub fn TraversableTaskListView(
             class=if scoped { "focus:outline-none" } else { "" }
             on:keydown=on_keydown
             on:click=on_container_click
+            on:focus=on_focus
         >
             {move || {
                 if !is_loaded.get() {
