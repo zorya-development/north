@@ -1,20 +1,22 @@
 use leptos::prelude::*;
 use north_dto::CreateTask;
 
-use crate::TaskStore;
+use crate::{ModalStore, TaskStore};
 
 #[derive(Clone, Copy)]
 pub struct TaskCreateModalStore {
     task_store: TaskStore,
+    modal: ModalStore,
     is_open: RwSignal<bool>,
     default_project_id: RwSignal<Option<i64>>,
     default_parent_id: RwSignal<Option<i64>>,
 }
 
 impl TaskCreateModalStore {
-    pub fn new(task_store: TaskStore) -> Self {
+    pub fn new(task_store: TaskStore, modal: ModalStore) -> Self {
         Self {
             task_store,
+            modal,
             is_open: RwSignal::new(false),
             default_project_id: RwSignal::new(None),
             default_parent_id: RwSignal::new(None),
@@ -25,12 +27,14 @@ impl TaskCreateModalStore {
         self.default_project_id.set(project_id);
         self.default_parent_id.set(parent_id);
         self.is_open.set(true);
+        self.modal.open("task_create");
     }
 
     pub fn close(&self) {
         self.is_open.set(false);
         self.default_project_id.set(None);
         self.default_parent_id.set(None);
+        self.modal.close("task_create");
     }
 
     pub fn is_open(&self) -> bool {

@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use north_dto::CreateTask;
-use north_stores::{AppStore, StatusBarVariant, TaskStoreFilter};
+use north_stores::{AppStore, ModalStore, StatusBarVariant, TaskStoreFilter};
 
 use super::tree::*;
 
@@ -17,6 +17,7 @@ pub struct TraversableTaskListController {
     pub show_keybindings_help: RwSignal<bool>,
     pub show_review: bool,
     app_store: AppStore,
+    modal: ModalStore,
     allow_create: bool,
     allow_reorder: bool,
     default_project_id: Option<Signal<Option<i64>>>,
@@ -28,6 +29,7 @@ impl TraversableTaskListController {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         app_store: AppStore,
+        modal: ModalStore,
         root_task_ids: Memo<Vec<i64>>,
         show_completed: RwSignal<bool>,
         show_keybindings_help: RwSignal<bool>,
@@ -73,6 +75,7 @@ impl TraversableTaskListController {
             show_keybindings_help,
             show_review,
             app_store,
+            modal,
             allow_create,
             allow_reorder,
             default_project_id,
@@ -456,6 +459,10 @@ impl TraversableTaskListController {
     // ── Keyboard handler ───────────────────────────────────────
 
     pub fn handle_keydown(&self, ev: &web_sys::KeyboardEvent) {
+        if self.modal.is_any_open() {
+            return;
+        }
+
         if self.show_keybindings_help.get_untracked() {
             if ev.key() == "Escape" {
                 ev.prevent_default();

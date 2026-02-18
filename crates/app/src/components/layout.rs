@@ -15,6 +15,7 @@ pub fn AppLayout(children: Children) -> impl IntoView {
 
     let app_store = AppStore::new();
     provide_context(app_store);
+    provide_context(app_store.modal);
     provide_context(app_store.task_detail_modal);
     provide_context(app_store.task_create_modal);
 

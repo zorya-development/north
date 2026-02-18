@@ -33,6 +33,7 @@ pub fn TraversableTaskList(
 
     let ctrl = TraversableTaskListController::new(
         app_store,
+        app_store.modal,
         root_task_ids,
         show_completed,
         show_keybindings_help,
