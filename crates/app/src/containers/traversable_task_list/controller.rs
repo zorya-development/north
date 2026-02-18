@@ -42,6 +42,7 @@ impl TraversableTaskListController {
         default_project_id: Option<Signal<Option<i64>>>,
         flat: bool,
         scoped: bool,
+        cursor_task_id: Option<RwSignal<Option<i64>>>,
     ) -> Self {
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
 
@@ -55,7 +56,7 @@ impl TraversableTaskListController {
             }
         });
 
-        let cursor_task_id = RwSignal::new(None::<i64>);
+        let cursor_task_id = cursor_task_id.unwrap_or_else(|| RwSignal::new(None::<i64>));
 
         let cursor_index = Memo::new(move |_| {
             let id = cursor_task_id.get()?;

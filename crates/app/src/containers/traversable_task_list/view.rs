@@ -74,7 +74,7 @@ pub fn TraversableTaskListView(
         <div
             node_ref=container_ref
             tabindex=if scoped { "0" } else { "-1" }
-            class=if scoped { "focus:outline-none" } else { "" }
+            class=if scoped { "no-focus-ring" } else { "" }
             on:keydown=on_keydown
             on:click=on_container_click
             on:focus=on_focus

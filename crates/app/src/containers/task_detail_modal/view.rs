@@ -21,6 +21,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
     let input_value = RwSignal::new(String::new());
     let extra_visible_ids = expect_context::<ExtraVisibleIds>().0;
     let title_input_ref = NodeRef::<leptos::html::Input>::new();
+    let subtask_cursor = RwSignal::new(None::<i64>);
     let focused_task_id = RwSignal::new(None::<i64>);
 
     let save = move || {
@@ -307,6 +308,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                                 default_project_id=default_project_signal
                                                 empty_message="No subtasks."
                                                 allow_reorder=true
+                                                cursor_task_id=subtask_cursor
                                             />
                                             // Inline task input for mouse-friendly subtask creation
                                             <Show when=move || show_inline_input.get()>
