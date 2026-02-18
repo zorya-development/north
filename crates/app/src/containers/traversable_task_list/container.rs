@@ -3,6 +3,7 @@ use north_stores::use_app_store;
 
 use super::controller::TraversableTaskListController;
 use super::view::TraversableTaskListView;
+use crate::components::drag_drop::DragDropContext;
 use crate::containers::task_list::ExtraVisibleIds;
 
 #[component]
@@ -29,6 +30,9 @@ pub fn TraversableTaskList(
     #[prop(optional)] cursor_task_id: Option<RwSignal<Option<i64>>>,
 ) -> impl IntoView {
     let app_store = use_app_store();
+    if draggable {
+        provide_context(DragDropContext::new());
+    }
     provide_context(ExtraVisibleIds(RwSignal::new(vec![])));
 
     let show_keybindings_help = show_keybindings_help.unwrap_or_else(|| RwSignal::new(false));

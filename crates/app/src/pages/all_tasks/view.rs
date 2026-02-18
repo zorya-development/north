@@ -81,6 +81,7 @@ pub fn AllTasksView(
                 root_task_ids=root_task_ids
                 show_completed=show_completed
                 show_project=true
+                draggable=true
                 is_loaded=is_loaded
                 on_reorder=on_reorder
                 on_task_click=on_task_click

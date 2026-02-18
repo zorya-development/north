@@ -197,6 +197,26 @@ pub fn task_sort_key(all_tasks: &[Task], task_id: i64) -> Option<String> {
         .map(|t| t.sort_key.clone())
 }
 
+// ── Ancestry helpers ──────────────────────────────────────────
+
+/// Returns true if `task_id` is a descendant of `ancestor_id` in the flat node list.
+/// Used to prevent drag-drop cycles (dragging a parent onto its own child).
+pub fn is_descendant_of(flat: &[FlatNode], ancestor_id: i64, task_id: i64) -> bool {
+    // Walk parent chain from task_id upward.
+    let mut current = task_id;
+    loop {
+        let parent = flat
+            .iter()
+            .find(|n| n.task_id == current)
+            .and_then(|n| n.parent_id);
+        match parent {
+            Some(pid) if pid == ancestor_id => return true,
+            Some(pid) => current = pid,
+            None => return false,
+        }
+    }
+}
+
 // ── Depth helpers ──────────────────────────────────────────────
 
 /// Maximum depth allowed for a new task being created at the given anchor.
@@ -367,5 +387,72 @@ mod tests {
         assert_eq!(first_child(&flat, 3), None);
         assert_eq!(parent_of(&flat, 3), Some(1));
         assert_eq!(parent_of(&flat, 1), None);
+    }
+
+    #[test]
+    fn is_descendant_of_direct_child() {
+        let flat = vec![
+            FlatNode {
+                task_id: 1,
+                parent_id: None,
+                depth: 0,
+                is_completed: false,
+            },
+            FlatNode {
+                task_id: 2,
+                parent_id: Some(1),
+                depth: 1,
+                is_completed: false,
+            },
+        ];
+        assert!(is_descendant_of(&flat, 1, 2));
+        assert!(!is_descendant_of(&flat, 2, 1));
+    }
+
+    #[test]
+    fn is_descendant_of_grandchild() {
+        let flat = vec![
+            FlatNode {
+                task_id: 1,
+                parent_id: None,
+                depth: 0,
+                is_completed: false,
+            },
+            FlatNode {
+                task_id: 2,
+                parent_id: Some(1),
+                depth: 1,
+                is_completed: false,
+            },
+            FlatNode {
+                task_id: 3,
+                parent_id: Some(2),
+                depth: 2,
+                is_completed: false,
+            },
+        ];
+        assert!(is_descendant_of(&flat, 1, 3));
+        assert!(is_descendant_of(&flat, 1, 2));
+        assert!(!is_descendant_of(&flat, 3, 1));
+    }
+
+    #[test]
+    fn is_descendant_of_unrelated() {
+        let flat = vec![
+            FlatNode {
+                task_id: 1,
+                parent_id: None,
+                depth: 0,
+                is_completed: false,
+            },
+            FlatNode {
+                task_id: 2,
+                parent_id: None,
+                depth: 0,
+                is_completed: false,
+            },
+        ];
+        assert!(!is_descendant_of(&flat, 1, 2));
+        assert!(!is_descendant_of(&flat, 2, 1));
     }
 }

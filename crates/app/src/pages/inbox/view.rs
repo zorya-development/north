@@ -80,6 +80,7 @@ pub fn InboxView(
             <TraversableTaskList
                 root_task_ids=root_task_ids
                 show_completed=show_completed
+                draggable=true
                 is_loaded=is_loaded
                 on_reorder=on_reorder
                 on_task_click=on_task_click

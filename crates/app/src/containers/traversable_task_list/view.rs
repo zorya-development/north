@@ -1,10 +1,13 @@
 use leptos::prelude::*;
+use north_dto::Task;
+use north_stores::TaskStoreFilter;
 use north_ui::Spinner;
 use wasm_bindgen::JsCast;
 
 use super::controller::TraversableTaskListController;
 use super::tree::*;
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
+use crate::components::drag_drop::{DragDropContext, DropZone};
 use crate::containers::task_list_item::TaskListItem;
 
 #[component]
@@ -22,6 +25,9 @@ pub fn TraversableTaskListView(
     let create_input_value = ctrl.create_input_value;
     let show_review = ctrl.show_review;
     let container_ref = NodeRef::<leptos::html::Div>::new();
+    let drag_ctx = use_context::<DragDropContext>();
+    let app_store = north_stores::use_app_store();
+    let all_tasks_for_drop = app_store.tasks.filtered(TaskStoreFilter::default());
 
     if !scoped {
         // Global keyboard listener — works regardless of focus.
@@ -78,6 +84,17 @@ pub fn TraversableTaskListView(
             on:keydown=on_keydown
             on:click=on_container_click
             on:focus=on_focus
+            on:drop=move |ev: web_sys::DragEvent| {
+                ev.prevent_default();
+                let nodes = flat_nodes.get_untracked();
+                let tasks = all_tasks_for_drop.get_untracked();
+                handle_drop(drag_ctx, &nodes, &tasks, ctrl);
+            }
+            on:dragover=move |ev: web_sys::DragEvent| {
+                if drag_ctx.is_some() {
+                    ev.prevent_default();
+                }
+            }
         >
             {move || {
                 if !is_loaded.get() {
@@ -219,6 +236,90 @@ pub fn TraversableTaskListView(
             }}
         </div>
     }
+}
+
+fn handle_drop(
+    drag_ctx: Option<DragDropContext>,
+    flat_nodes: &[FlatNode],
+    all_tasks: &[Task],
+    ctrl: TraversableTaskListController,
+) {
+    let Some(ctx) = drag_ctx else { return };
+    let Some(dragging_id) = ctx.dragging_task_id.get_untracked() else {
+        return;
+    };
+    let Some((target_id, zone)) = ctx.drop_target.get_untracked() else {
+        return;
+    };
+
+    // No-op: dropped on itself.
+    if dragging_id == target_id {
+        ctx.dragging_task_id.set(None);
+        ctx.drop_target.set(None);
+        return;
+    }
+
+    // Prevent cycles: cannot drop a parent onto its own descendant.
+    if is_descendant_of(flat_nodes, dragging_id, target_id) {
+        ctx.dragging_task_id.set(None);
+        ctx.drop_target.set(None);
+        return;
+    }
+
+    let target_node = flat_nodes.iter().find(|n| n.task_id == target_id);
+    let Some(target_node) = target_node else {
+        ctx.dragging_task_id.set(None);
+        ctx.drop_target.set(None);
+        return;
+    };
+
+    match zone {
+        DropZone::Above => {
+            let parent_id = target_node.parent_id;
+            let siblings: Vec<i64> = flat_nodes
+                .iter()
+                .filter(|n| n.parent_id == parent_id && !n.is_completed)
+                .map(|n| n.task_id)
+                .collect();
+            let pos = siblings.iter().position(|&id| id == target_id);
+            let above_key = pos
+                .filter(|&p| p > 0)
+                .and_then(|p| task_sort_key(all_tasks, siblings[p - 1]));
+            let below_key = task_sort_key(all_tasks, target_id);
+            let new_key = north_dto::sort_key_between(above_key.as_deref(), below_key.as_deref());
+            ctrl.reorder_task(dragging_id, new_key, Some(parent_id));
+        }
+        DropZone::Below => {
+            let parent_id = target_node.parent_id;
+            let siblings: Vec<i64> = flat_nodes
+                .iter()
+                .filter(|n| n.parent_id == parent_id && !n.is_completed)
+                .map(|n| n.task_id)
+                .collect();
+            let pos = siblings.iter().position(|&id| id == target_id);
+            let above_key = task_sort_key(all_tasks, target_id);
+            let below_key = pos.and_then(|p| {
+                siblings
+                    .get(p + 1)
+                    .and_then(|&id| task_sort_key(all_tasks, id))
+            });
+            let new_key = north_dto::sort_key_between(above_key.as_deref(), below_key.as_deref());
+            ctrl.reorder_task(dragging_id, new_key, Some(parent_id));
+        }
+        DropZone::Nest => {
+            // Become last child of target.
+            let last_child_key = flat_nodes
+                .iter()
+                .filter(|n| n.parent_id == Some(target_id) && !n.is_completed)
+                .filter_map(|n| task_sort_key(all_tasks, n.task_id))
+                .next_back();
+            let new_key = north_dto::sort_key_after(last_child_key.as_deref());
+            ctrl.reorder_task(dragging_id, new_key, Some(Some(target_id)));
+        }
+    }
+
+    ctx.dragging_task_id.set(None);
+    ctx.drop_target.set(None);
 }
 
 /// Borderless inline input for editing an existing task title.
