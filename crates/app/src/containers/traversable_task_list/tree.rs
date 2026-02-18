@@ -174,7 +174,7 @@ pub fn compute_sort_key(
     }
 }
 
-fn task_sort_key(all_tasks: &[Task], task_id: i64) -> Option<String> {
+pub fn task_sort_key(all_tasks: &[Task], task_id: i64) -> Option<String> {
     all_tasks
         .iter()
         .find(|t| t.id == task_id)

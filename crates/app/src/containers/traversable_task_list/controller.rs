@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use north_dto::CreateTask;
-use north_stores::{AppStore, TaskStoreFilter};
+use north_stores::{AppStore, StatusBarVariant, TaskStoreFilter};
 
 use super::tree::*;
 
@@ -13,6 +13,8 @@ pub struct TraversableTaskListController {
     pub cursor_index: Memo<Option<usize>>,
     pub inline_mode: RwSignal<InlineMode>,
     pub create_input_value: RwSignal<String>,
+    pub pending_delete: RwSignal<bool>,
+    pub show_keybindings_help: RwSignal<bool>,
     app_store: AppStore,
     on_task_click: Option<Callback<i64>>,
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
@@ -23,6 +25,7 @@ impl TraversableTaskListController {
         app_store: AppStore,
         root_task_ids: Memo<Vec<i64>>,
         show_completed: RwSignal<bool>,
+        show_keybindings_help: RwSignal<bool>,
         on_task_click: Option<Callback<i64>>,
         on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
     ) -> Self {
@@ -44,6 +47,7 @@ impl TraversableTaskListController {
 
         let inline_mode = RwSignal::new(InlineMode::None);
         let create_input_value = RwSignal::new(String::new());
+        let pending_delete = RwSignal::new(false);
 
         Self {
             flat_nodes,
@@ -51,6 +55,8 @@ impl TraversableTaskListController {
             cursor_index,
             inline_mode,
             create_input_value,
+            pending_delete,
+            show_keybindings_help,
             app_store,
             on_task_click,
             on_reorder,
@@ -62,19 +68,23 @@ impl TraversableTaskListController {
     pub fn move_up(&self) {
         let nodes = self.flat_nodes.get_untracked();
         if let Some(id) = self.cursor_task_id.get_untracked() {
-            if let Some(prev) = prev_sibling(&nodes, id) {
-                self.cursor_task_id.set(Some(prev));
+            if let Some(idx) = nodes.iter().position(|n| n.task_id == id) {
+                if idx > 0 {
+                    self.cursor_task_id.set(Some(nodes[idx - 1].task_id));
+                }
             }
-        } else if let Some(first) = nodes.first() {
-            self.cursor_task_id.set(Some(first.task_id));
+        } else if let Some(last) = nodes.last() {
+            self.cursor_task_id.set(Some(last.task_id));
         }
     }
 
     pub fn move_down(&self) {
         let nodes = self.flat_nodes.get_untracked();
         if let Some(id) = self.cursor_task_id.get_untracked() {
-            if let Some(next) = next_sibling(&nodes, id) {
-                self.cursor_task_id.set(Some(next));
+            if let Some(idx) = nodes.iter().position(|n| n.task_id == id) {
+                if idx + 1 < nodes.len() {
+                    self.cursor_task_id.set(Some(nodes[idx + 1].task_id));
+                }
             }
         } else if let Some(first) = nodes.first() {
             self.cursor_task_id.set(Some(first.task_id));
@@ -147,6 +157,21 @@ impl TraversableTaskListController {
         }
     }
 
+    pub fn start_create_inside(&self) {
+        if let Some(anchor_id) = self.cursor_task_id.get_untracked() {
+            let nodes = self.flat_nodes.get_untracked();
+            if let Some(anchor) = nodes.iter().find(|n| n.task_id == anchor_id) {
+                self.create_input_value.set(String::new());
+                self.inline_mode.set(InlineMode::Create {
+                    anchor_task_id: anchor_id,
+                    placement: Placement::After,
+                    parent_id: Some(anchor_id),
+                    depth: anchor.depth + 1,
+                });
+            }
+        }
+    }
+
     pub fn create_task(&self) {
         let mode = self.inline_mode.get_untracked();
         let InlineMode::Create {
@@ -206,45 +231,66 @@ impl TraversableTaskListController {
         });
     }
 
-    pub fn indent(&self) {
-        self.inline_mode.update(|mode| {
-            if let InlineMode::Create {
-                anchor_task_id,
-                placement,
-                depth,
-                parent_id,
-            } = mode
-            {
-                let nodes = self.flat_nodes.get_untracked();
-                let max = max_create_depth(&nodes, *anchor_task_id, *placement);
-                if *depth < max {
-                    *depth += 1;
-                    *parent_id = find_parent_for_depth(&nodes, *anchor_task_id, *depth);
-                }
-            }
-        });
-    }
-
-    pub fn outdent(&self) {
-        self.inline_mode.update(|mode| {
-            if let InlineMode::Create {
-                anchor_task_id,
-                depth,
-                parent_id,
-                ..
-            } = mode
-            {
-                if *depth > 0 {
-                    *depth -= 1;
-                    let nodes = self.flat_nodes.get_untracked();
-                    *parent_id = find_parent_for_depth(&nodes, *anchor_task_id, *depth);
-                }
-            }
-        });
-    }
-
     pub fn close_inline(&self) {
         self.inline_mode.set(InlineMode::None);
+    }
+
+    // ── Toggle complete ────────────────────────────────────────
+
+    pub fn toggle_complete(&self) {
+        let Some(task_id) = self.cursor_task_id.get_untracked() else {
+            return;
+        };
+        let is_completed = self
+            .app_store
+            .tasks
+            .get_by_id(task_id)
+            .get_untracked()
+            .map(|t| t.completed_at.is_some())
+            .unwrap_or(false);
+        self.app_store.tasks.toggle_complete(task_id, is_completed);
+    }
+
+    // ── Delete with confirmation ─────────────────────────────
+
+    pub fn request_delete(&self) {
+        let Some(task_id) = self.cursor_task_id.get_untracked() else {
+            return;
+        };
+        let title = self
+            .app_store
+            .tasks
+            .get_by_id(task_id)
+            .get_untracked()
+            .map(|t| t.title.clone())
+            .unwrap_or_default();
+        self.pending_delete.set(true);
+        self.app_store.status_bar.show_message(
+            format!("Delete \"{title}\"?  Enter to confirm · Esc to cancel"),
+            StatusBarVariant::Danger,
+        );
+    }
+
+    pub fn confirm_delete(&self) {
+        let Some(task_id) = self.cursor_task_id.get_untracked() else {
+            return;
+        };
+        let nodes = self.flat_nodes.get_untracked();
+
+        // Next sibling → prev sibling → parent → None.
+        let next_cursor = next_sibling(&nodes, task_id)
+            .or_else(|| prev_sibling(&nodes, task_id))
+            .or_else(|| parent_of(&nodes, task_id));
+
+        self.pending_delete.set(false);
+        self.app_store.status_bar.hide_message();
+        self.cursor_task_id.set(next_cursor);
+        self.app_store.tasks.delete_task(task_id);
+    }
+
+    pub fn cancel_delete(&self) {
+        self.pending_delete.set(false);
+        self.app_store.status_bar.hide_message();
     }
 
     // ── Task click / detail modal ──────────────────────────────
@@ -261,14 +307,157 @@ impl TraversableTaskListController {
         }
     }
 
-    #[allow(dead_code)]
     pub fn reorder_task(&self, task_id: i64, sort_key: String, parent_id: Option<Option<i64>>) {
         self.on_reorder.run((task_id, sort_key, parent_id));
+    }
+
+    // ── Task reorder (Shift+Arrow) ──────────────────────────────
+
+    fn all_tasks(&self) -> Vec<north_dto::Task> {
+        self.app_store
+            .tasks
+            .filtered(TaskStoreFilter::default())
+            .get_untracked()
+    }
+
+    fn siblings(&self, task_id: i64) -> Vec<i64> {
+        let nodes = self.flat_nodes.get_untracked();
+        let parent_id = nodes
+            .iter()
+            .find(|n| n.task_id == task_id)
+            .map(|n| n.parent_id);
+        let Some(parent_id) = parent_id else {
+            return vec![];
+        };
+        nodes
+            .iter()
+            .filter(|n| n.parent_id == parent_id)
+            .map(|n| n.task_id)
+            .collect()
+    }
+
+    pub fn reorder_up(&self) {
+        let Some(task_id) = self.cursor_task_id.get_untracked() else {
+            return;
+        };
+        let siblings = self.siblings(task_id);
+        let tasks = self.all_tasks();
+        let Some(pos) = siblings.iter().position(|&id| id == task_id) else {
+            return;
+        };
+        if pos == 0 {
+            return;
+        }
+
+        let above_key = if pos >= 2 {
+            task_sort_key(&tasks, siblings[pos - 2])
+        } else {
+            None
+        };
+        let below_key = task_sort_key(&tasks, siblings[pos - 1]);
+        let new_key = north_dto::sort_key_between(above_key.as_deref(), below_key.as_deref());
+        self.reorder_task(task_id, new_key, None);
+    }
+
+    pub fn reorder_down(&self) {
+        let Some(task_id) = self.cursor_task_id.get_untracked() else {
+            return;
+        };
+        let siblings = self.siblings(task_id);
+        let tasks = self.all_tasks();
+        let Some(pos) = siblings.iter().position(|&id| id == task_id) else {
+            return;
+        };
+        if pos + 1 >= siblings.len() {
+            return;
+        }
+
+        let above_key = task_sort_key(&tasks, siblings[pos + 1]);
+        let below_key = siblings
+            .get(pos + 2)
+            .and_then(|&id| task_sort_key(&tasks, id));
+        let new_key = north_dto::sort_key_between(above_key.as_deref(), below_key.as_deref());
+        self.reorder_task(task_id, new_key, None);
+    }
+
+    pub fn reorder_right(&self) {
+        let Some(task_id) = self.cursor_task_id.get_untracked() else {
+            return;
+        };
+        let nodes = self.flat_nodes.get_untracked();
+        let Some(prev_id) = prev_sibling(&nodes, task_id) else {
+            return;
+        };
+        let tasks = self.all_tasks();
+
+        // Become last child of previous sibling.
+        let last_child_key = nodes
+            .iter()
+            .filter(|n| n.parent_id == Some(prev_id))
+            .filter_map(|n| task_sort_key(&tasks, n.task_id))
+            .next_back();
+        let new_key = north_dto::sort_key_after(last_child_key.as_deref());
+        self.reorder_task(task_id, new_key, Some(Some(prev_id)));
+    }
+
+    pub fn reorder_left(&self) {
+        let Some(task_id) = self.cursor_task_id.get_untracked() else {
+            return;
+        };
+        let nodes = self.flat_nodes.get_untracked();
+        let node = nodes.iter().find(|n| n.task_id == task_id);
+        let Some(parent_id) = node.and_then(|n| n.parent_id) else {
+            return;
+        };
+
+        let parent_node = nodes.iter().find(|n| n.task_id == parent_id);
+        let grandparent_id = parent_node.and_then(|n| n.parent_id);
+        let tasks = self.all_tasks();
+
+        // Place after parent among grandparent's children.
+        let parent_siblings: Vec<i64> = nodes
+            .iter()
+            .filter(|n| n.parent_id == grandparent_id)
+            .map(|n| n.task_id)
+            .collect();
+        let parent_pos = parent_siblings
+            .iter()
+            .position(|&id| id == parent_id)
+            .unwrap_or(0);
+
+        let above_key = task_sort_key(&tasks, parent_id);
+        let below_key = parent_siblings
+            .get(parent_pos + 1)
+            .and_then(|&id| task_sort_key(&tasks, id));
+        let new_key = north_dto::sort_key_between(above_key.as_deref(), below_key.as_deref());
+        self.reorder_task(task_id, new_key, Some(grandparent_id));
     }
 
     // ── Keyboard handler ───────────────────────────────────────
 
     pub fn handle_keydown(&self, ev: &web_sys::KeyboardEvent) {
+        if self.show_keybindings_help.get_untracked() {
+            if ev.key() == "Escape" {
+                ev.prevent_default();
+                self.show_keybindings_help.set(false);
+            }
+            return;
+        }
+
+        if self.pending_delete.get_untracked() {
+            match ev.key().as_str() {
+                "Enter" => {
+                    ev.prevent_default();
+                    self.confirm_delete();
+                }
+                _ => {
+                    ev.prevent_default();
+                    self.cancel_delete();
+                }
+            }
+            return;
+        }
+
         let mode = self.inline_mode.get_untracked();
 
         match mode {
@@ -288,22 +477,41 @@ impl TraversableTaskListController {
         match key.as_str() {
             "ArrowUp" => {
                 ev.prevent_default();
-                self.move_up();
+                if ev.shift_key() {
+                    self.reorder_up();
+                } else {
+                    self.move_up();
+                }
             }
             "ArrowDown" => {
                 ev.prevent_default();
-                self.move_down();
+                if ev.shift_key() {
+                    self.reorder_down();
+                } else {
+                    self.move_down();
+                }
             }
             "ArrowRight" => {
                 ev.prevent_default();
-                self.move_right();
+                if ev.shift_key() {
+                    self.reorder_right();
+                } else {
+                    self.move_right();
+                }
             }
             "ArrowLeft" => {
                 ev.prevent_default();
-                self.move_left();
+                if ev.shift_key() {
+                    self.reorder_left();
+                } else {
+                    self.move_left();
+                }
             }
             "Enter" => {
-                if ev.ctrl_key() || ev.meta_key() {
+                if (ev.ctrl_key() || ev.meta_key()) && ev.shift_key() {
+                    ev.prevent_default();
+                    self.start_create_inside();
+                } else if ev.ctrl_key() || ev.meta_key() {
                     ev.prevent_default();
                     self.start_create(Placement::After);
                 } else if ev.shift_key() {
@@ -318,8 +526,20 @@ impl TraversableTaskListController {
                 ev.prevent_default();
                 self.open_detail();
             }
+            " " => {
+                ev.prevent_default();
+                self.toggle_complete();
+            }
+            "Delete" => {
+                ev.prevent_default();
+                self.request_delete();
+            }
             "Escape" => {
                 self.cursor_task_id.set(None);
+            }
+            "?" => {
+                ev.prevent_default();
+                self.show_keybindings_help.set(true);
             }
             _ => {}
         }

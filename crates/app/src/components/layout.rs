@@ -2,6 +2,7 @@ use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 use north_stores::AppStore;
 
+use crate::components::status_bar::StatusBar;
 use crate::containers::sidebar::Sidebar;
 use crate::containers::task_create_modal::TaskCreateModal;
 use crate::containers::task_detail_modal::TaskDetailModal;
@@ -36,5 +37,6 @@ pub fn AppLayout(children: Children) -> impl IntoView {
         </div>
         <TaskDetailModal/>
         <TaskCreateModal/>
+        <StatusBar/>
     }
 }

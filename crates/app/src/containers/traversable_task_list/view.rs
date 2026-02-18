@@ -131,9 +131,7 @@ pub fn TraversableTaskListView(
                                         }
                                         class=move || {
                                             if is_selected.get() {
-                                                "bg-bg-secondary/50 \
-                                                 ring-1 ring-accent/30 \
-                                                 rounded"
+                                                "trash-polka-focus"
                                             } else {
                                                 ""
                                             }
@@ -148,6 +146,7 @@ pub fn TraversableTaskListView(
                                             show_project=show_project
                                             draggable=draggable
                                             hide_subtasks=true
+                                            hide_body=true
                                             depth=0
                                         />
                                     </div>
@@ -208,8 +207,7 @@ fn InlineEditInput(
             style=move || {
                 format!("padding-left: {}rem", depth.get() as f32 * 1.5)
             }
-            class="px-4 py-1 bg-bg-secondary/50 \
-                   ring-1 ring-accent/30 rounded"
+            class="px-4 py-1 trash-polka-focus"
         >
             <div class="flex items-center gap-2">
                 <div class="w-5 h-5 shrink-0"/>
@@ -309,14 +307,6 @@ fn InlineCreateInput(
                             "Escape" => {
                                 ev.prevent_default();
                                 ctrl.close_inline();
-                            }
-                            "Tab" => {
-                                ev.prevent_default();
-                                if ev.shift_key() {
-                                    ctrl.outdent();
-                                } else {
-                                    ctrl.indent();
-                                }
                             }
                             _ => {}
                         }

@@ -12,6 +12,7 @@ pub fn TaskListItem(
     #[prop(default = false)] draggable: bool,
     #[prop(default = false)] compact: bool,
     #[prop(default = false)] hide_subtasks: bool,
+    #[prop(default = false)] hide_body: bool,
     #[prop(default = 0)] depth: u8,
     #[prop(optional)] on_click: Option<Callback<i64>>,
 ) -> impl IntoView {
@@ -26,6 +27,7 @@ pub fn TaskListItem(
             draggable=draggable
             compact=compact
             hide_subtasks=hide_subtasks
+            hide_body=hide_body
             depth=depth
             on_click=on_click
             on_delete=Callback::new(move |()| ctrl.delete())

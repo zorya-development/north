@@ -19,14 +19,18 @@ pub fn TraversableTaskList(
         Option<Option<i64>>,
     )>,
     is_loaded: Signal<bool>,
+    #[prop(optional)] show_keybindings_help: Option<RwSignal<bool>>,
 ) -> impl IntoView {
     let app_store = use_app_store();
     provide_context(ExtraVisibleIds(RwSignal::new(vec![])));
+
+    let show_keybindings_help = show_keybindings_help.unwrap_or_else(|| RwSignal::new(false));
 
     let ctrl = TraversableTaskListController::new(
         app_store,
         root_task_ids,
         show_completed,
+        show_keybindings_help,
         on_task_click,
         on_reorder,
     );

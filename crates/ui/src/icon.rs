@@ -29,6 +29,7 @@ pub enum IconKind {
     Sun,
     Moon,
     DragHandle,
+    Keyboard,
 }
 
 #[component]
@@ -308,6 +309,23 @@ pub fn Icon(kind: IconKind, #[prop(default = "w-4 h-4")] class: &'static str) ->
                 <circle cx="15" cy="12" r="1.5"/>
                 <circle cx="9" cy="19" r="1.5"/>
                 <circle cx="15" cy="19" r="1.5"/>
+            </svg>
+        }
+        .into_any(),
+        IconKind::Keyboard => view! {
+            <svg xmlns="http://www.w3.org/2000/svg" class=class viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="2" ry="2"/>
+                <line x1="6" y1="8" x2="6.01" y2="8"/>
+                <line x1="10" y1="8" x2="10.01" y2="8"/>
+                <line x1="14" y1="8" x2="14.01" y2="8"/>
+                <line x1="18" y1="8" x2="18.01" y2="8"/>
+                <line x1="6" y1="12" x2="6.01" y2="12"/>
+                <line x1="10" y1="12" x2="10.01" y2="12"/>
+                <line x1="14" y1="12" x2="14.01" y2="12"/>
+                <line x1="18" y1="12" x2="18.01" y2="12"/>
+                <line x1="7" y1="16" x2="17" y2="16"/>
             </svg>
         }
         .into_any(),

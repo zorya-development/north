@@ -19,17 +19,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
     let subtask_show_completed = RwSignal::new(false);
 
     view! {
-        <div
-            class="fixed inset-0 z-50 flex items-center justify-center"
-            on:keydown=move |ev| {
-                if ev.key() == "Escape"
-                    && !editing_title.get_untracked()
-                    && !editing_body.get_untracked()
-                {
-                    store.close();
-                }
-            }
-        >
+        <div class="fixed inset-0 z-50 flex items-center justify-center">
             <div
                 class="absolute inset-0 bg-black/50"
                 on:click=move |_| store.close()
