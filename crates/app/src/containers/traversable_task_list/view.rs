@@ -1,5 +1,6 @@
 use leptos::prelude::*;
 use north_ui::Spinner;
+use wasm_bindgen::JsCast;
 
 use super::controller::TraversableTaskListController;
 use super::tree::*;
@@ -18,26 +19,23 @@ pub fn TraversableTaskListView(
     let cursor_task_id = ctrl.cursor_task_id;
     let inline_mode = ctrl.inline_mode;
     let create_input_value = ctrl.create_input_value;
-    let wrapper_ref = NodeRef::<leptos::html::Div>::new();
 
-    // Refocus wrapper when inline mode closes
-    Effect::new(move || {
-        if inline_mode.get() == InlineMode::None {
-            if let Some(el) = wrapper_ref.get() {
-                let _ = el.focus();
+    // Global keyboard listener — works regardless of focus.
+    // Skips events when an input/textarea/contenteditable is focused.
+    window_event_listener(leptos::ev::keydown, move |ev| {
+        if let Some(el) = document().active_element() {
+            if let Some(html_el) = el.dyn_ref::<web_sys::HtmlElement>() {
+                let tag = html_el.tag_name().to_lowercase();
+                if tag == "input" || tag == "textarea" || html_el.is_content_editable() {
+                    return;
+                }
             }
         }
+        ctrl.handle_keydown(&ev);
     });
 
     view! {
-        <div
-            tabindex=0
-            node_ref=wrapper_ref
-            class="outline-none"
-            on:keydown=move |ev| {
-                ctrl.handle_keydown(&ev);
-            }
-        >
+        <div>
             {move || {
                 if !is_loaded.get() {
                     return view! { <Spinner/> }.into_any();
@@ -149,7 +147,7 @@ pub fn TraversableTaskListView(
                                             task_id=task_id
                                             show_project=show_project
                                             draggable=draggable
-                                            flat_mode=true
+                                            hide_subtasks=true
                                             depth=0
                                         />
                                     </div>
