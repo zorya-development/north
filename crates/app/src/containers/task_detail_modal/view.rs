@@ -16,9 +16,6 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
     let subtask_show_non_actionable = RwSignal::new(false);
     let subtask_show_completed = RwSignal::new(false);
 
-    let title_input_ref = NodeRef::<leptos::html::Input>::new();
-    let focused_task_id = RwSignal::new(None::<i64>);
-
     let save = move || {
         let t = title_draft.get_untracked();
         let b = body_draft.get_untracked();
@@ -56,17 +53,6 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
 
                     set_title_draft.set(title.clone());
                     set_body_draft.set(body.clone().unwrap_or_default());
-
-                    // Focus title only when opening or navigating to a
-                    // different task, not on every reactive update.
-                    if focused_task_id.get_untracked() != Some(task_id) {
-                        focused_task_id.set(Some(task_id));
-                        request_animation_frame(move || {
-                            if let Some(el) = title_input_ref.get() {
-                                let _ = el.focus();
-                            }
-                        });
-                    }
 
                     Some(view! {
                         // Header
@@ -197,7 +183,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                     </div>
                                     <input
                                         type="text"
-                                        node_ref=title_input_ref
+                                        autofocus
                                         class="text-lg font-semibold \
                                                text-text-primary \
                                                bg-transparent \
