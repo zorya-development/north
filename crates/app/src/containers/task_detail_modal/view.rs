@@ -1,20 +1,27 @@
 use leptos::prelude::*;
-use north_stores::TaskDetailModalStore;
+use north_stores::{use_app_store, IdFilter, TaskDetailModalStore, TaskStoreFilter};
 
 use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::date_picker::DateTimePicker;
+use crate::containers::inline_task_input::InlineTaskInput;
 use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
 use crate::containers::task_checkbox::TaskCheckbox;
-use crate::containers::task_list_item::components::InlineSubtaskList;
+use crate::containers::task_list::ExtraVisibleIds;
+use crate::containers::traversable_task_list::TraversableTaskList;
 use north_ui::{Icon, IconKind};
 
 #[component]
 pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
+    let app_store = use_app_store();
     let (title_draft, set_title_draft) = signal(String::new());
     let (body_draft, set_body_draft) = signal(String::new());
-    let subtask_show_non_actionable = RwSignal::new(false);
     let subtask_show_completed = RwSignal::new(false);
+    let (show_inline_input, set_show_inline_input) = signal(false);
+    let input_value = RwSignal::new(String::new());
+    let extra_visible_ids = expect_context::<ExtraVisibleIds>().0;
+    let title_input_ref = NodeRef::<leptos::html::Input>::new();
+    let focused_task_id = RwSignal::new(None::<i64>);
 
     let save = move || {
         let t = title_draft.get_untracked();
@@ -53,6 +60,15 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
 
                     set_title_draft.set(title.clone());
                     set_body_draft.set(body.clone().unwrap_or_default());
+
+                    if focused_task_id.get_untracked() != Some(task_id) {
+                        focused_task_id.set(Some(task_id));
+                        request_animation_frame(move || {
+                            if let Some(el) = title_input_ref.get() {
+                                let _ = el.focus();
+                            }
+                        });
+                    }
 
                     Some(view! {
                         // Header
@@ -183,7 +199,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                     </div>
                                     <input
                                         type="text"
-                                        autofocus
+                                        node_ref=title_input_ref
                                         class="text-lg font-semibold \
                                                text-text-primary \
                                                bg-transparent \
@@ -241,16 +257,130 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                 </div>
 
                                 // Subtask area
-                                <InlineSubtaskList
-                                    parent_id=task_id
-                                    sequential_limit=99
-                                    on_click=Callback::new(move |id| {
-                                        store.navigate_to_subtask(id)
-                                    })
-                                    add_btn_class="ml-6"
-                                    show_non_actionable=subtask_show_non_actionable
-                                    show_completed=subtask_show_completed
-                                />
+                                {
+                                    let all_subtasks = app_store
+                                        .tasks
+                                        .filtered(TaskStoreFilter {
+                                            parent_id: IdFilter::Is(task_id),
+                                            ..Default::default()
+                                        });
+                                    let subtask_ids = Memo::new(move |_| {
+                                        all_subtasks
+                                            .get()
+                                            .iter()
+                                            .map(|t| t.id)
+                                            .collect::<Vec<_>>()
+                                    });
+                                    let completed_count = Memo::new(move |_| {
+                                        all_subtasks
+                                            .get()
+                                            .iter()
+                                            .filter(|t| t.completed_at.is_some())
+                                            .count()
+                                    });
+                                    let total_count = Memo::new(move |_| {
+                                        all_subtasks.get().len()
+                                    });
+                                    let default_project_signal =
+                                        Signal::derive(move || project_id);
+
+                                    view! {
+                                        <div class="ml-6">
+                                            <TraversableTaskList
+                                                root_task_ids=subtask_ids
+                                                show_completed=subtask_show_completed
+                                                scoped=true
+                                                show_project=false
+                                                is_loaded=Signal::derive(|| true)
+                                                on_task_click=Callback::new(
+                                                    move |id| {
+                                                        store.navigate_to_subtask(id)
+                                                    },
+                                                )
+                                                on_reorder=Callback::new(
+                                                    move |(id, key, parent)| {
+                                                        app_store
+                                                            .tasks
+                                                            .reorder_task(id, key, parent)
+                                                    },
+                                                )
+                                                default_project_id=default_project_signal
+                                                empty_message="No subtasks."
+                                                allow_reorder=true
+                                            />
+                                            // Inline task input for mouse-friendly subtask creation
+                                            <Show when=move || show_inline_input.get()>
+                                                <InlineTaskInput
+                                                    parent_id=task_id
+                                                    value=input_value
+                                                    on_created=Callback::new(
+                                                        move |id| {
+                                                            extra_visible_ids.update(|ids| {
+                                                                if !ids.contains(&id) {
+                                                                    ids.push(id);
+                                                                }
+                                                            });
+                                                        },
+                                                    )
+                                                    on_close=Callback::new(
+                                                        move |()| {
+                                                            set_show_inline_input.set(false);
+                                                        },
+                                                    )
+                                                />
+                                            </Show>
+                                            <Show when=move || !show_inline_input.get()>
+                                                <button
+                                                    class="my-3 text-xs text-accent \
+                                                           hover:text-accent-hover \
+                                                           hover:underline cursor-pointer \
+                                                           transition-colors"
+                                                    on:click=move |_| {
+                                                        set_show_inline_input.set(true);
+                                                    }
+                                                >
+                                                    "+ Add subtask"
+                                                </button>
+                                            </Show>
+                                            // Toggle bar
+                                            <Show when=move || {
+                                                completed_count.get() > 0usize
+                                            }>
+                                                <div class="py-1 flex items-center \
+                                                            gap-2 text-xs">
+                                                    <button
+                                                        class="text-accent \
+                                                               hover:text-accent-hover \
+                                                               hover:underline \
+                                                               cursor-pointer \
+                                                               transition-colors"
+                                                        on:click=move |_| {
+                                                            subtask_show_completed
+                                                                .update(|v| *v = !*v);
+                                                        }
+                                                    >
+                                                        {move || {
+                                                            if subtask_show_completed.get() {
+                                                                "Hide Completed".to_string()
+                                                            } else {
+                                                                format!(
+                                                                    "Show Completed ({})",
+                                                                    completed_count.get(),
+                                                                )
+                                                            }
+                                                        }}
+                                                    </button>
+                                                    <span class="text-text-tertiary">
+                                                        {move || format!(
+                                                            "Total: {}",
+                                                            total_count.get(),
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            </Show>
+                                        </div>
+                                    }
+                                }
                             </div>
 
                             // Right sidebar

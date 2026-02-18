@@ -20,6 +20,7 @@ pub struct TraversableTaskListController {
     modal: ModalStore,
     allow_create: bool,
     allow_reorder: bool,
+    scoped: bool,
     default_project_id: Option<Signal<Option<i64>>>,
     on_task_click: Option<Callback<i64>>,
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
@@ -40,6 +41,7 @@ impl TraversableTaskListController {
         show_review: bool,
         default_project_id: Option<Signal<Option<i64>>>,
         flat: bool,
+        scoped: bool,
     ) -> Self {
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
 
@@ -78,6 +80,7 @@ impl TraversableTaskListController {
             modal,
             allow_create,
             allow_reorder,
+            scoped,
             default_project_id,
             on_task_click,
             on_reorder,
@@ -459,7 +462,7 @@ impl TraversableTaskListController {
     // ── Keyboard handler ───────────────────────────────────────
 
     pub fn handle_keydown(&self, ev: &web_sys::KeyboardEvent) {
-        if self.modal.is_any_open() {
+        if !self.scoped && self.modal.is_any_open() {
             return;
         }
 

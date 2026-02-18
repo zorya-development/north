@@ -14,16 +14,35 @@ pub fn TraversableTaskListView(
     #[prop(default = false)] draggable: bool,
     #[prop(default = "No tasks.")] empty_message: &'static str,
     is_loaded: Signal<bool>,
+    #[prop(default = false)] scoped: bool,
 ) -> impl IntoView {
     let flat_nodes = ctrl.flat_nodes;
     let cursor_task_id = ctrl.cursor_task_id;
     let inline_mode = ctrl.inline_mode;
     let create_input_value = ctrl.create_input_value;
     let show_review = ctrl.show_review;
+    let container_ref = NodeRef::<leptos::html::Div>::new();
 
-    // Global keyboard listener — works regardless of focus.
-    // Skips when an input/textarea is focused. Modal check is in the controller.
-    window_event_listener(leptos::ev::keydown, move |ev| {
+    if !scoped {
+        // Global keyboard listener — works regardless of focus.
+        // Skips when an input/textarea is focused. Modal check is in the controller.
+        window_event_listener(leptos::ev::keydown, move |ev| {
+            if let Some(el) = document().active_element() {
+                if let Some(html_el) = el.dyn_ref::<web_sys::HtmlElement>() {
+                    let tag = html_el.tag_name().to_lowercase();
+                    if tag == "input" || tag == "textarea" || html_el.is_content_editable() {
+                        return;
+                    }
+                }
+            }
+            ctrl.handle_keydown(&ev);
+        });
+    }
+
+    let on_keydown = move |ev: web_sys::KeyboardEvent| {
+        if !scoped {
+            return;
+        }
         if let Some(el) = document().active_element() {
             if let Some(html_el) = el.dyn_ref::<web_sys::HtmlElement>() {
                 let tag = html_el.tag_name().to_lowercase();
@@ -33,10 +52,24 @@ pub fn TraversableTaskListView(
             }
         }
         ctrl.handle_keydown(&ev);
-    });
+    };
+
+    let on_container_click = move |_: web_sys::MouseEvent| {
+        if scoped {
+            if let Some(el) = container_ref.get() {
+                let _ = el.focus();
+            }
+        }
+    };
 
     view! {
-        <div>
+        <div
+            node_ref=container_ref
+            tabindex=if scoped { "0" } else { "-1" }
+            class=if scoped { "focus:outline-none" } else { "" }
+            on:keydown=on_keydown
+            on:click=on_container_click
+        >
             {move || {
                 if !is_loaded.get() {
                     return view! { <Spinner/> }.into_any();

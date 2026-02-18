@@ -25,6 +25,7 @@ pub fn TraversableTaskList(
     #[prop(default = false)] show_review: bool,
     #[prop(optional)] default_project_id: Option<Signal<Option<i64>>>,
     #[prop(default = false)] flat: bool,
+    #[prop(default = false)] scoped: bool,
 ) -> impl IntoView {
     let app_store = use_app_store();
     provide_context(ExtraVisibleIds(RwSignal::new(vec![])));
@@ -44,6 +45,7 @@ pub fn TraversableTaskList(
         show_review,
         default_project_id,
         flat,
+        scoped,
     );
 
     view! {
@@ -53,6 +55,7 @@ pub fn TraversableTaskList(
             draggable=draggable
             empty_message=empty_message
             is_loaded=is_loaded
+            scoped=scoped
         />
     }
 }
