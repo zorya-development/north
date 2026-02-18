@@ -11,8 +11,8 @@ pub fn InboxPage() -> impl IntoView {
 
     view! {
         <InboxView
-            active_task_ids=ctrl.active_task_ids
-            completed_task_ids=ctrl.completed_task_ids
+            root_task_ids=ctrl.root_task_ids
+            show_completed=ctrl.show_completed
             completed_count=ctrl.completed_count
             is_loaded=ctrl.is_loaded
             on_add_task=Callback::new(move |()| ctrl.open_create())
@@ -20,7 +20,6 @@ pub fn InboxPage() -> impl IntoView {
             on_reorder=Callback::new(move |(id, key, parent)| {
                 ctrl.reorder_task(id, key, parent)
             })
-            active_tasks_for_reorder=ctrl.active_tasks_for_reorder
         />
     }
 }

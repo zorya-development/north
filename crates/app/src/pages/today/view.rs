@@ -1,91 +1,94 @@
 use leptos::prelude::*;
-use north_dto::Task;
+use north_ui::{Icon, IconKind};
 
-use super::controller::GroupedTasks;
-use crate::atoms::{Text, TextColor, TextTag, TextVariant};
-use crate::containers::task_list::{CompletedSection, TaskList};
+use crate::atoms::{Text, TextVariant};
+use crate::components::keybindings_modal::KeybindingsModal;
+use crate::containers::traversable_task_list::TraversableTaskList;
 
 #[component]
 pub fn TodayView(
-    grouped_task_ids: Memo<GroupedTasks>,
-    completed_task_ids: Memo<Vec<i64>>,
+    root_task_ids: Memo<Vec<i64>>,
+    show_completed: RwSignal<bool>,
     completed_count: Memo<usize>,
     is_loaded: Signal<bool>,
     on_add_task: Callback<()>,
     on_task_click: Callback<i64>,
-    on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
-    active_tasks_for_reorder: Memo<Vec<Task>>,
 ) -> impl IntoView {
-    let empty_completed_tasks = Memo::new(|_| vec![]);
+    let show_keybindings_help = RwSignal::new(false);
+    let (help_read, help_write) = show_keybindings_help.split();
 
     view! {
         <div class="space-y-4">
-            <div class="flex items-center justify-between">
-                <Text variant=TextVariant::HeadingLg>"Today"</Text>
-                <button
-                    on:click=move |_| on_add_task.run(())
-                    class="text-sm text-text-secondary hover:text-accent \
-                           transition-colors cursor-pointer"
-                >
-                    "+" " Add task"
-                </button>
+            <div>
+                <div class="flex items-center justify-between">
+                    <Text variant=TextVariant::HeadingLg>"Today"</Text>
+                    <button
+                        on:click=move |_| show_keybindings_help.set(true)
+                        class="flex items-center gap-1.5 text-xs \
+                               text-text-secondary hover:text-text-primary \
+                               transition-colors cursor-pointer"
+                        title="Keyboard shortcuts"
+                    >
+                        <Icon kind=IconKind::Keyboard class="w-3.5 h-3.5" />
+                        <span class="font-mono">"?"</span>
+                        " for help"
+                    </button>
+                </div>
+                <div class="flex items-center gap-3 mt-2">
+                    {move || {
+                        let count = completed_count.get();
+                        if count > 0 {
+                            Some(
+                                view! {
+                                    <button
+                                        on:click=move |_| {
+                                            show_completed.update(|v| *v = !*v)
+                                        }
+                                        class="text-xs text-text-secondary \
+                                               hover:text-text-primary \
+                                               transition-colors cursor-pointer"
+                                    >
+                                        {move || {
+                                            if show_completed.get() {
+                                                format!(
+                                                    "Hide completed ({count})",
+                                                )
+                                            } else {
+                                                format!(
+                                                    "Show completed ({count})",
+                                                )
+                                            }
+                                        }}
+                                    </button>
+                                },
+                            )
+                        } else {
+                            None
+                        }
+                    }}
+                    <button
+                        on:click=move |_| on_add_task.run(())
+                        class="text-sm text-text-secondary hover:text-accent \
+                               transition-colors cursor-pointer"
+                    >
+                        "+" " Add task"
+                    </button>
+                </div>
             </div>
 
-            {move || {
-                if !is_loaded.get() {
-                    return view! {
-                        <Text variant=TextVariant::BodyMd color=TextColor::Secondary tag=TextTag::P class="py-4">"Loading tasks..."</Text>
-                    }.into_any();
-                }
-
-                let groups = grouped_task_ids.get();
-                if groups.is_empty() {
-                    return view! {
-                        <Text variant=TextVariant::BodyMd color=TextColor::Secondary tag=TextTag::P class="py-8 text-center">
-                            "No tasks scheduled for today."
-                        </Text>
-                    }.into_any();
-                }
-
-                view! {
-                    <div class="space-y-4">
-                        <For
-                            each=move || grouped_task_ids.get()
-                            key=|(label, _)| label.clone()
-                            let:group
-                        >
-                            {
-                                let (label, ids) = group;
-                                let ids = Memo::new(move |_| ids.clone());
-                                view! {
-                                    <div>
-                                        <Text variant=TextVariant::LabelMd color=TextColor::Secondary tag=TextTag::H2 class="px-3 pb-1">
-                                            {label}
-                                        </Text>
-                                        <TaskList
-                                            active_task_ids=ids
-                                            active_tasks_for_reorder=active_tasks_for_reorder
-                                            is_loaded=is_loaded
-                                            show_project=false
-                                            draggable=false
-                                            on_reorder=on_reorder
-                                            on_task_click=on_task_click
-                                        />
-                                    </div>
-                                }
-                            }
-                        </For>
-                    </div>
-                }.into_any()
-            }}
-
-            <CompletedSection
-                task_ids=completed_task_ids
-                tasks_for_reorder=empty_completed_tasks
-                count=completed_count
+            <TraversableTaskList
+                root_task_ids=root_task_ids
+                show_completed=show_completed
+                show_project=true
                 is_loaded=is_loaded
+                allow_create=false
+                allow_reorder=false
                 on_task_click=on_task_click
+                show_keybindings_help=show_keybindings_help
+                empty_message="No tasks scheduled for today."
             />
+
+            <KeybindingsModal open=help_read set_open=help_write />
         </div>
     }
 }

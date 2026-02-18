@@ -21,6 +21,7 @@
   --hover-overlay: rgba(0, 0, 0, 0.04);
   --backdrop: rgba(0, 0, 0, 0.40);
   --logo-url: url('/public/logo-big-black.png');
+  --trash-polka-focus-color: #EF5350;
   color-scheme: light;
 }
 
@@ -48,30 +49,6 @@
   --backdrop: rgba(0, 0, 0, 0.55);
   --logo-url: url('/public/logo-big.png');
   color-scheme: dark;
-}
-
-/* ── Tailwind theme indirection ────────────────────────────── */
-@theme {
-  --color-bg-primary: var(--bg-primary);
-  --color-bg-secondary: var(--bg-secondary);
-  --color-bg-tertiary: var(--bg-tertiary);
-  --color-bg-input: var(--bg-input);
-  --color-border: var(--border);
-  --color-border-hover: var(--border-hover);
-  --color-text-primary: var(--text-primary);
-  --color-text-secondary: var(--text-secondary);
-  --color-text-tertiary: var(--text-tertiary);
-  --color-accent: var(--accent);
-  --color-accent-hover: var(--accent-hover);
-  --color-danger: var(--danger);
-  --color-danger-hover: var(--danger-hover);
-  --color-warning: var(--warning);
-  --color-success: var(--success);
-  --color-on-accent: var(--on-accent);
-  --color-sidebar: var(--sidebar);
-
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
 /* ── Global styles ─────────────────────────────────────────── */
@@ -111,17 +88,19 @@ body {
   background: var(--text-secondary);
 }
 
-/* ── Utility classes ───────────────────────────────────────── */
-@utility bg-hover-overlay {
-  background-color: var(--hover-overlay);
-}
-
-@utility bg-backdrop {
-  background-color: var(--backdrop);
-}
-
 .no-focus-ring:focus-visible {
   outline: none;
+}
+
+/* ── Trash-polka focus style ──────────────────────────────── */
+.trash-polka-focus {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--trash-polka-focus-color) 0%, transparent) 0%,
+    color-mix(in srgb, var(--trash-polka-focus-color) 35%, transparent) 10%,
+    color-mix(in srgb, var(--trash-polka-focus-color) 20%, transparent) 20%,
+    color-mix(in srgb, var(--trash-polka-focus-color) 0%, transparent) 100%
+  );
 }
 
 /* ── Sidebar logo ──────────────────────────────────────────── */
@@ -263,4 +242,21 @@ body {
 
 .dnd-handle {
   touch-action: none;
+}
+
+/* ── Status bar (vim-style) ───────────────────────────────── */
+.status-bar {
+  animation: status-bar-slide-up 0.15s ease-out;
+}
+
+@keyframes status-bar-slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.status-bar-spinner {
+  display: inline-block;
+  width: 1.25em;
+  text-align: center;
+  font-size: 1rem;
 }

@@ -39,6 +39,7 @@ pub struct CreateTask {
     pub body: Option<String>,
     pub project_id: Option<i64>,
     pub parent_id: Option<i64>,
+    pub sort_key: Option<String>,
     pub start_at: Option<DateTime<Utc>>,
     pub due_date: Option<NaiveDate>,
 }

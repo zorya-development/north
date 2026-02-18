@@ -1,40 +1,44 @@
 use leptos::prelude::*;
-use north_stores::TaskDetailModalStore;
+use north_stores::{use_app_store, IdFilter, TaskDetailModalStore, TaskStoreFilter};
 
 use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::date_picker::DateTimePicker;
+use crate::containers::inline_task_input::InlineTaskInput;
 use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
 use crate::containers::task_checkbox::TaskCheckbox;
-use crate::containers::task_list_item::components::InlineSubtaskList;
-use north_ui::{Icon, IconKind, MarkdownView};
+use crate::containers::task_list::ExtraVisibleIds;
+use crate::containers::traversable_task_list::TraversableTaskList;
+use north_ui::{Icon, IconKind};
 
 #[component]
 pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
-    let (editing_title, set_editing_title) = signal(false);
-    let (editing_body, set_editing_body) = signal(false);
+    let app_store = use_app_store();
     let (title_draft, set_title_draft) = signal(String::new());
     let (body_draft, set_body_draft) = signal(String::new());
-    let subtask_show_non_actionable = RwSignal::new(false);
     let subtask_show_completed = RwSignal::new(false);
+    let (show_inline_input, set_show_inline_input) = signal(false);
+    let input_value = RwSignal::new(String::new());
+    let extra_visible_ids = expect_context::<ExtraVisibleIds>().0;
+    let title_input_ref = NodeRef::<leptos::html::Input>::new();
+    let subtask_cursor = RwSignal::new(None::<i64>);
+    let focused_task_id = RwSignal::new(None::<i64>);
+
+    let save = move || {
+        let t = title_draft.get_untracked();
+        let b = body_draft.get_untracked();
+        let b = if b.trim().is_empty() { None } else { Some(b) };
+        store.update(t, b);
+    };
 
     view! {
-        <div
-            class="fixed inset-0 z-50 flex items-center justify-center"
-            on:keydown=move |ev| {
-                if ev.key() == "Escape"
-                    && !editing_title.get_untracked()
-                    && !editing_body.get_untracked()
-                {
-                    store.close();
-                }
-            }
-        >
+        <div class="fixed inset-0 z-50 flex items-center justify-center">
             <div
                 class="absolute inset-0 bg-black/50"
                 on:click=move |_| store.close()
             />
             <div
+                role="dialog"
                 class="relative border border-(--border-muted) \
                        rounded-2xl shadow-2xl max-w-3xl w-full mx-4 \
                        max-h-[85vh] flex flex-col"
@@ -57,8 +61,15 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
 
                     set_title_draft.set(title.clone());
                     set_body_draft.set(body.clone().unwrap_or_default());
-                    set_editing_title.set(false);
-                    set_editing_body.set(false);
+
+                    if focused_task_id.get_untracked() != Some(task_id) {
+                        focused_task_id.set(Some(task_id));
+                        request_animation_frame(move || {
+                            if let Some(el) = title_input_ref.get() {
+                                let _ = el.focus();
+                            }
+                        });
+                    }
 
                     Some(view! {
                         // Header
@@ -184,220 +195,194 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                         space-y-4">
                                 // Title
                                 <div class="flex items-start gap-2">
-                                    <div class="pt-0.5">
+                                    <div class="pt-1">
                                         <TaskCheckbox task_id=task_id/>
                                     </div>
-                                    <Show
-                                        when=move || editing_title.get()
-                                        fallback=move || {
-                                            view! {
-                                                <h2
-                                                    class="text-lg font-semibold \
-                                                           text-text-primary \
-                                                           cursor-pointer \
-                                                           hover:bg-bg-tertiary \
-                                                           rounded px-1 -mx-1 \
-                                                           flex-1"
-                                                    on:click=move |_| {
-                                                        set_editing_title
-                                                            .set(true);
-                                                    }
-                                                >
-                                                    {move || title_draft.get()}
-                                                </h2>
+                                    <input
+                                        type="text"
+                                        node_ref=title_input_ref
+                                        class="text-lg font-semibold \
+                                               text-text-primary \
+                                               bg-transparent \
+                                               border-none \
+                                               px-1 -mx-1 flex-1 \
+                                               w-full \
+                                               focus:outline-none \
+                                               no-focus-ring"
+                                        prop:value=move || {
+                                            title_draft.get()
+                                        }
+                                        on:input=move |ev| {
+                                            set_title_draft
+                                                .set(event_target_value(&ev));
+                                        }
+                                        on:keydown=move |ev| {
+                                            if ev.key() == "Enter" {
+                                                ev.prevent_default();
+                                                save();
                                             }
                                         }
-                                    >
-                                        <input
-                                            type="text"
-                                            class="text-lg font-semibold \
-                                                   text-text-primary \
-                                                   bg-bg-input border \
-                                                   border-border rounded \
-                                                   px-1 -mx-1 flex-1 \
-                                                   w-full \
-                                                   focus:outline-none \
-                                                   focus:border-accent"
-                                            prop:value=move || {
-                                                title_draft.get()
-                                            }
-                                            on:input=move |ev| {
-                                                set_title_draft
-                                                    .set(
-                                                        event_target_value(
-                                                            &ev,
-                                                        ),
-                                                    );
-                                            }
-                                            on:keydown=move |ev| {
-                                                match ev.key().as_str() {
-                                                    "Enter" => {
-                                                        ev.prevent_default();
-                                                        set_editing_title
-                                                            .set(false);
-                                                        let t =
-                                                            title_draft
-                                                                .get_untracked();
-                                                        let b =
-                                                            body_draft
-                                                                .get_untracked();
-                                                        let b = if b
-                                                            .trim()
-                                                            .is_empty()
-                                                        {
-                                                            None
-                                                        } else {
-                                                            Some(b)
-                                                        };
-                                                        store.update(t, b);
-                                                    }
-                                                    "Escape" => {
-                                                        set_editing_title
-                                                            .set(false);
-                                                    }
-                                                    _ => {}
-                                                }
-                                            }
-                                            on:blur=move |_| {
-                                                if editing_title
-                                                    .get_untracked()
-                                                {
-                                                    set_editing_title
-                                                        .set(false);
-                                                    let t =
-                                                        title_draft
-                                                            .get_untracked();
-                                                    let b =
-                                                        body_draft
-                                                            .get_untracked();
-                                                    let b = if b
-                                                        .trim()
-                                                        .is_empty()
-                                                    {
-                                                        None
-                                                    } else {
-                                                        Some(b)
-                                                    };
-                                                    store.update(t, b);
-                                                }
-                                            }
-                                            node_ref={
-                                                let r = NodeRef::<
-                                                    leptos::html::Input,
-                                                >::new();
-                                                Effect::new(move || {
-                                                    if editing_title.get()
-                                                    {
-                                                        if let Some(el) =
-                                                            r.get()
-                                                        {
-                                                            let _ = el
-                                                                .focus();
-                                                        }
-                                                    }
-                                                });
-                                                r
-                                            }
-                                        />
-                                    </Show>
+                                        on:blur=move |_| {
+                                            save();
+                                        }
+                                    />
                                 </div>
 
                                 // Body
                                 <div class="ml-6">
-                                    <Show
-                                        when=move || editing_body.get()
-                                        fallback=move || {
-                                            view! {
-                                                <div
-                                                    class="cursor-pointer \
-                                                           hover:bg-bg-tertiary \
-                                                           rounded p-1 -m-1 \
-                                                           min-h-[2rem]"
-                                                    on:click=move |_| {
-                                                        set_editing_body
-                                                            .set(true);
-                                                    }
-                                                >
-                                                    {move || {
-                                                        let bd = body_draft.get();
-                                                        if bd.trim().is_empty() {
-                                                            view! {
-                                                                <Text variant=TextVariant::BodyMd color=TextColor::Tertiary class="italic">
-                                                                    "Add description..."
-                                                                </Text>
-                                                            }.into_any()
-                                                        } else {
-                                                            view! {
-                                                                <MarkdownView content=bd/>
-                                                            }.into_any()
-                                                        }
-                                                    }}
-                                                </div>
-                                            }
+                                    <textarea
+                                        class="w-full text-sm \
+                                               text-text-primary \
+                                               bg-transparent \
+                                               border-none \
+                                               p-1 -m-1 \
+                                               focus:outline-none \
+                                               no-focus-ring \
+                                               resize-none \
+                                               min-h-[2rem] \
+                                               placeholder:text-text-tertiary \
+                                               placeholder:italic"
+                                        placeholder="Add description..."
+                                        prop:value=move || {
+                                            body_draft.get()
                                         }
-                                    >
-                                        <textarea
-                                            class="w-full text-sm \
-                                                   text-text-primary \
-                                                   bg-bg-input border \
-                                                   border-border \
-                                                   rounded p-2 \
-                                                   focus:outline-none \
-                                                   focus:border-accent \
-                                                   resize-y \
-                                                   min-h-[4rem]"
-                                            prop:value=move || {
-                                                body_draft.get()
-                                            }
-                                            on:input=move |ev| {
-                                                set_body_draft.set(
-                                                    event_target_value(&ev),
-                                                );
-                                            }
-                                            on:blur=move |_| {
-                                                set_editing_body.set(false);
-                                                let t = title_draft.get_untracked();
-                                                let b = body_draft.get_untracked();
-                                                let b = if b.trim().is_empty() {
-                                                    None
-                                                } else {
-                                                    Some(b)
-                                                };
-                                                store.update(t, b);
-                                            }
-                                            on:keydown=move |ev| {
-                                                if ev.key() == "Escape" {
-                                                    set_editing_body.set(false);
-                                                }
-                                            }
-                                            node_ref={
-                                                let r = NodeRef::<
-                                                    leptos::html::Textarea,
-                                                >::new();
-                                                Effect::new(move || {
-                                                    if editing_body.get() {
-                                                        if let Some(el) = r.get() {
-                                                            let _ = el.focus();
-                                                        }
-                                                    }
-                                                });
-                                                r
-                                            }
-                                        />
-                                    </Show>
+                                        on:input=move |ev| {
+                                            set_body_draft.set(
+                                                event_target_value(&ev),
+                                            );
+                                        }
+                                        on:blur=move |_| {
+                                            save();
+                                        }
+                                    />
                                 </div>
 
                                 // Subtask area
-                                <InlineSubtaskList
-                                    parent_id=task_id
-                                    sequential_limit=99
-                                    on_click=Callback::new(move |id| {
-                                        store.navigate_to_subtask(id)
-                                    })
-                                    add_btn_class="ml-6"
-                                    show_non_actionable=subtask_show_non_actionable
-                                    show_completed=subtask_show_completed
-                                />
+                                {
+                                    let all_subtasks = app_store
+                                        .tasks
+                                        .filtered(TaskStoreFilter {
+                                            parent_id: IdFilter::Is(task_id),
+                                            ..Default::default()
+                                        });
+                                    let subtask_ids = Memo::new(move |_| {
+                                        all_subtasks
+                                            .get()
+                                            .iter()
+                                            .map(|t| t.id)
+                                            .collect::<Vec<_>>()
+                                    });
+                                    let completed_count = Memo::new(move |_| {
+                                        all_subtasks
+                                            .get()
+                                            .iter()
+                                            .filter(|t| t.completed_at.is_some())
+                                            .count()
+                                    });
+                                    let total_count = Memo::new(move |_| {
+                                        all_subtasks.get().len()
+                                    });
+                                    let default_project_signal =
+                                        Signal::derive(move || project_id);
+
+                                    view! {
+                                        <div class="ml-6">
+                                            <TraversableTaskList
+                                                root_task_ids=subtask_ids
+                                                show_completed=subtask_show_completed
+                                                scoped=true
+                                                show_project=false
+                                                is_loaded=Signal::derive(|| true)
+                                                on_task_click=Callback::new(
+                                                    move |id| {
+                                                        store.navigate_to_subtask(id)
+                                                    },
+                                                )
+                                                on_reorder=Callback::new(
+                                                    move |(id, key, parent)| {
+                                                        app_store
+                                                            .tasks
+                                                            .reorder_task(id, key, parent)
+                                                    },
+                                                )
+                                                default_project_id=default_project_signal
+                                                empty_message="No subtasks."
+                                                allow_reorder=true
+                                                cursor_task_id=subtask_cursor
+                                            />
+                                            // Inline task input for mouse-friendly subtask creation
+                                            <Show when=move || show_inline_input.get()>
+                                                <InlineTaskInput
+                                                    parent_id=task_id
+                                                    value=input_value
+                                                    on_created=Callback::new(
+                                                        move |id| {
+                                                            extra_visible_ids.update(|ids| {
+                                                                if !ids.contains(&id) {
+                                                                    ids.push(id);
+                                                                }
+                                                            });
+                                                        },
+                                                    )
+                                                    on_close=Callback::new(
+                                                        move |()| {
+                                                            set_show_inline_input.set(false);
+                                                        },
+                                                    )
+                                                />
+                                            </Show>
+                                            <Show when=move || !show_inline_input.get()>
+                                                <button
+                                                    class="my-3 text-xs text-accent \
+                                                           hover:text-accent-hover \
+                                                           hover:underline cursor-pointer \
+                                                           transition-colors"
+                                                    on:click=move |_| {
+                                                        set_show_inline_input.set(true);
+                                                    }
+                                                >
+                                                    "+ Add subtask"
+                                                </button>
+                                            </Show>
+                                            // Toggle bar
+                                            <Show when=move || {
+                                                completed_count.get() > 0usize
+                                            }>
+                                                <div class="py-1 flex items-center \
+                                                            gap-2 text-xs">
+                                                    <button
+                                                        class="text-accent \
+                                                               hover:text-accent-hover \
+                                                               hover:underline \
+                                                               cursor-pointer \
+                                                               transition-colors"
+                                                        on:click=move |_| {
+                                                            subtask_show_completed
+                                                                .update(|v| *v = !*v);
+                                                        }
+                                                    >
+                                                        {move || {
+                                                            if subtask_show_completed.get() {
+                                                                "Hide Completed".to_string()
+                                                            } else {
+                                                                format!(
+                                                                    "Show Completed ({})",
+                                                                    completed_count.get(),
+                                                                )
+                                                            }
+                                                        }}
+                                                    </button>
+                                                    <span class="text-text-tertiary">
+                                                        {move || format!(
+                                                            "Total: {}",
+                                                            total_count.get(),
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            </Show>
+                                        </div>
+                                    }
+                                }
                             </div>
 
                             // Right sidebar

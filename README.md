@@ -13,9 +13,10 @@ A self-hosted, GTD-inspired task management system built entirely in Rust. North
 - **GTD review cycles** — per-task review tracking with configurable intervals to keep your system current
 - **Projects & tags** — organize work with colored projects (list or kanban view) and user-defined tags
 - **Filter DSL** — JQL-like query language with autocomplete for building saved filters (`status = 'ACTIVE' AND tags =~ 'work:*' ORDER BY due_date ASC`)
+- **Keyboard-driven task management** — full keyboard navigation with tree-aware cursor, inline editing, task creation, and reordering (press `?` to see all shortcuts)
 - **Inline parsing** — type `#tag` or `@project` directly in task titles to assign tags and projects on the fly
 - **Markdown support** — full CommonMark rendering in task descriptions
-- **Drag and drop** — reorder tasks, nest subtasks, and assign to projects by dragging
+- **Drag and drop** — reorder tasks, nest subtasks, and organize with drag-and-drop or keyboard shortcuts
 - **Dark & light themes** — respects system preference with manual toggle
 - **REST API** — full CRUD API for external integrations alongside the web UI
 - **Single binary** — one Rust binary serves both the server-rendered pages and the WASM-hydrated client
@@ -209,6 +210,7 @@ north/
 ├── migrations/         # Diesel reversible migrations (up.sql + down.sql)
 ├── style/              # TailwindCSS entry point
 ├── public/             # Static assets
+├── chart/              # Helm chart for Kubernetes deployment
 ├── docker/             # Base, dev, and prod Dockerfiles
 └── docs/               # Product requirements and design system
 ```

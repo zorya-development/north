@@ -19,6 +19,8 @@ pub fn TaskListItemView(
     #[prop(default = true)] show_project: bool,
     #[prop(default = false)] draggable: bool,
     #[prop(default = false)] compact: bool,
+    #[prop(default = false)] hide_subtasks: bool,
+    #[prop(default = false)] hide_body: bool,
     #[prop(default = 0)] depth: u8,
     on_click: Option<Callback<i64>>,
     on_delete: Callback<()>,
@@ -332,13 +334,17 @@ pub fn TaskListItemView(
                             }}
                         </div>
 
-                        {body.map(|b| {
-                            view! {
-                                <div class="mt-1 ml-6 pl-6 lh-1.5">
-                                    <MarkdownView content=b/>
-                                </div>
-                            }
-                        })}
+                        {if !hide_body {
+                            body.map(|b| {
+                                view! {
+                                    <div class="mt-1 ml-6 pl-6 lh-1.5">
+                                        <MarkdownView content=b/>
+                                    </div>
+                                }
+                            })
+                        } else {
+                            None
+                        }}
 
                         <TaskMeta
                             start_at=start_at
@@ -348,7 +354,7 @@ pub fn TaskListItemView(
                             show_review=show_review
                             class="pl-12"
                         />
-                        {if has_subtasks && !compact {
+                        {if has_subtasks && !compact && !hide_subtasks {
                             Some(view! {
                                 <Show when=move || subtasks_expanded.get()>
                                     <div

@@ -5,7 +5,8 @@ use north_ui::{Icon, IconKind, Modal};
 use super::controller::FilterController;
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
 use crate::components::filter_autocomplete::FilterAutocompleteTextarea;
-use crate::containers::task_list::TaskList;
+use crate::components::keybindings_modal::KeybindingsModal;
+use crate::containers::traversable_task_list::TraversableTaskList;
 
 #[component]
 pub fn FilterView(
@@ -34,6 +35,9 @@ pub fn FilterView(
 
     let modal_input_ref = NodeRef::<leptos::html::Input>::new();
 
+    let show_keybindings_help = RwSignal::new(false);
+    let (help_read, help_write) = show_keybindings_help.split();
+
     // Auto-focus modal input when opened
     Effect::new(move || {
         if show_save_modal.get() {
@@ -43,7 +47,8 @@ pub fn FilterView(
         }
     });
 
-    let empty_reorder_tasks = Memo::new(|_| vec![]);
+    // Filter results always show all (including completed)
+    let show_completed = RwSignal::new(true);
 
     view! {
         <div class="space-y-4">
@@ -156,6 +161,16 @@ pub fn FilterView(
                         <Icon kind=IconKind::Save class="w-5 h-5"/>
                     </button>
 
+                    // Keyboard help icon
+                    <button
+                        on:click=move |_| show_keybindings_help.set(true)
+                        class="p-1.5 text-text-tertiary hover:text-text-primary \
+                               rounded transition-colors"
+                        title="Keyboard shortcuts"
+                    >
+                        <Icon kind=IconKind::Keyboard class="w-5 h-5"/>
+                    </button>
+
                     // Help icon
                     <a
                         href="/filters/help"
@@ -221,15 +236,20 @@ pub fn FilterView(
 
             <hr class="border-border"/>
 
-            <TaskList
-                active_task_ids=filter_result_ids
-                active_tasks_for_reorder=empty_reorder_tasks
-                is_loaded=is_loaded
+            <TraversableTaskList
+                root_task_ids=filter_result_ids
+                show_completed=show_completed
                 show_project=true
-                on_reorder=Callback::new(|_| {})
+                is_loaded=is_loaded
+                allow_create=false
+                allow_reorder=false
+                flat=true
                 on_task_click=on_task_click
+                show_keybindings_help=show_keybindings_help
                 empty_message="No matching tasks. Try adjusting your query."
             />
+
+            <KeybindingsModal open=help_read set_open=help_write />
 
             // Save filter modal (new filters only)
             <Modal open=show_save_modal set_open=set_show_save_modal>

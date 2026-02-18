@@ -1,10 +1,11 @@
-use crate::TaskStore;
+use crate::{ModalStore, TaskStore};
 use leptos::prelude::*;
 use north_dto::Task;
 
 #[derive(Clone, Copy)]
 pub struct TaskDetailModalStore {
     task_store: TaskStore,
+    modal: ModalStore,
     open_task_id: RwSignal<Option<i64>>,
     task_stack: RwSignal<Vec<i64>>,
     task_ids: RwSignal<Vec<i64>>,
@@ -12,7 +13,7 @@ pub struct TaskDetailModalStore {
 }
 
 impl TaskDetailModalStore {
-    pub fn new(task_store: TaskStore) -> Self {
+    pub fn new(task_store: TaskStore, modal: ModalStore) -> Self {
         let open_task_id = RwSignal::new(None::<i64>);
         let task_stack = RwSignal::new(vec![]);
         let task_ids = RwSignal::new(vec![]);
@@ -27,6 +28,7 @@ impl TaskDetailModalStore {
 
         Self {
             task_store,
+            modal,
             open_task_id,
             task_stack,
             task_ids,
@@ -86,11 +88,13 @@ impl TaskDetailModalStore {
         self.task_ids.set(task_ids);
         self.task_stack.set(vec![]);
         self.open_task_id.set(Some(task_id));
+        self.modal.open("task_detail");
     }
 
     pub fn close(&self) {
         self.open_task_id.set(None);
         self.task_stack.set(vec![]);
+        self.modal.close("task_detail");
     }
 
     pub fn prev(&self) {
