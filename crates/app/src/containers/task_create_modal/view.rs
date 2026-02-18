@@ -53,7 +53,7 @@ pub fn TaskCreateModalView(store: TaskCreateModalStore) -> impl IntoView {
             project_id: project_id.get_untracked(),
             parent_id: parent_id.get_untracked(),
             start_at: sa,
-            due_date: None,
+            ..Default::default()
         });
     });
 

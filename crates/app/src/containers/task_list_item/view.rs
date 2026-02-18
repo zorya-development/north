@@ -19,6 +19,7 @@ pub fn TaskListItemView(
     #[prop(default = true)] show_project: bool,
     #[prop(default = false)] draggable: bool,
     #[prop(default = false)] compact: bool,
+    #[prop(default = false)] flat_mode: bool,
     #[prop(default = 0)] depth: u8,
     on_click: Option<Callback<i64>>,
     on_delete: Callback<()>,
@@ -348,7 +349,7 @@ pub fn TaskListItemView(
                             show_review=show_review
                             class="pl-12"
                         />
-                        {if has_subtasks && !compact {
+                        {if has_subtasks && !compact && !flat_mode {
                             Some(view! {
                                 <Show when=move || subtasks_expanded.get()>
                                     <div

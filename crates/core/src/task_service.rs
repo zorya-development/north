@@ -157,37 +157,41 @@ impl TaskService {
     pub async fn create(pool: &DbPool, user_id: i64, input: &CreateTask) -> ServiceResult<Task> {
         let mut conn = pool.get().await?;
 
-        let last_key: Option<String> = if input.parent_id.is_some() {
-            tasks::table
-                .filter(tasks::parent_id.eq(input.parent_id))
-                .filter(tasks::user_id.eq(user_id))
-                .order(tasks::sort_key.desc())
-                .select(tasks::sort_key)
-                .first(&mut conn)
-                .await
-                .optional()?
-        } else if input.project_id.is_some() {
-            tasks::table
-                .filter(tasks::project_id.eq(input.project_id))
-                .filter(tasks::parent_id.is_null())
-                .filter(tasks::user_id.eq(user_id))
-                .order(tasks::sort_key.desc())
-                .select(tasks::sort_key)
-                .first(&mut conn)
-                .await
-                .optional()?
+        let sort_key = if let Some(ref sk) = input.sort_key {
+            sk.clone()
         } else {
-            tasks::table
-                .filter(tasks::project_id.is_null())
-                .filter(tasks::parent_id.is_null())
-                .filter(tasks::user_id.eq(user_id))
-                .order(tasks::sort_key.desc())
-                .select(tasks::sort_key)
-                .first(&mut conn)
-                .await
-                .optional()?
+            let last_key: Option<String> = if input.parent_id.is_some() {
+                tasks::table
+                    .filter(tasks::parent_id.eq(input.parent_id))
+                    .filter(tasks::user_id.eq(user_id))
+                    .order(tasks::sort_key.desc())
+                    .select(tasks::sort_key)
+                    .first(&mut conn)
+                    .await
+                    .optional()?
+            } else if input.project_id.is_some() {
+                tasks::table
+                    .filter(tasks::project_id.eq(input.project_id))
+                    .filter(tasks::parent_id.is_null())
+                    .filter(tasks::user_id.eq(user_id))
+                    .order(tasks::sort_key.desc())
+                    .select(tasks::sort_key)
+                    .first(&mut conn)
+                    .await
+                    .optional()?
+            } else {
+                tasks::table
+                    .filter(tasks::project_id.is_null())
+                    .filter(tasks::parent_id.is_null())
+                    .filter(tasks::user_id.eq(user_id))
+                    .order(tasks::sort_key.desc())
+                    .select(tasks::sort_key)
+                    .first(&mut conn)
+                    .await
+                    .optional()?
+            };
+            north_dto::sort_key_after(last_key.as_deref())
         };
-        let sort_key = north_dto::sort_key_after(last_key.as_deref());
 
         let row = diesel::insert_into(tasks::table)
             .values(&NewTask {
