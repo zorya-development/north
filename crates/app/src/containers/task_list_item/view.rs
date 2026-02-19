@@ -57,7 +57,7 @@ pub fn TaskListItemView(
                     on:mouseenter=move |_| set_hovered.set(true)
                     on:mouseleave=move |_| set_hovered.set(false)
                     class=move || {
-                        let mut classes = "px-4 \
+                        let mut classes = "relative pr-4 \
                              hover:bg-hover-overlay transition-colors \
                              cursor-pointer"
                             .to_string();
@@ -143,32 +143,35 @@ pub fn TaskListItemView(
                         }
                     }
                 >
+                    {if draggable {
+                        Some(view! {
+                            <span
+                                class=move || format!(
+                                    "dnd-handle absolute left-0 \
+                                     top-1/2 -translate-x-full \
+                                     -translate-y-1/2 \
+                                     {} cursor-grab \
+                                     active:cursor-grabbing \
+                                     transition-opacity",
+                                    if hovered.get() {
+                                        "opacity-60"
+                                    } else {
+                                        "opacity-0"
+                                    },
+                                )
+                                on:click=move |ev| ev.stop_propagation()
+                                on:mousedown=move |ev| ev.stop_propagation()
+                            >
+                                <Icon
+                                    kind=IconKind::DragHandle
+                                    class="w-4 h-4 text-text-tertiary"
+                                />
+                            </span>
+                        })
+                    } else {
+                        None
+                    }}
                     <div class="flex items-center gap-2">
-                        {if draggable {
-                            Some(view! {
-                                <span
-                                    class=move || format!(
-                                        "dnd-handle {} cursor-grab \
-                                         active:cursor-grabbing \
-                                         transition-opacity",
-                                        if hovered.get() {
-                                            "opacity-60"
-                                        } else {
-                                            "opacity-0"
-                                        },
-                                    )
-                                    on:click=move |ev| ev.stop_propagation()
-                                    on:mousedown=move |ev| ev.stop_propagation()
-                                >
-                                    <Icon
-                                        kind=IconKind::DragHandle
-                                        class="w-4 h-4 text-text-tertiary"
-                                    />
-                                </span>
-                            })
-                        } else {
-                            None
-                        }}
                         <div
                             class="flex items-center"
                             on:click=move |ev| ev.stop_propagation()
@@ -289,7 +292,7 @@ pub fn TaskListItemView(
                         reviewed_at=reviewed_at
                         show_review=show_review
                         on_review=on_review
-                        class=if draggable { "pl-12" } else { "pl-6" }
+                        class="pl-6"
                     />
                 </div>
             }

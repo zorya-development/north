@@ -367,10 +367,20 @@ fn InlineEditInput(
             style=move || {
                 format!("padding-left: {}rem", depth.get() as f32 * 1.5)
             }
-            class="px-4 py-1 trash-polka-focus"
+            class="pr-4 py-1 trash-polka-focus"
         >
             <div class="flex items-center gap-2">
-                <div class="w-5 h-5 shrink-0"/>
+                <div class="flex-shrink-0">
+                    <svg width="16" height="16" viewBox="0 0 16 16">
+                        <circle
+                            cx="8" cy="8" r="6.5"
+                            fill="none"
+                            stroke="var(--text-secondary)"
+                            stroke-width="2"
+                            opacity="0.5"
+                        />
+                    </svg>
+                </div>
                 <input
                     type="text"
                     node_ref=input_ref
@@ -433,19 +443,18 @@ fn InlineCreateInput(
             style=move || {
                 format!("padding-left: {}rem", depth.get() as f32 * 1.5)
             }
-            class="px-4 py-1"
+            class="pr-4 py-1"
         >
             <div class="flex items-center gap-2">
-                <div class="w-5 h-5 shrink-0 text-text-tertiary">
-                    <svg
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.5"
-                        class="w-5 h-5"
-                    >
-                        <line x1="10" y1="4" x2="10" y2="16"/>
-                        <line x1="4" y1="10" x2="16" y2="10"/>
+                <div class="flex-shrink-0">
+                    <svg width="16" height="16" viewBox="0 0 16 16">
+                        <circle
+                            cx="8" cy="8" r="6.5"
+                            fill="none"
+                            stroke="var(--text-secondary)"
+                            stroke-width="2"
+                            opacity="0.5"
+                        />
                     </svg>
                 </div>
                 <input
