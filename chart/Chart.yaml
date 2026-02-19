@@ -2,8 +2,8 @@ apiVersion: v2
 name: north
 description: GTD-inspired task management system built with Rust/Leptos
 type: application
-version: 0.1.8
-appVersion: "0.2.3"
+version: 0.1.9
+appVersion: "0.2.4"
 home: https://github.com/zorya-development/north
 sources:
   - https://github.com/zorya-development/north
