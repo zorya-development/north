@@ -12,6 +12,8 @@ pub fn ReviewView(
     reviewed_task_ids: Memo<Vec<i64>>,
     is_loaded: Signal<bool>,
     hide_non_actionable: Signal<bool>,
+    pending_filter: Callback<north_dto::Task, bool>,
+    reviewed_filter: Callback<north_dto::Task, bool>,
     show_reviewed: ReadSignal<bool>,
     set_show_reviewed: WriteSignal<bool>,
     on_review_all: Callback<()>,
@@ -25,9 +27,6 @@ pub fn ReviewView(
 
     let show_keybindings_help = RwSignal::new(false);
     let (help_read, help_write) = show_keybindings_help.split();
-
-    let show_completed = RwSignal::new(false);
-    let show_completed_reviewed = RwSignal::new(false);
 
     view! {
         <div class="space-y-4">
@@ -73,14 +72,13 @@ pub fn ReviewView(
 
             <TraversableTaskList
                 root_task_ids=review_task_ids
-                show_completed=show_completed
+                node_filter=pending_filter
                 item_config=review_config
                 is_loaded=is_loaded
                 allow_create=false
                 allow_reorder=false
                 on_task_click=on_task_click
                 show_keybindings_help=show_keybindings_help
-                hide_non_actionable=hide_non_actionable
                 empty_message="All tasks are up to date. Nothing to review."
             />
 
@@ -104,7 +102,7 @@ pub fn ReviewView(
                     <div class="mt-3">
                         <TraversableTaskList
                             root_task_ids=reviewed_task_ids
-                            show_completed=show_completed_reviewed
+                            node_filter=reviewed_filter
                             item_config=review_config
                             is_loaded=is_loaded
                             allow_create=false

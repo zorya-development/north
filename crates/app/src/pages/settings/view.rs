@@ -9,8 +9,6 @@ pub fn SettingsView(
     set_interval: WriteSignal<String>,
     timezone: ReadSignal<String>,
     set_timezone: WriteSignal<String>,
-    saved: ReadSignal<bool>,
-    set_saved: WriteSignal<bool>,
     is_loaded: Signal<bool>,
     on_save: Callback<()>,
 ) -> impl IntoView {
@@ -42,7 +40,6 @@ pub fn SettingsView(
                             min="1"
                             prop:value=move || interval.get()
                             on:input=move |ev| {
-                                set_saved.set(false);
                                 set_interval.set(event_target_value(&ev));
                             }
                             class="w-24 bg-bg-input border border-border \
@@ -61,7 +58,6 @@ pub fn SettingsView(
                         </Text>
                         <select
                             on:change=move |ev| {
-                                set_saved.set(false);
                                 set_timezone.set(event_target_value(&ev));
                             }
                             class="w-64 bg-bg-input border border-border \
@@ -96,20 +92,15 @@ pub fn SettingsView(
                         </select>
                     </div>
 
-                    <div class="flex items-center gap-3">
-                        <button
-                            on:click=move |_| on_save.run(())
-                            class="px-4 py-1.5 text-sm bg-accent \
-                                   text-on-accent rounded \
-                                   hover:bg-accent-hover \
-                                   transition-colors"
-                        >
-                            "Save"
-                        </button>
-                        <Show when=move || saved.get()>
-                            <span class="text-sm text-success">"Saved"</span>
-                        </Show>
-                    </div>
+                    <button
+                        on:click=move |_| on_save.run(())
+                        class="px-4 py-1.5 text-sm bg-accent \
+                               text-on-accent rounded \
+                               hover:bg-accent-hover \
+                               transition-colors"
+                    >
+                        "Save"
+                    </button>
                 </div>
             </Show>
         </div>

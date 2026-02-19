@@ -13,6 +13,7 @@ pub fn InboxView(
     completed_count: Memo<usize>,
     is_loaded: Signal<bool>,
     hide_non_actionable: Signal<bool>,
+    node_filter: Callback<north_dto::Task, bool>,
     on_task_click: Callback<i64>,
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
     on_toggle_visibility: Callback<()>,
@@ -104,14 +105,13 @@ pub fn InboxView(
 
             <TraversableTaskList
                 root_task_ids=root_task_ids
-                show_completed=show_completed
+                node_filter=node_filter
                 item_config=item_config
                 is_loaded=is_loaded
                 on_reorder=on_reorder
                 on_task_click=on_task_click
                 show_keybindings_help=show_keybindings_help
                 handle=ttl_handle
-                hide_non_actionable=hide_non_actionable
                 empty_message="No tasks in your inbox. Add one above."
             />
 

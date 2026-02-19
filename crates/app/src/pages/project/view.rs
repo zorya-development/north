@@ -15,6 +15,7 @@ pub fn ProjectView(
     completed_count: Memo<usize>,
     is_loaded: Signal<bool>,
     hide_non_actionable: Signal<bool>,
+    node_filter: Callback<north_dto::Task, bool>,
     default_project_id: Signal<Option<i64>>,
     on_task_click: Callback<i64>,
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
@@ -115,7 +116,7 @@ pub fn ProjectView(
 
             <TraversableTaskList
                 root_task_ids=root_task_ids
-                show_completed=show_completed
+                node_filter=node_filter
                 item_config=item_config
                 is_loaded=is_loaded
                 on_reorder=on_reorder
@@ -123,7 +124,6 @@ pub fn ProjectView(
                 show_keybindings_help=show_keybindings_help
                 default_project_id=default_project_id
                 handle=ttl_handle
-                hide_non_actionable=hide_non_actionable
                 empty_message="No tasks in this project. Add one above."
             />
 

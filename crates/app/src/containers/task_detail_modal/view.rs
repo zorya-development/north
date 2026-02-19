@@ -17,7 +17,8 @@ pub fn TaskDetailModalView(
     ctrl: TaskDetailModalController,
     subtask_item_config: ItemConfig,
 ) -> impl IntoView {
-    let subtask_show_completed = RwSignal::new(false);
+    let subtask_show_completed = ctrl.subtask_show_completed;
+    let subtask_filter = ctrl.subtask_filter;
     let (show_inline_input, set_show_inline_input) = signal(false);
     let input_value = RwSignal::new(String::new());
     let title_input_ref = NodeRef::<leptos::html::Input>::new();
@@ -259,7 +260,7 @@ pub fn TaskDetailModalView(
                                 <div class="ml-6">
                                     <TraversableTaskList
                                         root_task_ids=subtask_ids
-                                        show_completed=subtask_show_completed
+                                        node_filter=subtask_filter
                                         scoped=true
                                         item_config=subtask_item_config
                                         is_loaded=Signal::derive(|| true)

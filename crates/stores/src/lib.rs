@@ -17,7 +17,7 @@ pub use hooks::{use_app_store, use_modal_store, use_task_detail_modal_store};
 pub use modal_store::ModalStore;
 pub use project_store::ProjectStore;
 pub use saved_filter_store::SavedFilterStore;
-pub use status_bar_store::{StatusBarStore, StatusBarVariant};
+pub use status_bar_store::{StatusBarStore, StatusBarStyle, StatusBarVariant};
 pub use tag_store::TagStore;
 pub use task_detail_modal_store::TaskDetailModalStore;
 pub use task_store::{IdFilter, TaskStore, TaskStoreFilter};

@@ -4,12 +4,23 @@ use leptos::prelude::*;
 pub struct StatusBarMessage {
     pub text: String,
     pub variant: StatusBarVariant,
+    pub style: StatusBarStyle,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum StatusBarVariant {
     Danger,
     Info,
+    Success,
+}
+
+/// Controls how the status bar message is displayed.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum StatusBarStyle {
+    /// Persistent message with animated spinner (e.g. loading states).
+    Spinner,
+    /// Auto-dismissing toast notification (disappears after duration).
+    Toast,
 }
 
 #[derive(Clone, Copy)]
@@ -34,6 +45,17 @@ impl StatusBarStore {
         self.message.set(Some(StatusBarMessage {
             text: text.into(),
             variant,
+            style: StatusBarStyle::Spinner,
+        }));
+    }
+
+    /// Show a toast notification that auto-dismisses after a duration.
+    /// The actual timeout is handled by the StatusBar component.
+    pub fn notify(&self, variant: StatusBarVariant, text: impl Into<String>) {
+        self.message.set(Some(StatusBarMessage {
+            text: text.into(),
+            variant,
+            style: StatusBarStyle::Toast,
         }));
     }
 

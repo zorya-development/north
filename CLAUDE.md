@@ -186,7 +186,7 @@ north/
     │       ├── filter_dsl_store.rs # FilterDslStore: DSL query state, validation, suggestions, execution results
     │       ├── task_detail_modal_store.rs # TaskDetailModalStore: modal state, navigation, subtask handling
     │       ├── modal_store.rs  # ModalStore: centralized string-based modal open/close registry
-    │       ├── status_bar_store.rs # StatusBarStore: reactive bottom bar messages (info/danger variants)
+    │       ├── status_bar_store.rs # StatusBarStore: reactive bottom bar messages (info/danger/success variants, spinner + toast styles)
     │       └── hooks.rs        # use_app_store(), use_task_detail_modal_store(), use_modal_store()
     │
     ├── repositories/           # Thin async facade over server functions (north-repositories)
@@ -249,7 +249,7 @@ north/
     │       │   ├── task_list_item/     # Container/controller/view (single task row, ItemConfig for display options)
     │       │   ├── task_meta/          # Container/view pattern (date, project, tags, recurrence display with TaskMetaItem sub-component)
     │       │   └── traversable_task_list/ # Container/controller/view (keyboard-driven tree list with inline edit/create + drag-and-drop, provides ExtraVisibleIds context)
-    │       ├── constants.rs              # TIMEZONE_GROUPS — grouped IANA timezone list for settings page
+    │       ├── constants.rs              # App-level constants and configuration (e.g. TIMEZONE_GROUPS)
     │       └── components/
     │           ├── date_picker/        # Container/view pattern (supports icon_only prop)
     │           ├── filter_autocomplete/ # DSL autocomplete for filter page
@@ -342,7 +342,7 @@ Triggers: `update_updated_at()` on users, projects, tasks.
 - **TagStore / SavedFilterStore:** Individual reactive stores for tags and saved filters, cached globally via `AppStore`. Used by pickers and navigation.
 - **TaskDetailModalStore:** Manages task detail modal state, navigation between tasks, and subtask handling. Provided via `AppStore`.
 - **ModalStore:** Centralized string-based modal registry (`stores/modal_store.rs`). Methods: `open(name)`, `close(name)`, `is_open(name)`, `is_any_open()`. Replaces DOM inspection with reactive signals — decouples keyboard listeners (e.g. TraversableTaskList) from modal DOM structure. Used by TaskDetailModal and TraversableTaskList (which skips keyboard handling when any modal is open). Provided via `AppStore`, accessible via `use_modal_store()`.
-- **StatusBarStore:** Manages bottom-bar contextual messages (`stores/status_bar_store.rs`). Methods: `show_message(text, variant)`, `hide_message()`, `is_visible()`. Variants: `Info` (accent background) and `Danger` (red background). The `StatusBar` component renders a fixed bottom bar with animated spinner. Provided via `AppStore`.
+- **StatusBarStore:** Manages bottom-bar contextual messages (`stores/status_bar_store.rs`). Methods: `show_message(text, variant)` (persistent with spinner), `notify(variant, text)` (auto-dismissing toast, 10s), `hide_message()`, `is_visible()`. Variants: `Info` (accent), `Danger` (red), `Success` (green). Styles: `Spinner` (persistent with animated spinner) and `Toast` (auto-dismiss after 10s, no spinner). Provided via `AppStore`.
 - **BrowserStorageStore:** Reactive proxy over localStorage (`stores/browser_storage_store.rs`). Lazily creates an `RwSignal<bool>` per key, initialized from localStorage on first access. Methods: `get_bool(key)` (reactive read), `set_bool(key, val)` (updates signal + localStorage), `toggle_bool(key)`. localStorage access gated behind `hydrate` feature via `web-sys`. Used by page controllers for per-page UI toggles (e.g. `north:hide-non-actionable:{page}`). Provided via `AppStore`.
 - **FilterDslStore:** Manages filter DSL query lifecycle: text input, server-side validation, autocompletion suggestions, query execution, and results. Provided via `AppStore`.
 - **Token parsing:** `parse_tokens()` in core crate extracts `#tags` and `@project` references from task title/body text. Core resolves these to DB records.
@@ -357,7 +357,7 @@ Triggers: `update_updated_at()` on users, projects, tasks.
 - **TaskListItem:** Reusable task row component (`containers/task_list_item/`). Renders checkbox, title, action bar (date/project/tag pickers, kebab menu), and metadata. Takes `task_id: i64` and `config: ItemConfig`.
 - **Inline subtask input:** `InlineTaskInput` container renders a borderless input for rapid task creation inside `TaskDetailModal`. Enter creates a subtask (inheriting parent's project_id), clears input, keeps it open and focused. Escape or blur hides the input. Created task IDs are pushed to `ExtraVisibleIds` to stay visible.
 - **KeybindingsModal:** Help modal (`components/keybindings_modal.rs`) displaying keyboard shortcuts for TraversableTaskList navigation. Triggered by `?` key or button click. Shows shortcuts for cursor movement, tree navigation, inline editing, task creation, completion toggle, review, delete, and detail modal access.
-- **StatusBar:** Fixed bottom bar (`components/status_bar.rs`) for contextual messages. Reads from `StatusBarStore` via `use_app_store()`. Renders animated spinner (rotating unicode symbols at 120ms) with message text. Two style variants: Info (accent) and Danger (red). Client-only animation via `set_interval`.
+- **StatusBar:** Fixed bottom bar (`components/status_bar.rs`) for contextual messages. Reads from `StatusBarStore` via `use_app_store()`. Two display styles: Spinner (persistent, rotating unicode symbols at 120ms) and Toast (auto-dismisses after 10s, no spinner). Three color variants: Info (accent), Danger (red), Success (green). Client-only animation via `set_interval`.
 - **TaskCheckbox:** Reusable task completion checkbox (`containers/task_checkbox/`). Container/controller/view pattern. Manages checked state and completion toggle via AppStore. Displays progress visualization for parent tasks with subtasks.
 - **TaskMeta:** Task metadata display container (`containers/task_meta/`). Container/view pattern with `TaskMetaItem` sub-component. Container computes display variants (e.g. Danger for past-due dates), parses recurrence rules into summaries, and delegates rendering to view. `TaskMetaItem` is a reusable icon+text badge with `TaskMetaItemVariant` (Default, Info, Danger) for color mapping.
 - **Recurrence:** Tasks support recurring schedules via `recurrence_type` (Scheduled = fixed schedule, AfterCompletion = relative to completion) and `recurrence_rule` (RRULE-like string e.g. `FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE,FR`). `RecurrenceRule` struct in dto provides `parse()`/`to_rrule_string()` for serialization and `summarize()` for human-readable display. `RecurrenceModal` (`components/recurrence_modal/`) provides the UI for configuring rules with frequency, interval, weekday, time, and month pickers. `TaskStore.set_recurrence()` handles async persistence.

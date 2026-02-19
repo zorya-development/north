@@ -16,6 +16,8 @@ pub struct ReviewController {
     pub is_loaded: Signal<bool>,
     pub show_reviewed: (ReadSignal<bool>, WriteSignal<bool>),
     pub hide_non_actionable: Signal<bool>,
+    pub pending_filter: Callback<north_dto::Task, bool>,
+    pub reviewed_filter: Callback<north_dto::Task, bool>,
 }
 
 impl ReviewController {
@@ -106,6 +108,21 @@ impl ReviewController {
         let hide_non_actionable =
             Signal::derive(move || app_store.browser_storage.get_bool(HIDE_NON_ACTIONABLE_KEY));
 
+        let show_completed = RwSignal::new(false);
+        let show_completed_reviewed = RwSignal::new(false);
+
+        let pending_filter = Callback::new(move |task: north_dto::Task| {
+            if task.completed_at.is_some() {
+                show_completed.get()
+            } else {
+                !hide_non_actionable.get() || task.actionable
+            }
+        });
+
+        let reviewed_filter = Callback::new(move |task: north_dto::Task| {
+            task.completed_at.is_none() || show_completed_reviewed.get()
+        });
+
         Self {
             app_store,
             task_detail_modal_store,
@@ -114,6 +131,8 @@ impl ReviewController {
             is_loaded,
             show_reviewed,
             hide_non_actionable,
+            pending_filter,
+            reviewed_filter,
         }
     }
 

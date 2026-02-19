@@ -13,8 +13,6 @@ pub fn SettingsPage() -> impl IntoView {
             set_interval=ctrl.interval.1
             timezone=ctrl.timezone.0
             set_timezone=ctrl.timezone.1
-            saved=ctrl.saved.0
-            set_saved=ctrl.saved.1
             is_loaded=ctrl.is_loaded
             on_save=Callback::new(move |()| ctrl.save())
         />

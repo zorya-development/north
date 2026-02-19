@@ -33,7 +33,6 @@ impl TraversableTaskListController {
         app_store: AppStore,
         modal: ModalStore,
         root_task_ids: Memo<Vec<i64>>,
-        show_completed: RwSignal<bool>,
         show_keybindings_help: RwSignal<bool>,
         on_task_click: Option<Callback<i64>>,
         on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
@@ -44,18 +43,19 @@ impl TraversableTaskListController {
         flat: bool,
         scoped: bool,
         cursor_task_id: Option<RwSignal<Option<i64>>>,
-        hide_non_actionable: Option<Signal<bool>>,
+        node_filter: Option<Callback<north_dto::Task, bool>>,
     ) -> Self {
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
 
         let flat_nodes = Memo::new(move |_| {
             let roots = root_task_ids.get();
             let tasks = all_tasks.get();
-            let hide = hide_non_actionable.map(|s| s.get()).unwrap_or(false);
+            let include =
+                |t: &north_dto::Task| node_filter.map(|f| f.run(t.clone())).unwrap_or(true);
             if flat {
-                flatten_flat(&roots, &tasks, show_completed.get(), hide)
+                flatten_flat(&roots, &tasks, &include)
             } else {
-                flatten_tree(&roots, &tasks, show_completed.get(), hide)
+                flatten_tree(&roots, &tasks, &include)
             }
         });
 

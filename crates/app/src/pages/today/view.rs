@@ -13,6 +13,7 @@ pub fn TodayView(
     completed_count: Memo<usize>,
     is_loaded: Signal<bool>,
     hide_non_actionable: Signal<bool>,
+    node_filter: Callback<north_dto::Task, bool>,
     on_task_click: Callback<i64>,
     on_toggle_visibility: Callback<()>,
 ) -> impl IntoView {
@@ -100,7 +101,7 @@ pub fn TodayView(
 
             <TraversableTaskList
                 root_task_ids=root_task_ids
-                show_completed=show_completed
+                node_filter=node_filter
                 item_config=item_config
                 is_loaded=is_loaded
                 allow_create=false
@@ -108,7 +109,6 @@ pub fn TodayView(
                 on_task_click=on_task_click
                 show_keybindings_help=show_keybindings_help
                 handle=ttl_handle
-                hide_non_actionable=hide_non_actionable
                 empty_message="No tasks scheduled for today."
             />
 

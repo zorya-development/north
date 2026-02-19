@@ -13,11 +13,17 @@ pub struct TaskDetailModalController {
     pub title_draft: RwSignal<String>,
     pub body_draft: RwSignal<String>,
     pub focused_task_id: RwSignal<Option<i64>>,
+    pub subtask_show_completed: RwSignal<bool>,
+    pub subtask_filter: Callback<north_dto::Task, bool>,
 }
 
 impl TaskDetailModalController {
     pub fn new(app_store: AppStore) -> Self {
         let extra_visible_ids = expect_context::<ExtraVisibleIds>().0;
+        let subtask_show_completed = RwSignal::new(false);
+        let subtask_filter = Callback::new(move |task: north_dto::Task| {
+            task.completed_at.is_none() || subtask_show_completed.get()
+        });
 
         Self {
             store: app_store.task_detail_modal,
@@ -27,6 +33,8 @@ impl TaskDetailModalController {
             title_draft: RwSignal::new(String::new()),
             body_draft: RwSignal::new(String::new()),
             focused_task_id: RwSignal::new(None),
+            subtask_show_completed,
+            subtask_filter,
         }
     }
 
