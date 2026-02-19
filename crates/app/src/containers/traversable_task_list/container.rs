@@ -39,7 +39,7 @@ pub fn TraversableTaskList(
     #[prop(default = false)] scoped: bool,
     #[prop(optional)] cursor_task_id: Option<RwSignal<Option<i64>>>,
     #[prop(optional)] handle: Option<RwSignal<Option<TtlHandle>>>,
-    #[prop(optional)] hide_non_actionable: Option<RwSignal<bool>>,
+    #[prop(optional)] hide_non_actionable: Option<Signal<bool>>,
 ) -> impl IntoView {
     let app_store = use_app_store();
     if item_config.draggable {

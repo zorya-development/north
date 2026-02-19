@@ -5,6 +5,8 @@ use north_dto::ProjectStatus;
 use north_repositories::{SettingsRepository, TaskRepository};
 use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskStoreFilter};
 
+const HIDE_NON_ACTIONABLE_KEY: &str = "north:hide-non-actionable:review";
+
 #[derive(Clone, Copy)]
 pub struct ReviewController {
     app_store: AppStore,
@@ -13,6 +15,7 @@ pub struct ReviewController {
     pub reviewed_task_ids: Memo<Vec<i64>>,
     pub is_loaded: Signal<bool>,
     pub show_reviewed: (ReadSignal<bool>, WriteSignal<bool>),
+    pub hide_non_actionable: Signal<bool>,
 }
 
 impl ReviewController {
@@ -100,6 +103,9 @@ impl ReviewController {
 
         let is_loaded = app_store.tasks.loaded_signal();
 
+        let hide_non_actionable =
+            Signal::derive(move || app_store.browser_storage.get_bool(HIDE_NON_ACTIONABLE_KEY));
+
         Self {
             app_store,
             task_detail_modal_store,
@@ -107,6 +113,7 @@ impl ReviewController {
             reviewed_task_ids,
             is_loaded,
             show_reviewed,
+            hide_non_actionable,
         }
     }
 
@@ -122,5 +129,11 @@ impl ReviewController {
     pub fn open_detail(&self, task_id: i64) {
         let task_ids = self.review_task_ids.get_untracked();
         self.task_detail_modal_store.open(task_id, task_ids);
+    }
+
+    pub fn toggle_actionable_visibility(&self) {
+        self.app_store
+            .browser_storage
+            .toggle_bool(HIDE_NON_ACTIONABLE_KEY);
     }
 }

@@ -6,4 +6,3 @@ pub mod layout;
 pub mod recurrence_modal;
 pub mod status_bar;
 pub mod theme_toggle;
-pub mod visibility_toggle;

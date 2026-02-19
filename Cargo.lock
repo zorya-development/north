@@ -1864,6 +1864,7 @@ dependencies = [
  "leptos",
  "north-dto",
  "north-repositories",
+ "web-sys",
 ]
 
 [[package]]

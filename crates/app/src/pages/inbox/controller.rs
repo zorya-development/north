@@ -1,6 +1,8 @@
 use leptos::prelude::*;
 use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskStoreFilter};
 
+const HIDE_NON_ACTIONABLE_KEY: &str = "north:hide-non-actionable:inbox";
+
 #[derive(Clone, Copy)]
 pub struct InboxController {
     task_detail_modal_store: TaskDetailModalStore,
@@ -8,6 +10,7 @@ pub struct InboxController {
     pub show_completed: RwSignal<bool>,
     pub completed_count: Memo<usize>,
     pub is_loaded: Signal<bool>,
+    pub hide_non_actionable: Signal<bool>,
     app_store: AppStore,
 }
 
@@ -39,12 +42,16 @@ impl InboxController {
         let show_completed = RwSignal::new(false);
         let is_loaded = app_store.tasks.loaded_signal();
 
+        let hide_non_actionable =
+            Signal::derive(move || app_store.browser_storage.get_bool(HIDE_NON_ACTIONABLE_KEY));
+
         Self {
             task_detail_modal_store,
             root_task_ids,
             show_completed,
             completed_count,
             is_loaded,
+            hide_non_actionable,
             app_store,
         }
     }
@@ -58,5 +65,11 @@ impl InboxController {
         self.app_store
             .tasks
             .reorder_task(task_id, sort_key, parent_id);
+    }
+
+    pub fn toggle_actionable_visibility(&self) {
+        self.app_store
+            .browser_storage
+            .toggle_bool(HIDE_NON_ACTIONABLE_KEY);
     }
 }

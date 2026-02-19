@@ -3,7 +3,6 @@ use north_ui::{Icon, IconKind};
 
 use crate::atoms::{Text, TextVariant};
 use crate::components::keybindings_modal::KeybindingsModal;
-use crate::components::visibility_toggle::VisibilityToggle;
 use crate::containers::task_list_item::ItemConfig;
 use crate::containers::traversable_task_list::{TraversableTaskList, TtlHandle};
 
@@ -13,12 +12,13 @@ pub fn TodayView(
     show_completed: RwSignal<bool>,
     completed_count: Memo<usize>,
     is_loaded: Signal<bool>,
+    hide_non_actionable: Signal<bool>,
     on_task_click: Callback<i64>,
+    on_toggle_visibility: Callback<()>,
 ) -> impl IntoView {
     let show_keybindings_help = RwSignal::new(false);
     let (help_read, help_write) = show_keybindings_help.split();
     let ttl_handle = RwSignal::new(None::<TtlHandle>);
-    let hide_non_actionable = RwSignal::new(false);
     let item_config = ItemConfig::default();
 
     view! {
@@ -81,10 +81,20 @@ pub fn TodayView(
                             None
                         }
                     }}
-                    <VisibilityToggle
-                        page_key="today".to_string()
-                        hide_non_actionable=hide_non_actionable
-                    />
+                    <button
+                        on:click=move |_| on_toggle_visibility.run(())
+                        class="text-xs text-text-secondary \
+                               hover:text-text-primary transition-colors \
+                               cursor-pointer"
+                    >
+                        {move || {
+                            if hide_non_actionable.get() {
+                                "Show all tasks"
+                            } else {
+                                "Hide non-actionable"
+                            }
+                        }}
+                    </button>
                 </div>
             </div>
 

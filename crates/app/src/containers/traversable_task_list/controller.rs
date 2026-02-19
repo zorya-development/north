@@ -44,7 +44,7 @@ impl TraversableTaskListController {
         flat: bool,
         scoped: bool,
         cursor_task_id: Option<RwSignal<Option<i64>>>,
-        hide_non_actionable: Option<RwSignal<bool>>,
+        hide_non_actionable: Option<Signal<bool>>,
     ) -> Self {
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
 

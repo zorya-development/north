@@ -1,6 +1,6 @@
 use crate::{
-    FilterDslStore, ModalStore, ProjectStore, SavedFilterStore, StatusBarStore, TagStore,
-    TaskDetailModalStore, TaskStore,
+    BrowserStorageStore, FilterDslStore, ModalStore, ProjectStore, SavedFilterStore,
+    StatusBarStore, TagStore, TaskDetailModalStore, TaskStore,
 };
 
 #[derive(Clone, Copy)]
@@ -13,6 +13,7 @@ pub struct AppStore {
     pub filter_dsl: FilterDslStore,
     pub status_bar: StatusBarStore,
     pub modal: ModalStore,
+    pub browser_storage: BrowserStorageStore,
 }
 
 impl Default for AppStore {
@@ -31,6 +32,7 @@ impl AppStore {
         let task_detail_modal = TaskDetailModalStore::new(tasks, modal);
         let filter_dsl = FilterDslStore::new();
         let status_bar = StatusBarStore::new();
+        let browser_storage = BrowserStorageStore::new();
 
         Self {
             tasks,
@@ -41,6 +43,7 @@ impl AppStore {
             filter_dsl,
             status_bar,
             modal,
+            browser_storage,
         }
     }
 
