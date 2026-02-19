@@ -2,6 +2,7 @@ use leptos::prelude::*;
 use north_dto::{Frequency, RecurrenceType, Weekday};
 use north_ui::Modal;
 
+use super::components::{DayCheckbox, PresetChip, RadioChip};
 use super::controller::RecurrenceController;
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
 
@@ -323,78 +324,5 @@ pub fn RecurrenceModalView(
                 </div>
             </div>
         </Modal>
-    }
-}
-
-#[component]
-fn PresetChip(label: &'static str, active: Signal<bool>, on_click: Callback<()>) -> impl IntoView {
-    view! {
-        <button
-            on:click=move |_| on_click.run(())
-            class=move || {
-                if active.get() {
-                    "px-3 py-1.5 rounded-full text-sm font-medium \
-                     bg-accent text-on-accent transition-colors"
-                } else {
-                    "px-3 py-1.5 rounded-full text-sm font-medium \
-                     bg-bg-input text-text-secondary \
-                     border border-border \
-                     hover:border-accent hover:text-text-primary \
-                     transition-colors"
-                }
-            }
-        >
-            {label}
-        </button>
-    }
-}
-
-#[component]
-fn RadioChip(label: &'static str, active: Signal<bool>, on_click: Callback<()>) -> impl IntoView {
-    view! {
-        <button
-            on:click=move |_| on_click.run(())
-            class=move || {
-                if active.get() {
-                    "px-3 py-1.5 rounded-full text-sm font-medium \
-                     bg-accent text-on-accent transition-colors"
-                } else {
-                    "px-3 py-1.5 rounded-full text-sm font-medium \
-                     bg-bg-input text-text-secondary \
-                     border border-border \
-                     hover:border-accent hover:text-text-primary \
-                     transition-colors"
-                }
-            }
-        >
-            {label}
-        </button>
-    }
-}
-
-#[component]
-fn DayCheckbox(
-    label: &'static str,
-    selected: Signal<bool>,
-    on_toggle: Callback<()>,
-) -> impl IntoView {
-    view! {
-        <button
-            on:click=move |_| on_toggle.run(())
-            class=move || {
-                if selected.get() {
-                    "w-8 h-8 rounded-md text-xs font-medium \
-                     bg-accent text-on-accent transition-colors"
-                } else {
-                    "w-8 h-8 rounded-md text-xs font-medium \
-                     bg-bg-input text-text-tertiary \
-                     border border-border \
-                     hover:border-accent hover:text-text-secondary \
-                     transition-colors"
-                }
-            }
-        >
-            {label}
-        </button>
     }
 }
