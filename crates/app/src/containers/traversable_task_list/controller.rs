@@ -182,6 +182,11 @@ impl TraversableTaskListController {
         }
     }
 
+    pub fn start_create_top(&self) {
+        self.create_input_value.set(String::new());
+        self.inline_mode.set(InlineMode::CreateTop);
+    }
+
     pub fn start_create_inside(&self) {
         if let Some(anchor_id) = self.cursor_task_id.get_untracked() {
             let nodes = self.flat_nodes.get_untracked();
@@ -199,16 +204,30 @@ impl TraversableTaskListController {
 
     pub fn create_task(&self) {
         let mode = self.inline_mode.get_untracked();
-        let InlineMode::Create {
-            anchor_task_id,
-            placement,
-            parent_id,
-            depth,
-        } = mode
-        else {
-            return;
-        };
 
+        match mode {
+            InlineMode::Create {
+                anchor_task_id,
+                placement,
+                parent_id,
+                depth,
+            } => {
+                self.create_task_anchored(anchor_task_id, placement, parent_id, depth);
+            }
+            InlineMode::CreateTop => {
+                self.create_task_top();
+            }
+            _ => {}
+        }
+    }
+
+    fn create_task_anchored(
+        &self,
+        anchor_task_id: i64,
+        placement: Placement,
+        parent_id: Option<i64>,
+        depth: u8,
+    ) {
         let title = self.create_input_value.get_untracked().trim().to_string();
         if title.is_empty() {
             self.close_inline();
@@ -254,6 +273,51 @@ impl TraversableTaskListController {
                         depth,
                     });
                 }
+            }
+        });
+    }
+
+    fn create_task_top(&self) {
+        let title = self.create_input_value.get_untracked().trim().to_string();
+        if title.is_empty() {
+            self.close_inline();
+            return;
+        }
+
+        let nodes = self.flat_nodes.get_untracked();
+        let all_tasks = self.app_store.tasks.filtered(TaskStoreFilter::default());
+        let tasks = all_tasks.get_untracked();
+
+        // Sort key: before the first root task.
+        let first_root_key = nodes
+            .iter()
+            .find(|n| n.parent_id.is_none())
+            .and_then(|n| task_sort_key(&tasks, n.task_id));
+        let sort_key = north_dto::sort_key_between(None, first_root_key.as_deref());
+
+        let project_id = self.default_project_id.and_then(|s| s.get_untracked());
+
+        let input = CreateTask {
+            title,
+            parent_id: None,
+            project_id,
+            sort_key: Some(sort_key),
+            ..Default::default()
+        };
+
+        self.create_input_value.set(String::new());
+
+        let store = self.app_store.tasks;
+        let inline_mode = self.inline_mode;
+        spawn_local(async move {
+            if let Some(task) = store.create_task_async(input).await {
+                // Chain: next create goes after the newly created task.
+                inline_mode.set(InlineMode::Create {
+                    anchor_task_id: task.id,
+                    placement: Placement::After,
+                    parent_id: None,
+                    depth: 0,
+                });
             }
         });
     }
@@ -496,7 +560,7 @@ impl TraversableTaskListController {
             InlineMode::Edit { .. } => {
                 // Edit input handles its own keys; nothing here.
             }
-            InlineMode::Create { .. } => {
+            InlineMode::Create { .. } | InlineMode::CreateTop => {
                 // Create input handles its own keys; nothing here.
             }
         }

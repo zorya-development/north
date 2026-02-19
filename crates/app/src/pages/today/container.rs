@@ -15,7 +15,6 @@ pub fn TodayPage() -> impl IntoView {
             show_completed=ctrl.show_completed
             completed_count=ctrl.completed_count
             is_loaded=ctrl.is_loaded
-            on_add_task=Callback::new(move |()| ctrl.open_create())
             on_task_click=Callback::new(move |id| ctrl.open_detail(id))
         />
     }

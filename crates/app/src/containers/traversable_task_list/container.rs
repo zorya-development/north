@@ -6,6 +6,15 @@ use super::view::TraversableTaskListView;
 use crate::components::drag_drop::DragDropContext;
 use crate::containers::task_list::ExtraVisibleIds;
 
+#[derive(Clone, Copy)]
+pub struct TtlHandle(TraversableTaskListController);
+
+impl TtlHandle {
+    pub fn start_create_top(&self) {
+        self.0.start_create_top();
+    }
+}
+
 #[component]
 pub fn TraversableTaskList(
     root_task_ids: Memo<Vec<i64>>,
@@ -28,6 +37,7 @@ pub fn TraversableTaskList(
     #[prop(default = false)] flat: bool,
     #[prop(default = false)] scoped: bool,
     #[prop(optional)] cursor_task_id: Option<RwSignal<Option<i64>>>,
+    #[prop(optional)] handle: Option<RwSignal<Option<TtlHandle>>>,
 ) -> impl IntoView {
     let app_store = use_app_store();
     if draggable {
@@ -53,6 +63,10 @@ pub fn TraversableTaskList(
         scoped,
         cursor_task_id,
     );
+
+    if let Some(handle) = handle {
+        handle.set(Some(TtlHandle(ctrl)));
+    }
 
     view! {
         <TraversableTaskListView

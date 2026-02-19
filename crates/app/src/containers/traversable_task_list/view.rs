@@ -103,18 +103,40 @@ pub fn TraversableTaskListView(
                 let nodes = flat_nodes.get();
                 if nodes.is_empty() {
                     return view! {
-                        <Text
-                            variant=TextVariant::BodyMd
-                            color=TextColor::Secondary
-                            tag=TextTag::P
-                            class="py-8 text-center"
-                        >
-                            {empty_message}
-                        </Text>
+                        <Show when=move || {
+                            matches!(inline_mode.get(), InlineMode::CreateTop)
+                        }>
+                            <InlineCreateInput
+                                depth=Memo::new(|_| 0u8)
+                                value=create_input_value
+                                ctrl=ctrl
+                            />
+                        </Show>
+                        <Show when=move || {
+                            !matches!(inline_mode.get(), InlineMode::CreateTop)
+                        }>
+                            <Text
+                                variant=TextVariant::BodyMd
+                                color=TextColor::Secondary
+                                tag=TextTag::P
+                                class="py-8 text-center"
+                            >
+                                {empty_message}
+                            </Text>
+                        </Show>
                     }
                     .into_any();
                 }
                 view! {
+                    <Show when=move || {
+                        matches!(inline_mode.get(), InlineMode::CreateTop)
+                    }>
+                        <InlineCreateInput
+                            depth=Memo::new(|_| 0u8)
+                            value=create_input_value
+                            ctrl=ctrl
+                        />
+                    </Show>
                     <For
                         each=move || flat_nodes.get()
                         key=|node| node.task_id
@@ -400,6 +422,10 @@ fn InlineCreateInput(
     ctrl: TraversableTaskListController,
 ) -> impl IntoView {
     let input_ref = NodeRef::<leptos::html::Input>::new();
+    // Snapshot the mode that created this input instance.
+    // On blur, only close if the mode hasn't changed (genuine click-away).
+    // If the mode already transitioned (chaining after create), skip close.
+    let created_mode = ctrl.inline_mode.get_untracked();
 
     Effect::new(move || {
         // Re-run whenever depth changes (indent/outdent) to keep focus.
@@ -457,7 +483,9 @@ fn InlineCreateInput(
                         }
                     }
                     on:blur=move |_| {
-                        ctrl.close_inline();
+                        if ctrl.inline_mode.get_untracked() == created_mode {
+                            ctrl.close_inline();
+                        }
                     }
                 />
             </div>

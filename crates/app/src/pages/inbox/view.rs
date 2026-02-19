@@ -3,7 +3,7 @@ use north_ui::{Icon, IconKind};
 
 use crate::atoms::{Text, TextVariant};
 use crate::components::keybindings_modal::KeybindingsModal;
-use crate::containers::traversable_task_list::TraversableTaskList;
+use crate::containers::traversable_task_list::{TraversableTaskList, TtlHandle};
 
 #[component]
 pub fn InboxView(
@@ -11,12 +11,12 @@ pub fn InboxView(
     show_completed: RwSignal<bool>,
     completed_count: Memo<usize>,
     is_loaded: Signal<bool>,
-    on_add_task: Callback<()>,
     on_task_click: Callback<i64>,
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
 ) -> impl IntoView {
     let show_keybindings_help = RwSignal::new(false);
     let (help_read, help_write) = show_keybindings_help.split();
+    let ttl_handle = RwSignal::new(None::<TtlHandle>);
 
     view! {
         <div class="space-y-4">
@@ -68,7 +68,11 @@ pub fn InboxView(
                         }
                     }}
                     <button
-                        on:click=move |_| on_add_task.run(())
+                        on:click=move |_| {
+                            if let Some(h) = ttl_handle.get_untracked() {
+                                h.start_create_top();
+                            }
+                        }
                         class="text-sm text-text-secondary hover:text-accent \
                                transition-colors cursor-pointer"
                     >
@@ -85,6 +89,7 @@ pub fn InboxView(
                 on_reorder=on_reorder
                 on_task_click=on_task_click
                 show_keybindings_help=show_keybindings_help
+                handle=ttl_handle
                 empty_message="No tasks in your inbox. Add one above."
             />
 
