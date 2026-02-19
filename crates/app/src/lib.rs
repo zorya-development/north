@@ -3,6 +3,7 @@
 pub mod app;
 pub mod atoms;
 pub mod components;
+pub mod constants;
 pub mod containers;
 pub mod pages;
 

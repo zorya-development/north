@@ -1,11 +1,14 @@
 use leptos::prelude::*;
 
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
+use crate::constants::TIMEZONE_GROUPS;
 
 #[component]
 pub fn SettingsView(
     interval: ReadSignal<String>,
     set_interval: WriteSignal<String>,
+    timezone: ReadSignal<String>,
+    set_timezone: WriteSignal<String>,
     saved: ReadSignal<bool>,
     set_saved: WriteSignal<bool>,
     is_loaded: Signal<bool>,
@@ -47,6 +50,50 @@ pub fn SettingsView(
                                    text-text-primary focus:outline-none \
                                    focus:border-accent"
                         />
+                    </div>
+
+                    <div class="space-y-2">
+                        <Text variant=TextVariant::LabelLg color=TextColor::Secondary tag=TextTag::Label class="block">
+                            "Timezone"
+                        </Text>
+                        <Text variant=TextVariant::BodySm color=TextColor::Tertiary tag=TextTag::P>
+                            "Used for scheduling recurring tasks."
+                        </Text>
+                        <select
+                            on:change=move |ev| {
+                                set_saved.set(false);
+                                set_timezone.set(event_target_value(&ev));
+                            }
+                            class="w-64 bg-bg-input border border-border \
+                                   rounded px-3 py-1.5 text-sm \
+                                   text-text-primary focus:outline-none \
+                                   focus:border-accent"
+                        >
+                            <option value="UTC" selected=move || timezone.get() == "UTC">"UTC"</option>
+                            {TIMEZONE_GROUPS
+                                .iter()
+                                .map(|(label, zones)| {
+                                    view! {
+                                        <optgroup label=*label>
+                                            {zones
+                                                .iter()
+                                                .map(|tz| {
+                                                    let tz = *tz;
+                                                    view! {
+                                                        <option
+                                                            value=tz
+                                                            selected=move || timezone.get() == tz
+                                                        >
+                                                            {tz}
+                                                        </option>
+                                                    }
+                                                })
+                                                .collect_view()}
+                                        </optgroup>
+                                    }
+                                })
+                                .collect_view()}
+                        </select>
                     </div>
 
                     <div class="flex items-center gap-3">
