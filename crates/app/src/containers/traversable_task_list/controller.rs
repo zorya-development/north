@@ -98,6 +98,9 @@ impl TraversableTaskListController {
                 if idx > 0 {
                     self.cursor_task_id.set(Some(nodes[idx - 1].task_id));
                 }
+            } else if let Some(last) = nodes.last() {
+                // Cursor task no longer in list — recover to last
+                self.cursor_task_id.set(Some(last.task_id));
             }
         } else if let Some(last) = nodes.last() {
             self.cursor_task_id.set(Some(last.task_id));
@@ -111,6 +114,9 @@ impl TraversableTaskListController {
                 if idx + 1 < nodes.len() {
                     self.cursor_task_id.set(Some(nodes[idx + 1].task_id));
                 }
+            } else if let Some(first) = nodes.first() {
+                // Cursor task no longer in list — recover to first
+                self.cursor_task_id.set(Some(first.task_id));
             }
         } else if let Some(first) = nodes.first() {
             self.cursor_task_id.set(Some(first.task_id));
@@ -340,6 +346,29 @@ impl TraversableTaskListController {
             .get_untracked()
             .map(|t| t.completed_at.is_some())
             .unwrap_or(false);
+
+        // When completing, advance cursor to neighbor before the task
+        // moves to the completed group or disappears from the list.
+        if !is_completed {
+            let nodes = self.flat_nodes.get_untracked();
+            let next_cursor = next_sibling(&nodes, task_id)
+                .or_else(|| prev_sibling(&nodes, task_id))
+                .or_else(|| {
+                    // No siblings left — pick the next item in flat order so
+                    // the cursor stays at the same visual position rather than
+                    // jumping up to the parent.
+                    let idx = nodes.iter().position(|n| n.task_id == task_id)?;
+                    if idx + 1 < nodes.len() {
+                        Some(nodes[idx + 1].task_id)
+                    } else if idx > 0 {
+                        Some(nodes[idx - 1].task_id)
+                    } else {
+                        None
+                    }
+                });
+            self.cursor_task_id.set(next_cursor);
+        }
+
         self.app_store.tasks.toggle_complete(task_id, is_completed);
     }
 
