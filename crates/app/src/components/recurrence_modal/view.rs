@@ -1,28 +1,13 @@
 use leptos::prelude::*;
+use north_dto::{Frequency, RecurrenceType, Weekday};
 use north_ui::Modal;
 
+use super::controller::RecurrenceController;
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
-
-const MONTH_NAMES: [&str; 12] = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
 
 #[component]
 pub fn RecurrenceModalView(
-    mode: RwSignal<String>,
-    freq: RwSignal<String>,
-    interval: RwSignal<String>,
-    monday: RwSignal<bool>,
-    tuesday: RwSignal<bool>,
-    wednesday: RwSignal<bool>,
-    thursday: RwSignal<bool>,
-    friday: RwSignal<bool>,
-    saturday: RwSignal<bool>,
-    sunday: RwSignal<bool>,
-    time: RwSignal<String>,
-    monthday: RwSignal<String>,
-    month: RwSignal<String>,
-    timezone: Signal<String>,
+    ctrl: RecurrenceController,
     on_save: Callback<()>,
     on_remove: Callback<()>,
     on_close: Callback<()>,
@@ -35,142 +20,19 @@ pub fn RecurrenceModalView(
         }
     });
 
-    let is_custom = RwSignal::new({
-        let i: u32 = interval.get_untracked().parse().unwrap_or(1);
-        i != 1
-    });
-
-    let active_preset = Signal::derive(move || {
-        if is_custom.get() {
-            return "custom";
-        }
-        match freq.get().as_str() {
-            "DAILY" => "daily",
-            "WEEKLY" => "weekly",
-            "MONTHLY" => "monthly",
-            "YEARLY" => "yearly",
-            _ => "custom",
-        }
-    });
-
-    let is_weekly = Signal::derive(move || freq.get() == "WEEKLY");
-    let is_monthly = Signal::derive(move || freq.get() == "MONTHLY");
-    let is_yearly = Signal::derive(move || freq.get() == "YEARLY");
+    let active_preset = ctrl.active_preset();
+    let freq = ctrl.freq();
+    let interval = ctrl.interval();
+    let is_weekly = Signal::derive(move || freq.get() == Frequency::Weekly);
+    let is_monthly = Signal::derive(move || freq.get() == Frequency::Monthly);
+    let is_yearly = Signal::derive(move || freq.get() == Frequency::Yearly);
     let show_monthday = Signal::derive(move || is_monthly.get() || is_yearly.get());
-
-    let select_preset = move |preset: &str| match preset {
-        "daily" => {
-            freq.set("DAILY".into());
-            interval.set("1".into());
-            is_custom.set(false);
-        }
-        "weekly" => {
-            freq.set("WEEKLY".into());
-            interval.set("1".into());
-            is_custom.set(false);
-        }
-        "monthly" => {
-            freq.set("MONTHLY".into());
-            interval.set("1".into());
-            is_custom.set(false);
-        }
-        "yearly" => {
-            freq.set("YEARLY".into());
-            interval.set("1".into());
-            is_custom.set(false);
-        }
-        "custom" => {
-            is_custom.set(true);
-        }
-        _ => {}
-    };
-
-    let is_plural = Signal::derive(move || {
-        let n: u32 = interval.get().parse().unwrap_or(1);
-        n != 1
-    });
-
-    let summary = Signal::derive(move || {
-        let f = freq.get();
-        let i: u32 = interval.get().parse().unwrap_or(1);
-
-        let unit = match f.as_str() {
-            "DAILY" => "day",
-            "WEEKLY" => "week",
-            "MONTHLY" => "month",
-            "YEARLY" => "year",
-            _ => "day",
-        };
-
-        let base = if i == 1 {
-            format!("Every {unit}")
-        } else {
-            format!("Every {i} {unit}s")
-        };
-
-        let mut result = base;
-
-        if f == "WEEKLY" {
-            let mut days = Vec::new();
-            if monday.get() {
-                days.push("MO");
-            }
-            if tuesday.get() {
-                days.push("TU");
-            }
-            if wednesday.get() {
-                days.push("WE");
-            }
-            if thursday.get() {
-                days.push("TH");
-            }
-            if friday.get() {
-                days.push("FR");
-            }
-            if saturday.get() {
-                days.push("SA");
-            }
-            if sunday.get() {
-                days.push("SU");
-            }
-            if !days.is_empty() {
-                result = format!("{result} ({days})", days = days.join(","));
-            }
-        }
-
-        if f == "YEARLY" {
-            let mo = month.get();
-            let md = monthday.get();
-            if let Ok(mo_num) = mo.parse::<usize>() {
-                if (1..=12).contains(&mo_num) {
-                    let month_name = MONTH_NAMES[mo_num - 1];
-                    if !md.is_empty() {
-                        result = format!("{result} on {month_name} {md}");
-                    } else {
-                        result = format!("{result} in {month_name}");
-                    }
-                }
-            } else if !md.is_empty() {
-                result = format!("{result} on the {suffix}", suffix = ordinal_suffix(&md));
-            }
-        } else if f == "MONTHLY" {
-            let md = monthday.get();
-            if !md.is_empty() {
-                result = format!("{result} on the {suffix}", suffix = ordinal_suffix(&md));
-            }
-        }
-
-        let t = time.get();
-        if !t.is_empty() {
-            if let Some(formatted) = format_time_12h(&t) {
-                result = format!("{result} at {formatted}");
-            }
-        }
-
-        result
-    });
-
-    let show_custom_row = Signal::derive(move || is_custom.get());
+    let is_plural = Signal::derive(move || interval.get() != 1);
+    let is_custom = ctrl.is_custom();
+    let summary = ctrl.summary();
+    let time_str = ctrl.time_str();
+    let monthday_str = ctrl.by_month_day_str();
+    let month_str = ctrl.by_month_str();
 
     view! {
         <Modal open=open_read set_open=open_write>
@@ -182,32 +44,32 @@ pub fn RecurrenceModalView(
                     <PresetChip
                         label="Daily"
                         active=Signal::derive(move || active_preset.get() == "daily")
-                        on_click=Callback::new(move |()| select_preset("daily"))
+                        on_click=Callback::new(move |()| ctrl.select_preset("daily"))
                     />
                     <PresetChip
                         label="Weekly"
                         active=Signal::derive(move || active_preset.get() == "weekly")
-                        on_click=Callback::new(move |()| select_preset("weekly"))
+                        on_click=Callback::new(move |()| ctrl.select_preset("weekly"))
                     />
                     <PresetChip
                         label="Monthly"
                         active=Signal::derive(move || active_preset.get() == "monthly")
-                        on_click=Callback::new(move |()| select_preset("monthly"))
+                        on_click=Callback::new(move |()| ctrl.select_preset("monthly"))
                     />
                     <PresetChip
                         label="Yearly"
                         active=Signal::derive(move || active_preset.get() == "yearly")
-                        on_click=Callback::new(move |()| select_preset("yearly"))
+                        on_click=Callback::new(move |()| ctrl.select_preset("yearly"))
                     />
                     <PresetChip
                         label="Custom"
                         active=Signal::derive(move || active_preset.get() == "custom")
-                        on_click=Callback::new(move |()| select_preset("custom"))
+                        on_click=Callback::new(move |()| ctrl.select_preset("custom"))
                     />
                 </div>
 
                 // Custom row: Every [N] [unit]
-                <Show when=move || show_custom_row.get()>
+                <Show when=move || is_custom.get()>
                     <div class="flex items-center gap-2">
                         <Text
                             variant=TextVariant::LabelLg
@@ -218,9 +80,11 @@ pub fn RecurrenceModalView(
                         <input
                             type="number"
                             min="1"
-                            prop:value=move || interval.get()
+                            prop:value=move || interval.get().to_string()
                             on:input=move |ev| {
-                                interval.set(event_target_value(&ev));
+                                if let Ok(n) = event_target_value(&ev).parse::<u32>() {
+                                    ctrl.set_interval(n);
+                                }
                             }
                             class="w-16 bg-bg-input border border-border \
                                    rounded px-2 py-1.5 text-sm \
@@ -233,38 +97,22 @@ pub fn RecurrenceModalView(
                                    rounded px-3 py-1.5 text-sm \
                                    text-text-primary focus:outline-none \
                                    focus:border-accent"
-                            prop:value=move || freq.get()
+                            prop:value=move || freq.get().code()
                             on:change=move |ev| {
-                                freq.set(event_target_value(&ev));
+                                ctrl.set_freq_from_code(&event_target_value(&ev));
                             }
                         >
                             <option value="DAILY">
-                                {move || if is_plural.get() {
-                                    "days"
-                                } else {
-                                    "day"
-                                }}
+                                {move || if is_plural.get() { "days" } else { "day" }}
                             </option>
                             <option value="WEEKLY">
-                                {move || if is_plural.get() {
-                                    "weeks"
-                                } else {
-                                    "week"
-                                }}
+                                {move || if is_plural.get() { "weeks" } else { "week" }}
                             </option>
                             <option value="MONTHLY">
-                                {move || if is_plural.get() {
-                                    "months"
-                                } else {
-                                    "month"
-                                }}
+                                {move || if is_plural.get() { "months" } else { "month" }}
                             </option>
                             <option value="YEARLY">
-                                {move || if is_plural.get() {
-                                    "years"
-                                } else {
-                                    "year"
-                                }}
+                                {move || if is_plural.get() { "years" } else { "year" }}
                             </option>
                         </select>
                     </div>
@@ -273,13 +121,21 @@ pub fn RecurrenceModalView(
                 // Day-of-week row (weekly only)
                 <Show when=move || is_weekly.get()>
                     <div class="flex gap-1">
-                        <DayCheckbox label="Mo" checked=monday/>
-                        <DayCheckbox label="Tu" checked=tuesday/>
-                        <DayCheckbox label="We" checked=wednesday/>
-                        <DayCheckbox label="Th" checked=thursday/>
-                        <DayCheckbox label="Fr" checked=friday/>
-                        <DayCheckbox label="Sa" checked=saturday/>
-                        <DayCheckbox label="Su" checked=sunday/>
+                        {Weekday::ALL
+                            .into_iter()
+                            .map(|day| {
+                                let selected = ctrl.is_day_selected(day);
+                                view! {
+                                    <DayCheckbox
+                                        label=day.label()
+                                        selected=selected
+                                        on_toggle=Callback::new(move |()| {
+                                            ctrl.toggle_day(day);
+                                        })
+                                    />
+                                }
+                            })
+                            .collect::<Vec<_>>()}
                     </div>
                 </Show>
 
@@ -299,9 +155,9 @@ pub fn RecurrenceModalView(
                                    rounded px-3 py-1.5 text-sm \
                                    text-text-primary focus:outline-none \
                                    focus:border-accent"
-                            prop:value=move || month.get()
+                            prop:value=move || month_str.get()
                             on:change=move |ev| {
-                                month.set(event_target_value(&ev));
+                                ctrl.set_month(&event_target_value(&ev));
                             }
                         >
                             <option value="">"—"</option>
@@ -337,9 +193,9 @@ pub fn RecurrenceModalView(
                                    rounded px-3 py-1.5 text-sm \
                                    text-text-primary focus:outline-none \
                                    focus:border-accent"
-                            prop:value=move || monthday.get()
+                            prop:value=move || monthday_str.get()
                             on:change=move |ev| {
-                                monthday.set(event_target_value(&ev));
+                                ctrl.set_month_day(&event_target_value(&ev));
                             }
                         >
                             <option value="">"—"</option>
@@ -370,9 +226,9 @@ pub fn RecurrenceModalView(
                     <div class="flex items-center gap-2">
                         <input
                             type="time"
-                            prop:value=move || time.get()
+                            prop:value=move || time_str.get()
                             on:input=move |ev| {
-                                time.set(event_target_value(&ev));
+                                ctrl.set_time(&event_target_value(&ev));
                             }
                             class="bg-bg-input border border-border \
                                    rounded px-3 py-1.5 text-sm \
@@ -383,7 +239,7 @@ pub fn RecurrenceModalView(
                             variant=TextVariant::BodySm
                             color=TextColor::Tertiary
                         >
-                            {move || timezone.get()}
+                            {move || ctrl.timezone.get()}
                         </Text>
                     </div>
                 </div>
@@ -402,19 +258,25 @@ pub fn RecurrenceModalView(
                         <RadioChip
                             label="From due date"
                             active=Signal::derive(move || {
-                                mode.get() == "scheduled"
+                                ctrl.recurrence_type.get()
+                                    == RecurrenceType::Scheduled
                             })
                             on_click=Callback::new(move |()| {
-                                mode.set("scheduled".into());
+                                ctrl.set_recurrence_type(
+                                    RecurrenceType::Scheduled,
+                                );
                             })
                         />
                         <RadioChip
                             label="After completion"
                             active=Signal::derive(move || {
-                                mode.get() == "after_completion"
+                                ctrl.recurrence_type.get()
+                                    == RecurrenceType::AfterCompletion
                             })
                             on_click=Callback::new(move |()| {
-                                mode.set("after_completion".into());
+                                ctrl.set_recurrence_type(
+                                    RecurrenceType::AfterCompletion,
+                                );
                             })
                         />
                     </div>
@@ -511,12 +373,16 @@ fn RadioChip(label: &'static str, active: Signal<bool>, on_click: Callback<()>) 
 }
 
 #[component]
-fn DayCheckbox(label: &'static str, checked: RwSignal<bool>) -> impl IntoView {
+fn DayCheckbox(
+    label: &'static str,
+    selected: Signal<bool>,
+    on_toggle: Callback<()>,
+) -> impl IntoView {
     view! {
         <button
-            on:click=move |_| checked.update(|v| *v = !*v)
+            on:click=move |_| on_toggle.run(())
             class=move || {
-                if checked.get() {
+                if selected.get() {
                     "w-8 h-8 rounded-md text-xs font-medium \
                      bg-accent text-on-accent transition-colors"
                 } else {
@@ -530,36 +396,5 @@ fn DayCheckbox(label: &'static str, checked: RwSignal<bool>) -> impl IntoView {
         >
             {label}
         </button>
-    }
-}
-
-fn ordinal_suffix(day: &str) -> String {
-    let n: u32 = day.parse().unwrap_or(0);
-    let suffix = match n % 10 {
-        1 if n % 100 != 11 => "st",
-        2 if n % 100 != 12 => "nd",
-        3 if n % 100 != 13 => "rd",
-        _ => "th",
-    };
-    format!("{n}{suffix}")
-}
-
-fn format_time_12h(t: &str) -> Option<String> {
-    let mut parts = t.split(':');
-    let h: u32 = parts.next()?.parse().ok()?;
-    let m: u32 = parts.next()?.parse().ok()?;
-    let (h12, ampm) = if h == 0 {
-        (12, "AM")
-    } else if h < 12 {
-        (h, "AM")
-    } else if h == 12 {
-        (12, "PM")
-    } else {
-        (h - 12, "PM")
-    };
-    if m == 0 {
-        Some(format!("{h12} {ampm}"))
-    } else {
-        Some(format!("{h12}:{m:02} {ampm}"))
     }
 }

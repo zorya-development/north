@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_dto::{RecurrenceType, TagInfo};
+use north_dto::{RecurrenceRule, RecurrenceType, TagInfo};
 use north_ui::{Icon, IconKind};
 
 #[component]
@@ -29,7 +29,8 @@ pub fn TaskMeta(
     has_meta.then(|| {
         let recurrence_label = recurrence_rule
             .as_deref()
-            .map(summarize_rrule)
+            .and_then(RecurrenceRule::parse)
+            .map(|r| r.summarize())
             .unwrap_or_default();
         view! {
             <div class=format!(
@@ -167,104 +168,4 @@ pub fn TaskMeta(
             </div>
         }
     })
-}
-
-pub fn summarize_rrule(rule: &str) -> String {
-    const MONTH_NAMES: [&str; 12] = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
-
-    let mut freq = "";
-    let mut interval: u32 = 1;
-    let mut byday = String::new();
-    let mut byhour = String::new();
-    let mut byminute = String::new();
-    let mut bymonthday = String::new();
-    let mut bymonth = String::new();
-
-    for part in rule.split(';') {
-        let mut kv = part.splitn(2, '=');
-        let key = kv.next().unwrap_or("").trim();
-        let val = kv.next().unwrap_or("").trim();
-        match key {
-            "FREQ" => {
-                freq = match val {
-                    "DAILY" => "day",
-                    "WEEKLY" => "week",
-                    "MONTHLY" => "month",
-                    "YEARLY" => "year",
-                    _ => val,
-                }
-            }
-            "INTERVAL" => interval = val.parse().unwrap_or(1),
-            "BYDAY" => byday = val.to_string(),
-            "BYHOUR" => byhour = val.to_string(),
-            "BYMINUTE" => byminute = val.to_string(),
-            "BYMONTHDAY" => bymonthday = val.to_string(),
-            "BYMONTH" => bymonth = val.to_string(),
-            _ => {}
-        }
-    }
-
-    let base = if interval == 1 {
-        format!("Every {freq}")
-    } else {
-        format!("Every {interval} {freq}s")
-    };
-
-    let mut result = if !byday.is_empty() {
-        format!("{base} ({byday})")
-    } else {
-        base
-    };
-
-    if freq == "year" {
-        if let Ok(mo) = bymonth.parse::<usize>() {
-            if (1..=12).contains(&mo) {
-                let month_name = MONTH_NAMES[mo - 1];
-                if !bymonthday.is_empty() {
-                    result = format!("{result} on {month_name} {bymonthday}");
-                } else {
-                    result = format!("{result} in {month_name}");
-                }
-            }
-        } else if !bymonthday.is_empty() {
-            result = format!("{result} on the {}", ordinal_suffix(&bymonthday));
-        }
-    } else if freq == "month" && !bymonthday.is_empty() {
-        result = format!("{result} on the {}", ordinal_suffix(&bymonthday));
-    }
-
-    if !byhour.is_empty() {
-        let h: u32 = byhour.parse().unwrap_or(0);
-        let m: u32 = byminute.parse().unwrap_or(0);
-        let (h12, ampm) = if h == 0 {
-            (12, "AM")
-        } else if h < 12 {
-            (h, "AM")
-        } else if h == 12 {
-            (12, "PM")
-        } else {
-            (h - 12, "PM")
-        };
-        let time_str = if m == 0 {
-            format!("{h12} {ampm}")
-        } else {
-            format!("{h12}:{m:02} {ampm}")
-        };
-        result = format!("{result} at {time_str}");
-    }
-
-    result
-}
-
-fn ordinal_suffix(day: &str) -> String {
-    let n: u32 = day.parse().unwrap_or(0);
-    let suffix = match n % 10 {
-        1 if n % 100 != 11 => "st",
-        2 if n % 100 != 12 => "nd",
-        3 if n % 100 != 13 => "rd",
-        _ => "th",
-    };
-    format!("{n}{suffix}")
 }

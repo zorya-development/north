@@ -689,34 +689,18 @@ impl TaskService {
     }
 
     fn next_after_completion_date(rrule_str: &str) -> ServiceResult<Option<chrono::DateTime<Utc>>> {
-        // Parse FREQ and INTERVAL from the RRULE string
-        let mut freq = None;
-        let mut interval: i64 = 1;
-
-        for part in rrule_str.split(';') {
-            let mut kv = part.splitn(2, '=');
-            let key = kv.next().unwrap_or("").trim();
-            let val = kv.next().unwrap_or("").trim();
-            match key {
-                "FREQ" => freq = Some(val.to_uppercase()),
-                "INTERVAL" => {
-                    interval = val.parse().unwrap_or(1);
-                }
-                _ => {}
-            }
-        }
-
-        let Some(freq) = freq else {
-            return Ok(None);
+        let rule = match north_dto::RecurrenceRule::parse(rrule_str) {
+            Some(r) => r,
+            None => return Ok(None),
         };
 
+        let interval = rule.interval as i64;
         let now = Utc::now();
-        let next = match freq.as_str() {
-            "DAILY" => now + chrono::Duration::days(interval),
-            "WEEKLY" => now + chrono::Duration::weeks(interval),
-            "MONTHLY" => now + chrono::Duration::days(interval * 30),
-            "YEARLY" => now + chrono::Duration::days(interval * 365),
-            _ => return Ok(None),
+        let next = match rule.freq {
+            north_dto::Frequency::Daily => now + chrono::Duration::days(interval),
+            north_dto::Frequency::Weekly => now + chrono::Duration::weeks(interval),
+            north_dto::Frequency::Monthly => now + chrono::Duration::days(interval * 30),
+            north_dto::Frequency::Yearly => now + chrono::Duration::days(interval * 365),
         };
 
         Ok(Some(next))

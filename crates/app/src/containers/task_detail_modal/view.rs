@@ -551,12 +551,11 @@ fn RecurrenceSidebarButton(
     on_click: Callback<()>,
 ) -> impl IntoView {
     let label = match recurrence_type {
-        Some(_) => {
-            let summary = crate::components::task_meta::summarize_rrule(
-                recurrence_rule.as_deref().unwrap_or(""),
-            );
-            summary
-        }
+        Some(_) => recurrence_rule
+            .as_deref()
+            .and_then(north_dto::RecurrenceRule::parse)
+            .map(|r| r.summarize())
+            .unwrap_or_else(|| "None".to_string()),
         None => "None".to_string(),
     };
 
