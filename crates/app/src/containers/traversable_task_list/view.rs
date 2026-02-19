@@ -8,13 +8,12 @@ use super::controller::TraversableTaskListController;
 use super::tree::*;
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
 use crate::components::drag_drop::{DragDropContext, DropZone};
-use crate::containers::task_list_item::TaskListItem;
+use crate::containers::task_list_item::{ItemConfig, TaskListItem};
 
 #[component]
 pub fn TraversableTaskListView(
     ctrl: TraversableTaskListController,
-    #[prop(default = true)] show_project: bool,
-    #[prop(default = false)] draggable: bool,
+    #[prop(default = ItemConfig::default())] item_config: ItemConfig,
     #[prop(default = "No tasks.")] empty_message: &'static str,
     is_loaded: Signal<bool>,
     #[prop(default = false)] scoped: bool,
@@ -23,7 +22,6 @@ pub fn TraversableTaskListView(
     let cursor_task_id = ctrl.cursor_task_id;
     let inline_mode = ctrl.inline_mode;
     let create_input_value = ctrl.create_input_value;
-    let show_review = ctrl.show_review;
     let container_ref = NodeRef::<leptos::html::Div>::new();
     let drag_ctx = use_context::<DragDropContext>();
     let app_store = north_stores::use_app_store();
@@ -225,12 +223,7 @@ pub fn TraversableTaskListView(
                                     >
                                         <TaskListItem
                                             task_id=task_id
-                                            show_project=show_project
-                                            show_review=show_review
-                                            draggable=draggable
-                                            hide_subtasks=true
-                                            hide_body=true
-                                            depth=0
+                                            config=item_config
                                         />
                                     </div>
                                 </Show>

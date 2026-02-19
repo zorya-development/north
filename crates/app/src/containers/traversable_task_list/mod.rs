@@ -3,4 +3,4 @@ mod controller;
 pub mod tree;
 mod view;
 
-pub use container::{TraversableTaskList, TtlHandle};
+pub use container::{ExtraVisibleIds, TraversableTaskList, TtlHandle};

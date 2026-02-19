@@ -3,6 +3,7 @@ use north_ui::{Icon, IconKind};
 
 use crate::atoms::{Text, TextVariant};
 use crate::components::keybindings_modal::KeybindingsModal;
+use crate::containers::task_list_item::ItemConfig;
 use crate::containers::traversable_task_list::{TraversableTaskList, TtlHandle};
 
 #[component]
@@ -16,6 +17,7 @@ pub fn TodayView(
     let show_keybindings_help = RwSignal::new(false);
     let (help_read, help_write) = show_keybindings_help.split();
     let ttl_handle = RwSignal::new(None::<TtlHandle>);
+    let item_config = ItemConfig::default();
 
     view! {
         <div class="space-y-4">
@@ -83,7 +85,7 @@ pub fn TodayView(
             <TraversableTaskList
                 root_task_ids=root_task_ids
                 show_completed=show_completed
-                show_project=true
+                item_config=item_config
                 is_loaded=is_loaded
                 allow_create=false
                 allow_reorder=false

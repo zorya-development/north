@@ -20,12 +20,15 @@ impl ReviewController {
         let task_detail_modal_store = app_store.task_detail_modal;
         let show_reviewed = signal(false);
 
-        // Load review interval from user settings
+        // Load review interval from user settings (Effect runs client-only,
+        // avoiding spawn_local panic during SSR).
         let review_interval = RwSignal::new(7_i64);
-        spawn_local(async move {
-            if let Ok(settings) = SettingsRepository::get().await {
-                review_interval.set(settings.review_interval_days as i64);
-            }
+        Effect::new(move || {
+            spawn_local(async move {
+                if let Ok(settings) = SettingsRepository::get().await {
+                    review_interval.set(settings.review_interval_days as i64);
+                }
+            });
         });
 
         // All active top-level tasks

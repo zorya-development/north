@@ -4,6 +4,7 @@ use north_dto::CreateTask;
 use north_stores::{AppStore, ModalStore, StatusBarVariant, TaskStoreFilter};
 
 use super::tree::*;
+use crate::containers::task_list_item::ItemConfig;
 
 #[derive(Clone, Copy)]
 #[allow(dead_code)]
@@ -15,7 +16,7 @@ pub struct TraversableTaskListController {
     pub create_input_value: RwSignal<String>,
     pub pending_delete: RwSignal<bool>,
     pub show_keybindings_help: RwSignal<bool>,
-    pub show_review: bool,
+    pub item_config: ItemConfig,
     app_store: AppStore,
     modal: ModalStore,
     allow_create: bool,
@@ -38,7 +39,7 @@ impl TraversableTaskListController {
         on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
         allow_create: bool,
         allow_reorder: bool,
-        show_review: bool,
+        item_config: ItemConfig,
         default_project_id: Option<Signal<Option<i64>>>,
         flat: bool,
         scoped: bool,
@@ -76,7 +77,7 @@ impl TraversableTaskListController {
             create_input_value,
             pending_delete,
             show_keybindings_help,
-            show_review,
+            item_config,
             app_store,
             modal,
             allow_create,
@@ -357,7 +358,7 @@ impl TraversableTaskListController {
             .unwrap_or_default();
         self.pending_delete.set(true);
         self.app_store.status_bar.show_message(
-            format!("Delete \"{title}\"?  Enter to confirm · Esc to cancel"),
+            format!("Delete \"{title}\"?  Enter to confirm \u{00b7} Esc to cancel"),
             StatusBarVariant::Danger,
         );
     }
@@ -626,6 +627,14 @@ impl TraversableTaskListController {
             "e" | "E" => {
                 ev.prevent_default();
                 self.open_detail();
+            }
+            "r" | "R" => {
+                if self.item_config.show_review {
+                    ev.prevent_default();
+                    if let Some(task_id) = self.cursor_task_id.get_untracked() {
+                        self.app_store.tasks.review_task(task_id);
+                    }
+                }
             }
             " " => {
                 ev.prevent_default();

@@ -4,7 +4,10 @@ use north_stores::use_app_store;
 use super::controller::TraversableTaskListController;
 use super::view::TraversableTaskListView;
 use crate::components::drag_drop::DragDropContext;
-use crate::containers::task_list::ExtraVisibleIds;
+use crate::containers::task_list_item::ItemConfig;
+
+#[derive(Clone, Copy)]
+pub struct ExtraVisibleIds(pub RwSignal<Vec<i64>>);
 
 #[derive(Clone, Copy)]
 pub struct TtlHandle(TraversableTaskListController);
@@ -19,8 +22,7 @@ impl TtlHandle {
 pub fn TraversableTaskList(
     root_task_ids: Memo<Vec<i64>>,
     show_completed: RwSignal<bool>,
-    #[prop(default = true)] show_project: bool,
-    #[prop(default = false)] draggable: bool,
+    #[prop(default = ItemConfig::default())] item_config: ItemConfig,
     #[prop(default = "No tasks.")] empty_message: &'static str,
     #[prop(optional)] on_task_click: Option<Callback<i64>>,
     #[prop(default = Callback::new(|_| {}))] on_reorder: Callback<(
@@ -32,7 +34,6 @@ pub fn TraversableTaskList(
     #[prop(optional)] show_keybindings_help: Option<RwSignal<bool>>,
     #[prop(default = true)] allow_create: bool,
     #[prop(default = true)] allow_reorder: bool,
-    #[prop(default = false)] show_review: bool,
     #[prop(optional)] default_project_id: Option<Signal<Option<i64>>>,
     #[prop(default = false)] flat: bool,
     #[prop(default = false)] scoped: bool,
@@ -40,7 +41,7 @@ pub fn TraversableTaskList(
     #[prop(optional)] handle: Option<RwSignal<Option<TtlHandle>>>,
 ) -> impl IntoView {
     let app_store = use_app_store();
-    if draggable {
+    if item_config.draggable {
         provide_context(DragDropContext::new());
     }
     provide_context(ExtraVisibleIds(RwSignal::new(vec![])));
@@ -57,7 +58,7 @@ pub fn TraversableTaskList(
         on_reorder,
         allow_create,
         allow_reorder,
-        show_review,
+        item_config,
         default_project_id,
         flat,
         scoped,
@@ -71,8 +72,7 @@ pub fn TraversableTaskList(
     view! {
         <TraversableTaskListView
             ctrl=ctrl
-            show_project=show_project
-            draggable=draggable
+            item_config=item_config
             empty_message=empty_message
             is_loaded=is_loaded
             scoped=scoped

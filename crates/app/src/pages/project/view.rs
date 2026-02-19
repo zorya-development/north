@@ -4,6 +4,7 @@ use north_ui::{Icon, IconKind};
 
 use crate::atoms::{Text, TextVariant};
 use crate::components::keybindings_modal::KeybindingsModal;
+use crate::containers::task_list_item::ItemConfig;
 use crate::containers::traversable_task_list::{TraversableTaskList, TtlHandle};
 
 #[component]
@@ -20,6 +21,11 @@ pub fn ProjectView(
     let show_keybindings_help = RwSignal::new(false);
     let (help_read, help_write) = show_keybindings_help.split();
     let ttl_handle = RwSignal::new(None::<TtlHandle>);
+    let item_config = ItemConfig {
+        show_project: false,
+        draggable: true,
+        ..Default::default()
+    };
 
     view! {
         <div class="space-y-4">
@@ -94,8 +100,7 @@ pub fn ProjectView(
             <TraversableTaskList
                 root_task_ids=root_task_ids
                 show_completed=show_completed
-                show_project=false
-                draggable=true
+                item_config=item_config
                 is_loaded=is_loaded
                 on_reorder=on_reorder
                 on_task_click=on_task_click
