@@ -3,7 +3,7 @@ use leptos::prelude::*;
 use north_stores::use_task_detail_modal_store;
 
 use super::view::TaskDetailModalView;
-use crate::containers::task_list::ExtraVisibleIds;
+use crate::containers::traversable_task_list::ExtraVisibleIds;
 
 #[component]
 pub fn TaskDetailModal() -> impl IntoView {

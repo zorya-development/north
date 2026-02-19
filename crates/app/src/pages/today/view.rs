@@ -3,7 +3,8 @@ use north_ui::{Icon, IconKind};
 
 use crate::atoms::{Text, TextVariant};
 use crate::components::keybindings_modal::KeybindingsModal;
-use crate::containers::traversable_task_list::TraversableTaskList;
+use crate::containers::task_list_item::ItemConfig;
+use crate::containers::traversable_task_list::{TraversableTaskList, TtlHandle};
 
 #[component]
 pub fn TodayView(
@@ -11,11 +12,12 @@ pub fn TodayView(
     show_completed: RwSignal<bool>,
     completed_count: Memo<usize>,
     is_loaded: Signal<bool>,
-    on_add_task: Callback<()>,
     on_task_click: Callback<i64>,
 ) -> impl IntoView {
     let show_keybindings_help = RwSignal::new(false);
     let (help_read, help_write) = show_keybindings_help.split();
+    let ttl_handle = RwSignal::new(None::<TtlHandle>);
+    let item_config = ItemConfig::default();
 
     view! {
         <div class="space-y-4">
@@ -67,7 +69,11 @@ pub fn TodayView(
                         }
                     }}
                     <button
-                        on:click=move |_| on_add_task.run(())
+                        on:click=move |_| {
+                            if let Some(h) = ttl_handle.get_untracked() {
+                                h.start_create_top();
+                            }
+                        }
                         class="text-sm text-text-secondary hover:text-accent \
                                transition-colors cursor-pointer"
                     >
@@ -79,12 +85,13 @@ pub fn TodayView(
             <TraversableTaskList
                 root_task_ids=root_task_ids
                 show_completed=show_completed
-                show_project=true
+                item_config=item_config
                 is_loaded=is_loaded
                 allow_create=false
                 allow_reorder=false
                 on_task_click=on_task_click
                 show_keybindings_help=show_keybindings_help
+                handle=ttl_handle
                 empty_message="No tasks scheduled for today."
             />
 

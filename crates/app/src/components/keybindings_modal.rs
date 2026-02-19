@@ -13,6 +13,7 @@ pub fn KeybindingsModal(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> 
         ("Ctrl+Shift+Enter", "Create subtask"),
         ("Space", "Toggle complete"),
         ("E", "Open detail"),
+        ("R", "Mark as reviewed"),
         ("Delete", "Delete task"),
         ("Escape", "Clear selection"),
         ("?", "This help"),

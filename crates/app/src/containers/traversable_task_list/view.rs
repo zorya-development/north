@@ -8,13 +8,12 @@ use super::controller::TraversableTaskListController;
 use super::tree::*;
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
 use crate::components::drag_drop::{DragDropContext, DropZone};
-use crate::containers::task_list_item::TaskListItem;
+use crate::containers::task_list_item::{ItemConfig, TaskListItem};
 
 #[component]
 pub fn TraversableTaskListView(
     ctrl: TraversableTaskListController,
-    #[prop(default = true)] show_project: bool,
-    #[prop(default = false)] draggable: bool,
+    #[prop(default = ItemConfig::default())] item_config: ItemConfig,
     #[prop(default = "No tasks.")] empty_message: &'static str,
     is_loaded: Signal<bool>,
     #[prop(default = false)] scoped: bool,
@@ -23,7 +22,6 @@ pub fn TraversableTaskListView(
     let cursor_task_id = ctrl.cursor_task_id;
     let inline_mode = ctrl.inline_mode;
     let create_input_value = ctrl.create_input_value;
-    let show_review = ctrl.show_review;
     let container_ref = NodeRef::<leptos::html::Div>::new();
     let drag_ctx = use_context::<DragDropContext>();
     let app_store = north_stores::use_app_store();
@@ -103,18 +101,40 @@ pub fn TraversableTaskListView(
                 let nodes = flat_nodes.get();
                 if nodes.is_empty() {
                     return view! {
-                        <Text
-                            variant=TextVariant::BodyMd
-                            color=TextColor::Secondary
-                            tag=TextTag::P
-                            class="py-8 text-center"
-                        >
-                            {empty_message}
-                        </Text>
+                        <Show when=move || {
+                            matches!(inline_mode.get(), InlineMode::CreateTop)
+                        }>
+                            <InlineCreateInput
+                                depth=Memo::new(|_| 0u8)
+                                value=create_input_value
+                                ctrl=ctrl
+                            />
+                        </Show>
+                        <Show when=move || {
+                            !matches!(inline_mode.get(), InlineMode::CreateTop)
+                        }>
+                            <Text
+                                variant=TextVariant::BodyMd
+                                color=TextColor::Secondary
+                                tag=TextTag::P
+                                class="py-8 text-center"
+                            >
+                                {empty_message}
+                            </Text>
+                        </Show>
                     }
                     .into_any();
                 }
                 view! {
+                    <Show when=move || {
+                        matches!(inline_mode.get(), InlineMode::CreateTop)
+                    }>
+                        <InlineCreateInput
+                            depth=Memo::new(|_| 0u8)
+                            value=create_input_value
+                            ctrl=ctrl
+                        />
+                    </Show>
                     <For
                         each=move || flat_nodes.get()
                         key=|node| node.task_id
@@ -203,12 +223,7 @@ pub fn TraversableTaskListView(
                                     >
                                         <TaskListItem
                                             task_id=task_id
-                                            show_project=show_project
-                                            show_review=show_review
-                                            draggable=draggable
-                                            hide_subtasks=true
-                                            hide_body=true
-                                            depth=0
+                                            config=item_config
                                         />
                                     </div>
                                 </Show>
@@ -352,10 +367,20 @@ fn InlineEditInput(
             style=move || {
                 format!("padding-left: {}rem", depth.get() as f32 * 1.5)
             }
-            class="px-4 py-1 trash-polka-focus"
+            class="pr-4 py-1 trash-polka-focus"
         >
             <div class="flex items-center gap-2">
-                <div class="w-5 h-5 shrink-0"/>
+                <div class="flex-shrink-0">
+                    <svg width="16" height="16" viewBox="0 0 16 16">
+                        <circle
+                            cx="8" cy="8" r="6.5"
+                            fill="none"
+                            stroke="var(--text-secondary)"
+                            stroke-width="2"
+                            opacity="0.5"
+                        />
+                    </svg>
+                </div>
                 <input
                     type="text"
                     node_ref=input_ref
@@ -400,6 +425,10 @@ fn InlineCreateInput(
     ctrl: TraversableTaskListController,
 ) -> impl IntoView {
     let input_ref = NodeRef::<leptos::html::Input>::new();
+    // Snapshot the mode that created this input instance.
+    // On blur, only close if the mode hasn't changed (genuine click-away).
+    // If the mode already transitioned (chaining after create), skip close.
+    let created_mode = ctrl.inline_mode.get_untracked();
 
     Effect::new(move || {
         // Re-run whenever depth changes (indent/outdent) to keep focus.
@@ -414,19 +443,18 @@ fn InlineCreateInput(
             style=move || {
                 format!("padding-left: {}rem", depth.get() as f32 * 1.5)
             }
-            class="px-4 py-1"
+            class="pr-4 py-1"
         >
             <div class="flex items-center gap-2">
-                <div class="w-5 h-5 shrink-0 text-text-tertiary">
-                    <svg
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.5"
-                        class="w-5 h-5"
-                    >
-                        <line x1="10" y1="4" x2="10" y2="16"/>
-                        <line x1="4" y1="10" x2="16" y2="10"/>
+                <div class="flex-shrink-0">
+                    <svg width="16" height="16" viewBox="0 0 16 16">
+                        <circle
+                            cx="8" cy="8" r="6.5"
+                            fill="none"
+                            stroke="var(--text-secondary)"
+                            stroke-width="2"
+                            opacity="0.5"
+                        />
                     </svg>
                 </div>
                 <input
@@ -457,7 +485,9 @@ fn InlineCreateInput(
                         }
                     }
                     on:blur=move |_| {
-                        ctrl.close_inline();
+                        if ctrl.inline_mode.get_untracked() == created_mode {
+                            ctrl.close_inline();
+                        }
                     }
                 />
             </div>

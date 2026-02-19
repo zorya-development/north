@@ -12,12 +12,13 @@ pub fn TaskMeta(
     #[prop(default = 0)] subtask_count: i64,
     #[prop(default = 0)] completed_subtask_count: i64,
     #[prop(optional)] on_toggle_subtasks: Option<Callback<()>>,
+    #[prop(default = Callback::new(|_| {}))] on_review: Callback<()>,
     #[prop(default = "")] class: &'static str,
 ) -> impl IntoView {
     let has_meta = start_at.is_some()
         || due_date.is_some()
         || !tags.is_empty()
-        || (show_review && reviewed_at.is_some())
+        || show_review
         || subtask_count > 0;
 
     has_meta.then(|| {
@@ -107,7 +108,22 @@ pub fn TaskMeta(
                 })}
                 {if show_review {
                     Some(view! {
-                        <span class="ml-auto whitespace-nowrap">
+                        <span class="inline-flex items-center gap-1">
+                            <button
+                                on:click=move |ev| {
+                                    ev.stop_propagation();
+                                    on_review.run(());
+                                }
+                                class="text-text-secondary \
+                                       hover:text-accent \
+                                       cursor-pointer \
+                                       transition-colors"
+                            >
+                                "Mark reviewed"
+                            </button>
+                            <span class="text-text-tertiary">
+                                "\u{00b7}"
+                            </span>
                             {match reviewed_at {
                                 Some(d) => format!("Reviewed {d}"),
                                 None => "Never reviewed".to_string(),

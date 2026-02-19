@@ -4,14 +4,13 @@ use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskStoreFilter};
 
 #[derive(Clone, Copy)]
 pub struct ProjectController {
-    app_store: AppStore,
     task_detail_modal_store: TaskDetailModalStore,
-    pub project_id: Signal<i64>,
     pub project: Memo<Option<Project>>,
     pub root_task_ids: Memo<Vec<i64>>,
     pub show_completed: RwSignal<bool>,
     pub completed_count: Memo<usize>,
     pub is_loaded: Signal<bool>,
+    app_store: AppStore,
 }
 
 impl ProjectController {
@@ -59,25 +58,19 @@ impl ProjectController {
         let is_loaded = app_store.tasks.loaded_signal();
 
         Self {
-            app_store,
             task_detail_modal_store,
-            project_id,
             project,
             root_task_ids,
             show_completed,
             completed_count,
             is_loaded,
+            app_store,
         }
     }
 
     pub fn open_detail(&self, task_id: i64) {
         let task_ids = self.root_task_ids.get_untracked();
         self.task_detail_modal_store.open(task_id, task_ids);
-    }
-
-    pub fn open_create(&self) {
-        let pid = self.project_id.get_untracked();
-        self.app_store.task_create_modal.open(Some(pid), None);
     }
 
     pub fn reorder_task(&self, task_id: i64, sort_key: String, parent_id: Option<Option<i64>>) {

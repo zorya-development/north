@@ -26,6 +26,7 @@ pub enum InlineMode {
         parent_id: Option<i64>,
         depth: u8,
     },
+    CreateTop,
 }
 
 /// Build a flat traversal list from a set of root task IDs and all tasks.

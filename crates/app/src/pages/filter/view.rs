@@ -6,6 +6,7 @@ use super::controller::FilterController;
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
 use crate::components::filter_autocomplete::FilterAutocompleteTextarea;
 use crate::components::keybindings_modal::KeybindingsModal;
+use crate::containers::task_list_item::ItemConfig;
 use crate::containers::traversable_task_list::TraversableTaskList;
 
 #[component]
@@ -49,6 +50,7 @@ pub fn FilterView(
 
     // Filter results always show all (including completed)
     let show_completed = RwSignal::new(true);
+    let item_config = ItemConfig::default();
 
     view! {
         <div class="space-y-4">
@@ -239,7 +241,7 @@ pub fn FilterView(
             <TraversableTaskList
                 root_task_ids=filter_result_ids
                 show_completed=show_completed
-                show_project=true
+                item_config=item_config
                 is_loaded=is_loaded
                 allow_create=false
                 allow_reorder=false

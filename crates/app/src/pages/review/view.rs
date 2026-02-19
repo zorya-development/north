@@ -3,7 +3,7 @@ use north_ui::{Icon, IconKind};
 
 use crate::atoms::{Text, TextVariant};
 use crate::components::keybindings_modal::KeybindingsModal;
-use crate::containers::task_list::TaskList;
+use crate::containers::task_list_item::ItemConfig;
 use crate::containers::traversable_task_list::TraversableTaskList;
 
 #[component]
@@ -16,20 +16,22 @@ pub fn ReviewView(
     on_review_all: Callback<()>,
     on_task_click: Callback<i64>,
 ) -> impl IntoView {
-    let empty_reorder_tasks = Memo::new(|_| vec![]);
+    let review_config = ItemConfig {
+        show_review: true,
+        ..Default::default()
+    };
 
     let show_keybindings_help = RwSignal::new(false);
     let (help_read, help_write) = show_keybindings_help.split();
 
-    // Review tasks are always active, show_completed is always true
-    // so the traversable list shows all of them.
-    let show_completed = RwSignal::new(true);
+    let show_completed = RwSignal::new(false);
+    let show_completed_reviewed = RwSignal::new(false);
 
     view! {
         <div class="space-y-4">
-            <div class="flex items-center justify-between">
-                <Text variant=TextVariant::HeadingMd>"Review"</Text>
-                <div class="flex items-center gap-2">
+            <div>
+                <div class="flex items-center justify-between">
+                    <Text variant=TextVariant::HeadingLg>"Review"</Text>
                     <button
                         on:click=move |_| show_keybindings_help.set(true)
                         class="flex items-center gap-1.5 text-xs \
@@ -41,10 +43,12 @@ pub fn ReviewView(
                         <span class="font-mono">"?"</span>
                         " for help"
                     </button>
+                </div>
+                <div class="flex items-center gap-3 mt-2">
                     <button
                         on:click=move |_| on_review_all.run(())
-                        class="px-3 py-1.5 text-sm bg-accent text-white rounded \
-                               hover:bg-accent-hover transition-colors"
+                        class="text-sm text-text-secondary hover:text-accent \
+                               transition-colors cursor-pointer"
                     >
                         "Mark All as Reviewed"
                     </button>
@@ -54,8 +58,7 @@ pub fn ReviewView(
             <TraversableTaskList
                 root_task_ids=review_task_ids
                 show_completed=show_completed
-                show_project=true
-                show_review=true
+                item_config=review_config
                 is_loaded=is_loaded
                 allow_create=false
                 allow_reorder=false
@@ -82,13 +85,13 @@ pub fn ReviewView(
                 </button>
                 <Show when=move || show_reviewed.get()>
                     <div class="mt-3">
-                        <TaskList
-                            active_task_ids=reviewed_task_ids
-                            active_tasks_for_reorder=empty_reorder_tasks
+                        <TraversableTaskList
+                            root_task_ids=reviewed_task_ids
+                            show_completed=show_completed_reviewed
+                            item_config=review_config
                             is_loaded=is_loaded
-                            show_review=true
-                            show_project=true
-                            on_reorder=Callback::new(|_| {})
+                            allow_create=false
+                            allow_reorder=false
                             on_task_click=on_task_click
                             empty_message="No recently reviewed tasks."
                         />

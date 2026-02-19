@@ -7,8 +7,8 @@ use crate::containers::inline_task_input::InlineTaskInput;
 use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
 use crate::containers::task_checkbox::TaskCheckbox;
-use crate::containers::task_list::ExtraVisibleIds;
-use crate::containers::traversable_task_list::TraversableTaskList;
+use crate::containers::task_list_item::ItemConfig;
+use crate::containers::traversable_task_list::{ExtraVisibleIds, TraversableTaskList};
 use north_ui::{Icon, IconKind};
 
 #[component]
@@ -23,6 +23,10 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
     let title_input_ref = NodeRef::<leptos::html::Input>::new();
     let subtask_cursor = RwSignal::new(None::<i64>);
     let focused_task_id = RwSignal::new(None::<i64>);
+    let subtask_item_config = ItemConfig {
+        show_project: false,
+        ..Default::default()
+    };
 
     let save = move || {
         let t = title_draft.get_untracked();
@@ -291,7 +295,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                                 root_task_ids=subtask_ids
                                                 show_completed=subtask_show_completed
                                                 scoped=true
-                                                show_project=false
+                                                item_config=subtask_item_config
                                                 is_loaded=Signal::derive(|| true)
                                                 on_task_click=Callback::new(
                                                     move |id| {
