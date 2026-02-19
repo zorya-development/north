@@ -32,7 +32,12 @@ pub enum InlineMode {
 /// Build a flat traversal list from a set of root task IDs and all tasks.
 /// DFS pre-order: per parent group, active tasks sorted by sort_key come first,
 /// then completed tasks (when show_completed is on).
-pub fn flatten_tree(root_ids: &[i64], all_tasks: &[Task], show_completed: bool) -> Vec<FlatNode> {
+pub fn flatten_tree(
+    root_ids: &[i64],
+    all_tasks: &[Task],
+    show_completed: bool,
+    hide_non_actionable: bool,
+) -> Vec<FlatNode> {
     let mut nodes = Vec::new();
 
     let mut roots: Vec<&Task> = root_ids
@@ -43,15 +48,33 @@ pub fn flatten_tree(root_ids: &[i64], all_tasks: &[Task], show_completed: bool) 
     let (mut active, mut completed): (Vec<&Task>, Vec<&Task>) =
         roots.drain(..).partition(|t| t.completed_at.is_none());
 
+    if hide_non_actionable {
+        active.retain(|t| t.actionable);
+    }
+
     active.sort_by(|a, b| a.sort_key.cmp(&b.sort_key));
     for task in &active {
-        flatten_subtree(task, all_tasks, 0, show_completed, &mut nodes);
+        flatten_subtree(
+            task,
+            all_tasks,
+            0,
+            show_completed,
+            hide_non_actionable,
+            &mut nodes,
+        );
     }
 
     if show_completed {
         completed.sort_by(|a, b| a.sort_key.cmp(&b.sort_key));
         for task in &completed {
-            flatten_subtree(task, all_tasks, 0, show_completed, &mut nodes);
+            flatten_subtree(
+                task,
+                all_tasks,
+                0,
+                show_completed,
+                hide_non_actionable,
+                &mut nodes,
+            );
         }
     }
 
@@ -63,6 +86,7 @@ fn flatten_subtree(
     all_tasks: &[Task],
     depth: u8,
     show_completed: bool,
+    hide_non_actionable: bool,
     nodes: &mut Vec<FlatNode>,
 ) {
     nodes.push(FlatNode {
@@ -80,26 +104,50 @@ fn flatten_subtree(
     let (mut active, mut completed): (Vec<&Task>, Vec<&Task>) =
         children.into_iter().partition(|t| t.completed_at.is_none());
 
+    if hide_non_actionable {
+        active.retain(|t| t.actionable);
+    }
+
     active.sort_by(|a, b| a.sort_key.cmp(&b.sort_key));
     for child in &active {
-        flatten_subtree(child, all_tasks, depth + 1, show_completed, nodes);
+        flatten_subtree(
+            child,
+            all_tasks,
+            depth + 1,
+            show_completed,
+            hide_non_actionable,
+            nodes,
+        );
     }
 
     if show_completed {
         completed.sort_by(|a, b| a.sort_key.cmp(&b.sort_key));
         for child in &completed {
-            flatten_subtree(child, all_tasks, depth + 1, show_completed, nodes);
+            flatten_subtree(
+                child,
+                all_tasks,
+                depth + 1,
+                show_completed,
+                hide_non_actionable,
+                nodes,
+            );
         }
     }
 }
 
 /// Build a flat list preserving input order — no child expansion.
 /// Used by filter page where results come from the server in a specific order.
-pub fn flatten_flat(root_ids: &[i64], all_tasks: &[Task], show_completed: bool) -> Vec<FlatNode> {
+pub fn flatten_flat(
+    root_ids: &[i64],
+    all_tasks: &[Task],
+    show_completed: bool,
+    hide_non_actionable: bool,
+) -> Vec<FlatNode> {
     root_ids
         .iter()
         .filter_map(|&id| all_tasks.iter().find(|t| t.id == id))
         .filter(|t| show_completed || t.completed_at.is_none())
+        .filter(|t| !hide_non_actionable || t.actionable || t.completed_at.is_some())
         .map(|t| FlatNode {
             task_id: t.id,
             parent_id: t.parent_id,
@@ -280,6 +328,8 @@ mod tests {
             reviewed_at: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
+            recurrence_type: None,
+            recurrence_rule: None,
             project_title: None,
             tags: vec![],
             subtask_count: 0,
@@ -303,7 +353,7 @@ mod tests {
             make_task(4, Some(1), "b"),
         ];
         let roots = vec![1, 2];
-        let flat = flatten_tree(&roots, &tasks, false);
+        let flat = flatten_tree(&roots, &tasks, false, false);
 
         assert_eq!(flat.len(), 4);
         assert_eq!(flat[0].task_id, 1);
@@ -321,11 +371,11 @@ mod tests {
         let tasks = vec![make_task(1, None, "a"), make_completed_task(2, None, "b")];
         let roots = vec![1, 2];
 
-        let flat = flatten_tree(&roots, &tasks, false);
+        let flat = flatten_tree(&roots, &tasks, false, false);
         assert_eq!(flat.len(), 1);
         assert_eq!(flat[0].task_id, 1);
 
-        let flat = flatten_tree(&roots, &tasks, true);
+        let flat = flatten_tree(&roots, &tasks, true, false);
         assert_eq!(flat.len(), 2);
     }
 

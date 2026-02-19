@@ -3,6 +3,7 @@ use north_ui::{Icon, IconKind};
 
 use crate::atoms::{Text, TextVariant};
 use crate::components::keybindings_modal::KeybindingsModal;
+use crate::components::visibility_toggle::VisibilityToggle;
 use crate::containers::task_list_item::ItemConfig;
 use crate::containers::traversable_task_list::{TraversableTaskList, TtlHandle};
 
@@ -18,6 +19,7 @@ pub fn InboxView(
     let show_keybindings_help = RwSignal::new(false);
     let (help_read, help_write) = show_keybindings_help.split();
     let ttl_handle = RwSignal::new(None::<TtlHandle>);
+    let hide_non_actionable = RwSignal::new(false);
     let item_config = ItemConfig {
         draggable: true,
         ..Default::default()
@@ -41,6 +43,17 @@ pub fn InboxView(
                     </button>
                 </div>
                 <div class="flex items-center gap-3 mt-2">
+                    <button
+                        on:click=move |_| {
+                            if let Some(h) = ttl_handle.get_untracked() {
+                                h.start_create_top();
+                            }
+                        }
+                        class="text-xs text-text-secondary hover:text-text-primary \
+                               transition-colors cursor-pointer"
+                    >
+                        "+" " Add task"
+                    </button>
                     {move || {
                         let count = completed_count.get();
                         if count > 0 {
@@ -72,17 +85,10 @@ pub fn InboxView(
                             None
                         }
                     }}
-                    <button
-                        on:click=move |_| {
-                            if let Some(h) = ttl_handle.get_untracked() {
-                                h.start_create_top();
-                            }
-                        }
-                        class="text-sm text-text-secondary hover:text-accent \
-                               transition-colors cursor-pointer"
-                    >
-                        "+" " Add task"
-                    </button>
+                    <VisibilityToggle
+                        page_key="inbox".to_string()
+                        hide_non_actionable=hide_non_actionable
+                    />
                 </div>
             </div>
 
@@ -95,6 +101,7 @@ pub fn InboxView(
                 on_task_click=on_task_click
                 show_keybindings_help=show_keybindings_help
                 handle=ttl_handle
+                hide_non_actionable=hide_non_actionable
                 empty_message="No tasks in your inbox. Add one above."
             />
 

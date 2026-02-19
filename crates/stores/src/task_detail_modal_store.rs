@@ -1,6 +1,6 @@
 use crate::{ModalStore, TaskStore};
 use leptos::prelude::*;
-use north_dto::Task;
+use north_dto::{RecurrenceType, Task};
 
 #[derive(Clone, Copy)]
 pub struct TaskDetailModalStore {
@@ -207,5 +207,15 @@ impl TaskDetailModalStore {
     pub fn set_sequential_limit(&self, limit: i16) {
         let Some(task) = self.task() else { return };
         self.task_store.set_sequential_limit(task.id, limit);
+    }
+
+    pub fn set_recurrence(
+        &self,
+        recurrence_type: Option<RecurrenceType>,
+        recurrence_rule: Option<String>,
+    ) {
+        let Some(task) = self.task() else { return };
+        self.task_store
+            .set_recurrence(task.id, recurrence_type, recurrence_rule);
     }
 }

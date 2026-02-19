@@ -3,10 +3,11 @@ use std::collections::HashMap;
 use chrono::Utc;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
-use north_db::models::{NewTask, TagRow, TaskChangeset, TaskRow};
+use north_db::models::{NewTask, NewTaskTag, TagRow, TaskChangeset, TaskRow};
 use north_db::schema::{projects, tags, task_tags, tasks, users};
+use north_db::sql_types::RecurrenceTypeMapping;
 use north_db::DbPool;
-use north_dto::{CreateTask, TagInfo, Task, TaskFilter, UpdateTask, UserSettings};
+use north_dto::{CreateTask, RecurrenceType, TagInfo, Task, TaskFilter, UpdateTask, UserSettings};
 
 use crate::{ServiceError, ServiceResult};
 
@@ -203,6 +204,8 @@ impl TaskService {
                 sort_key: &sort_key,
                 start_at: input.start_at,
                 due_date: input.due_date,
+                recurrence_type: None,
+                recurrence_rule: None,
             })
             .returning(TaskRow::as_returning())
             .get_result(&mut conn)
@@ -330,6 +333,12 @@ impl TaskService {
         if let Some(ref completed_at) = input.completed_at {
             changeset.completed_at = Some(*completed_at);
         }
+        if let Some(ref recurrence_type) = input.recurrence_type {
+            changeset.recurrence_type = Some(recurrence_type.map(RecurrenceTypeMapping::from));
+        }
+        if let Some(ref recurrence_rule) = input.recurrence_rule {
+            changeset.recurrence_rule = Some(recurrence_rule.as_deref());
+        }
 
         // When completing and no explicit sort_key, reset to empty.
         // When uncompleting and no explicit sort_key, place at end of list.
@@ -411,11 +420,29 @@ impl TaskService {
                     if child_ids.is_empty() {
                         break;
                     }
+                    // Clear recurrence on children before completing
+                    diesel::update(
+                        tasks::table
+                            .filter(tasks::id.eq_any(&child_ids))
+                            .filter(tasks::recurrence_rule.is_not_null()),
+                    )
+                    .set((
+                        tasks::recurrence_type.eq(None::<RecurrenceTypeMapping>),
+                        tasks::recurrence_rule.eq(None::<String>),
+                    ))
+                    .execute(&mut conn)
+                    .await?;
+
                     diesel::update(tasks::table.filter(tasks::id.eq_any(&child_ids)))
                         .set(tasks::completed_at.eq(Some(now)))
                         .execute(&mut conn)
                         .await?;
                     parent_ids = child_ids;
+                }
+
+                // Spawn next recurring instance if this task has recurrence
+                if existing.recurrence_rule.is_some() {
+                    let _ = Self::spawn_next_recurring(pool, user_id, &existing).await;
                 }
             }
         }
@@ -453,6 +480,246 @@ impl TaskService {
         .optional()?
         .ok_or_else(|| ServiceError::NotFound("Task not found".into()))?;
         Ok(Task::from(row))
+    }
+
+    // ── Recurrence ─────────────────────────────────────────────────
+
+    async fn spawn_next_recurring(
+        pool: &DbPool,
+        user_id: i64,
+        completed_task: &TaskRow,
+    ) -> ServiceResult<Option<Task>> {
+        let rec_rule = match completed_task.recurrence_rule.as_deref() {
+            Some(r) if !r.is_empty() => r,
+            _ => return Ok(None),
+        };
+        let rec_type = match completed_task.recurrence_type {
+            Some(rt) => rt,
+            None => return Ok(None),
+        };
+
+        // Load user settings for timezone
+        let mut conn = pool.get().await?;
+        let settings_val: serde_json::Value = users::table
+            .filter(users::id.eq(user_id))
+            .select(users::settings)
+            .first(&mut conn)
+            .await?;
+        let settings: UserSettings = serde_json::from_value(settings_val).unwrap_or_default();
+        let tz: chrono_tz::Tz = settings.timezone.parse().unwrap_or(chrono_tz::Tz::UTC);
+
+        // Compute next occurrence
+        let next_start = match RecurrenceType::from(rec_type) {
+            RecurrenceType::Scheduled => Self::next_scheduled_date(
+                rec_rule,
+                completed_task.start_at,
+                completed_task.due_date,
+                tz,
+            )?,
+            RecurrenceType::AfterCompletion => Self::next_after_completion_date(rec_rule)?,
+        };
+
+        let Some(next_start) = next_start else {
+            return Ok(None);
+        };
+
+        // Preserve due_date offset if original had both start_at and due_date
+        let next_due = match (completed_task.start_at, completed_task.due_date) {
+            (Some(orig_start), Some(orig_due)) => {
+                let offset = orig_due.signed_duration_since(orig_start.date_naive());
+                Some(next_start.date_naive() + offset)
+            }
+            (None, Some(orig_due)) => Some(orig_due),
+            _ => None,
+        };
+
+        // Compute sort_key for the new task
+        let last_key: Option<String> = if let Some(pid) = completed_task.parent_id {
+            tasks::table
+                .filter(tasks::parent_id.eq(pid))
+                .filter(tasks::user_id.eq(user_id))
+                .order(tasks::sort_key.desc())
+                .select(tasks::sort_key)
+                .first(&mut conn)
+                .await
+                .optional()?
+        } else if let Some(proj) = completed_task.project_id {
+            tasks::table
+                .filter(tasks::project_id.eq(proj))
+                .filter(tasks::parent_id.is_null())
+                .filter(tasks::user_id.eq(user_id))
+                .order(tasks::sort_key.desc())
+                .select(tasks::sort_key)
+                .first(&mut conn)
+                .await
+                .optional()?
+        } else {
+            tasks::table
+                .filter(tasks::project_id.is_null())
+                .filter(tasks::parent_id.is_null())
+                .filter(tasks::user_id.eq(user_id))
+                .order(tasks::sort_key.desc())
+                .select(tasks::sort_key)
+                .first(&mut conn)
+                .await
+                .optional()?
+        };
+        let sort_key = north_dto::sort_key_after(last_key.as_deref());
+
+        let new_row = diesel::insert_into(tasks::table)
+            .values(&NewTask {
+                user_id,
+                title: &completed_task.title,
+                body: completed_task.body.as_deref(),
+                project_id: completed_task.project_id,
+                parent_id: completed_task.parent_id,
+                sort_key: &sort_key,
+                start_at: Some(next_start),
+                due_date: next_due,
+                recurrence_type: completed_task.recurrence_type,
+                recurrence_rule: completed_task.recurrence_rule.as_deref(),
+            })
+            .returning(TaskRow::as_returning())
+            .get_result(&mut conn)
+            .await?;
+
+        let new_task_id = new_row.id;
+
+        // Clone subtasks from completed task
+        let child_rows: Vec<TaskRow> = tasks::table
+            .filter(tasks::parent_id.eq(completed_task.id))
+            .select(TaskRow::as_select())
+            .load(&mut conn)
+            .await?;
+
+        for child in &child_rows {
+            let child_sort_key = north_dto::sort_key_after(Some(&child.sort_key));
+            let new_child = diesel::insert_into(tasks::table)
+                .values(&NewTask {
+                    user_id,
+                    title: &child.title,
+                    body: child.body.as_deref(),
+                    project_id: child.project_id,
+                    parent_id: Some(new_task_id),
+                    sort_key: &child_sort_key,
+                    start_at: None,
+                    due_date: None,
+                    recurrence_type: None,
+                    recurrence_rule: None,
+                })
+                .returning(TaskRow::as_returning())
+                .get_result(&mut conn)
+                .await?;
+
+            // Copy tags from child
+            let child_tag_ids: Vec<i64> = task_tags::table
+                .filter(task_tags::task_id.eq(child.id))
+                .select(task_tags::tag_id)
+                .load(&mut conn)
+                .await?;
+            if !child_tag_ids.is_empty() {
+                let links: Vec<NewTaskTag> = child_tag_ids
+                    .iter()
+                    .map(|&tag_id| NewTaskTag {
+                        task_id: new_child.id,
+                        tag_id,
+                    })
+                    .collect();
+                diesel::insert_into(task_tags::table)
+                    .values(&links)
+                    .execute(&mut conn)
+                    .await?;
+            }
+        }
+
+        // Copy tags from parent task
+        let parent_tag_ids: Vec<i64> = task_tags::table
+            .filter(task_tags::task_id.eq(completed_task.id))
+            .select(task_tags::tag_id)
+            .load(&mut conn)
+            .await?;
+        if !parent_tag_ids.is_empty() {
+            let links: Vec<NewTaskTag> = parent_tag_ids
+                .iter()
+                .map(|&tag_id| NewTaskTag {
+                    task_id: new_task_id,
+                    tag_id,
+                })
+                .collect();
+            diesel::insert_into(task_tags::table)
+                .values(&links)
+                .execute(&mut conn)
+                .await?;
+        }
+
+        Ok(Some(Task::from(new_row)))
+    }
+
+    fn next_scheduled_date(
+        rrule_str: &str,
+        start_at: Option<chrono::DateTime<Utc>>,
+        due_date: Option<chrono::NaiveDate>,
+        tz: chrono_tz::Tz,
+    ) -> ServiceResult<Option<chrono::DateTime<Utc>>> {
+        use chrono::TimeZone;
+
+        let dt_start = start_at
+            .or_else(|| due_date.map(|d| Utc.from_utc_datetime(&d.and_hms_opt(0, 0, 0).unwrap())))
+            .unwrap_or_else(Utc::now);
+
+        let rrule_tz: rrule::Tz = tz.into();
+        let local_start = dt_start.with_timezone(&rrule_tz);
+        let full_rule = format!(
+            "DTSTART:{}\nRRULE:{rrule_str}",
+            local_start.format("%Y%m%dT%H%M%S")
+        );
+
+        let rrule_set: rrule::RRuleSet = full_rule
+            .parse()
+            .map_err(|e| ServiceError::BadRequest(format!("Invalid RRULE: {e}")))?;
+
+        let now_local = Utc::now().with_timezone(&rrule_tz);
+        let results = rrule_set.after(now_local).all(1);
+
+        Ok(results
+            .dates
+            .into_iter()
+            .next()
+            .map(|dt| dt.with_timezone(&Utc)))
+    }
+
+    fn next_after_completion_date(rrule_str: &str) -> ServiceResult<Option<chrono::DateTime<Utc>>> {
+        // Parse FREQ and INTERVAL from the RRULE string
+        let mut freq = None;
+        let mut interval: i64 = 1;
+
+        for part in rrule_str.split(';') {
+            let mut kv = part.splitn(2, '=');
+            let key = kv.next().unwrap_or("").trim();
+            let val = kv.next().unwrap_or("").trim();
+            match key {
+                "FREQ" => freq = Some(val.to_uppercase()),
+                "INTERVAL" => {
+                    interval = val.parse().unwrap_or(1);
+                }
+                _ => {}
+            }
+        }
+
+        let Some(freq) = freq else {
+            return Ok(None);
+        };
+
+        let now = Utc::now();
+        let next = match freq.as_str() {
+            "DAILY" => now + chrono::Duration::days(interval),
+            "WEEKLY" => now + chrono::Duration::weeks(interval),
+            "MONTHLY" => now + chrono::Duration::days(interval * 30),
+            "YEARLY" => now + chrono::Duration::days(interval * 365),
+            _ => return Ok(None),
+        };
+
+        Ok(Some(next))
     }
 
     // ── Internal helpers ───────────────────────────────────────────

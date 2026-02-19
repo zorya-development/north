@@ -2,6 +2,7 @@ use chrono::{DateTime, NaiveDate, Utc};
 use diesel::prelude::*;
 
 use crate::schema::tasks;
+use crate::sql_types::RecurrenceTypeMapping;
 
 #[derive(Debug, Clone, Queryable, Selectable, Identifiable, Associations)]
 #[diesel(belongs_to(super::ProjectRow, foreign_key = project_id))]
@@ -21,6 +22,8 @@ pub struct TaskRow {
     pub reviewed_at: Option<NaiveDate>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub recurrence_type: Option<RecurrenceTypeMapping>,
+    pub recurrence_rule: Option<String>,
 }
 
 #[derive(Debug, Insertable)]
@@ -34,6 +37,8 @@ pub struct NewTask<'a> {
     pub sort_key: &'a str,
     pub start_at: Option<DateTime<Utc>>,
     pub due_date: Option<NaiveDate>,
+    pub recurrence_type: Option<RecurrenceTypeMapping>,
+    pub recurrence_rule: Option<&'a str>,
 }
 
 #[derive(Debug, Default, AsChangeset)]
@@ -49,6 +54,8 @@ pub struct TaskChangeset<'a> {
     pub due_date: Option<Option<NaiveDate>>,
     pub completed_at: Option<Option<DateTime<Utc>>>,
     pub reviewed_at: Option<Option<NaiveDate>>,
+    pub recurrence_type: Option<Option<RecurrenceTypeMapping>>,
+    pub recurrence_rule: Option<Option<&'a str>>,
 }
 
 impl From<TaskRow> for north_dto::Task {
@@ -69,6 +76,8 @@ impl From<TaskRow> for north_dto::Task {
             reviewed_at: row.reviewed_at,
             created_at: row.created_at,
             updated_at: row.updated_at,
+            recurrence_type: row.recurrence_type.map(Into::into),
+            recurrence_rule: row.recurrence_rule,
             project_title: None,
             tags: vec![],
             subtask_count: 0,

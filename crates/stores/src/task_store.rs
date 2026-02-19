@@ -1,7 +1,7 @@
 use chrono::Utc;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use north_dto::{CreateTask, Task, UpdateTask};
+use north_dto::{CreateTask, RecurrenceType, Task, UpdateTask};
 use north_repositories::TaskRepository;
 
 #[derive(Clone, Copy)]
@@ -324,6 +324,25 @@ impl TaskStore {
         spawn_local(async move {
             let input = UpdateTask {
                 sequential_limit: Some(limit),
+                ..Default::default()
+            };
+            if TaskRepository::update(id, input).await.is_ok() {
+                store.refetch_async().await;
+            }
+        });
+    }
+
+    pub fn set_recurrence(
+        &self,
+        id: i64,
+        recurrence_type: Option<RecurrenceType>,
+        recurrence_rule: Option<String>,
+    ) {
+        let store = *self;
+        spawn_local(async move {
+            let input = UpdateTask {
+                recurrence_type: Some(recurrence_type),
+                recurrence_rule: Some(recurrence_rule),
                 ..Default::default()
             };
             if TaskRepository::update(id, input).await.is_ok() {

@@ -4,6 +4,7 @@ use north_ui::{Icon, IconKind};
 
 use crate::atoms::{Text, TextVariant};
 use crate::components::keybindings_modal::KeybindingsModal;
+use crate::components::visibility_toggle::VisibilityToggle;
 use crate::containers::task_list_item::ItemConfig;
 use crate::containers::traversable_task_list::{TraversableTaskList, TtlHandle};
 
@@ -21,6 +22,7 @@ pub fn ProjectView(
     let show_keybindings_help = RwSignal::new(false);
     let (help_read, help_write) = show_keybindings_help.split();
     let ttl_handle = RwSignal::new(None::<TtlHandle>);
+    let hide_non_actionable = RwSignal::new(false);
     let item_config = ItemConfig {
         show_project: false,
         draggable: true,
@@ -52,6 +54,17 @@ pub fn ProjectView(
                     </button>
                 </div>
                 <div class="flex items-center gap-3 mt-2">
+                    <button
+                        on:click=move |_| {
+                            if let Some(h) = ttl_handle.get_untracked() {
+                                h.start_create_top();
+                            }
+                        }
+                        class="text-xs text-text-secondary hover:text-text-primary \
+                               transition-colors cursor-pointer"
+                    >
+                        "+" " Add task"
+                    </button>
                     {move || {
                         let count = completed_count.get();
                         if count > 0 {
@@ -83,17 +96,10 @@ pub fn ProjectView(
                             None
                         }
                     }}
-                    <button
-                        on:click=move |_| {
-                            if let Some(h) = ttl_handle.get_untracked() {
-                                h.start_create_top();
-                            }
-                        }
-                        class="text-sm text-text-secondary hover:text-accent \
-                               transition-colors cursor-pointer"
-                    >
-                        "+" " Add task"
-                    </button>
+                    <VisibilityToggle
+                        page_key="project".to_string()
+                        hide_non_actionable=hide_non_actionable
+                    />
                 </div>
             </div>
 
@@ -107,6 +113,7 @@ pub fn ProjectView(
                 show_keybindings_help=show_keybindings_help
                 default_project_id=default_project_id
                 handle=ttl_handle
+                hide_non_actionable=hide_non_actionable
                 empty_message="No tasks in this project. Add one above."
             />
 

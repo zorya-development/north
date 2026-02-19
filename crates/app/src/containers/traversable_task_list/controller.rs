@@ -44,16 +44,18 @@ impl TraversableTaskListController {
         flat: bool,
         scoped: bool,
         cursor_task_id: Option<RwSignal<Option<i64>>>,
+        hide_non_actionable: Option<RwSignal<bool>>,
     ) -> Self {
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
 
         let flat_nodes = Memo::new(move |_| {
             let roots = root_task_ids.get();
             let tasks = all_tasks.get();
+            let hide = hide_non_actionable.map(|s| s.get()).unwrap_or(false);
             if flat {
-                flatten_flat(&roots, &tasks, show_completed.get())
+                flatten_flat(&roots, &tasks, show_completed.get(), hide)
             } else {
-                flatten_tree(&roots, &tasks, show_completed.get())
+                flatten_tree(&roots, &tasks, show_completed.get(), hide)
             }
         });
 
@@ -378,16 +380,20 @@ impl TraversableTaskListController {
         let Some(task_id) = self.cursor_task_id.get_untracked() else {
             return;
         };
-        let title = self
-            .app_store
-            .tasks
-            .get_by_id(task_id)
-            .get_untracked()
-            .map(|t| t.title.clone())
-            .unwrap_or_default();
+        let task = self.app_store.tasks.get_by_id(task_id).get_untracked();
+        let title = task.as_ref().map(|t| t.title.clone()).unwrap_or_default();
+        let has_recurrence = task
+            .as_ref()
+            .map(|t| t.recurrence_type.is_some())
+            .unwrap_or(false);
         self.pending_delete.set(true);
+        let suffix = if has_recurrence {
+            " Recurring subtasks will stop."
+        } else {
+            ""
+        };
         self.app_store.status_bar.show_message(
-            format!("Delete \"{title}\"?  Enter to confirm \u{00b7} Esc to cancel"),
+            format!("Delete \"{title}\"?{suffix}  Enter to confirm \u{00b7} Esc to cancel"),
             StatusBarVariant::Danger,
         );
     }

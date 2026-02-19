@@ -41,6 +41,9 @@ impl UserService {
         if let Some(days) = input.review_interval_days {
             settings.review_interval_days = days;
         }
+        if let Some(ref tz) = input.timezone {
+            settings.timezone = tz.clone();
+        }
 
         let val =
             serde_json::to_value(&settings).map_err(|e| ServiceError::BadRequest(e.to_string()))?;

@@ -3,6 +3,8 @@ pub mod drag_drop;
 pub mod filter_autocomplete;
 pub mod keybindings_modal;
 pub mod layout;
+pub mod recurrence_modal;
 pub mod status_bar;
 pub mod task_meta;
 pub mod theme_toggle;
+pub mod visibility_toggle;

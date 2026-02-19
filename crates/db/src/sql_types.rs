@@ -80,3 +80,30 @@ impl From<north_dto::ProjectStatus> for ProjectStatusMapping {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, DbEnum)]
+#[ExistingTypePath = "crate::schema::sql_types::RecurrenceType"]
+pub enum RecurrenceTypeMapping {
+    #[db_rename = "scheduled"]
+    Scheduled,
+    #[db_rename = "after_completion"]
+    AfterCompletion,
+}
+
+impl From<RecurrenceTypeMapping> for north_dto::RecurrenceType {
+    fn from(val: RecurrenceTypeMapping) -> Self {
+        match val {
+            RecurrenceTypeMapping::Scheduled => north_dto::RecurrenceType::Scheduled,
+            RecurrenceTypeMapping::AfterCompletion => north_dto::RecurrenceType::AfterCompletion,
+        }
+    }
+}
+
+impl From<north_dto::RecurrenceType> for RecurrenceTypeMapping {
+    fn from(val: north_dto::RecurrenceType) -> Self {
+        match val {
+            north_dto::RecurrenceType::Scheduled => RecurrenceTypeMapping::Scheduled,
+            north_dto::RecurrenceType::AfterCompletion => RecurrenceTypeMapping::AfterCompletion,
+        }
+    }
+}

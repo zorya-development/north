@@ -3,6 +3,7 @@ use north_ui::{Icon, IconKind};
 
 use crate::atoms::{Text, TextVariant};
 use crate::components::keybindings_modal::KeybindingsModal;
+use crate::components::visibility_toggle::VisibilityToggle;
 use crate::containers::task_list_item::ItemConfig;
 use crate::containers::traversable_task_list::TraversableTaskList;
 
@@ -23,6 +24,7 @@ pub fn ReviewView(
 
     let show_keybindings_help = RwSignal::new(false);
     let (help_read, help_write) = show_keybindings_help.split();
+    let hide_non_actionable = RwSignal::new(false);
 
     let show_completed = RwSignal::new(false);
     let show_completed_reviewed = RwSignal::new(false);
@@ -52,6 +54,10 @@ pub fn ReviewView(
                     >
                         "Mark All as Reviewed"
                     </button>
+                    <VisibilityToggle
+                        page_key="review".to_string()
+                        hide_non_actionable=hide_non_actionable
+                    />
                 </div>
             </div>
 
@@ -64,6 +70,7 @@ pub fn ReviewView(
                 allow_reorder=false
                 on_task_click=on_task_click
                 show_keybindings_help=show_keybindings_help
+                hide_non_actionable=hide_non_actionable
                 empty_message="All tasks are up to date. Nothing to review."
             />
 

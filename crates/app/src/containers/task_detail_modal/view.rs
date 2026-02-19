@@ -3,6 +3,7 @@ use north_stores::{use_app_store, IdFilter, TaskDetailModalStore, TaskStoreFilte
 
 use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::date_picker::DateTimePicker;
+use crate::components::recurrence_modal::RecurrenceModal;
 use crate::containers::inline_task_input::InlineTaskInput;
 use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
@@ -19,6 +20,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
     let subtask_show_completed = RwSignal::new(false);
     let (show_inline_input, set_show_inline_input) = signal(false);
     let input_value = RwSignal::new(String::new());
+    let show_recurrence_modal = RwSignal::new(false);
     let extra_visible_ids = expect_context::<ExtraVisibleIds>().0;
     let title_input_ref = NodeRef::<leptos::html::Input>::new();
     let subtask_cursor = RwSignal::new(None::<i64>);
@@ -62,6 +64,8 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                     let start_at = task.start_at;
                     let due_date = task.due_date;
                     let sequential_limit = task.sequential_limit;
+                    let recurrence_type = task.recurrence_type;
+                    let recurrence_rule = task.recurrence_rule.clone();
 
                     set_title_draft.set(title.clone());
                     set_body_draft.set(body.clone().unwrap_or_default());
@@ -450,6 +454,30 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                     />
                                 </SidebarRow>
 
+                                // Recurrence
+                                <SidebarRow label="Recurrence">
+                                    <RecurrenceSidebarButton
+                                        recurrence_type=recurrence_type
+                                        recurrence_rule=recurrence_rule.clone()
+                                        on_click=Callback::new(move |()| {
+                                            show_recurrence_modal.set(true);
+                                        })
+                                    />
+                                    <Show when=move || show_recurrence_modal.get()>
+                                        <RecurrenceModal
+                                            recurrence_type=recurrence_type
+                                            recurrence_rule=recurrence_rule.clone()
+                                            on_save=Callback::new(move |(rt, rr)| {
+                                                store.set_recurrence(rt, rr);
+                                                show_recurrence_modal.set(false);
+                                            })
+                                            on_close=Callback::new(move |()| {
+                                                show_recurrence_modal.set(false);
+                                            })
+                                        />
+                                    </Show>
+                                </SidebarRow>
+
                                 // Sequential limit
                                 <SidebarRow label="Seq. limit">
                                     <SequentialLimitInput
@@ -513,6 +541,34 @@ fn DueDatePicker(
                 }
             })}
         </div>
+    }
+}
+
+#[component]
+fn RecurrenceSidebarButton(
+    recurrence_type: Option<north_dto::RecurrenceType>,
+    recurrence_rule: Option<String>,
+    on_click: Callback<()>,
+) -> impl IntoView {
+    let label = match recurrence_type {
+        Some(_) => {
+            let summary = crate::components::task_meta::summarize_rrule(
+                recurrence_rule.as_deref().unwrap_or(""),
+            );
+            summary
+        }
+        None => "None".to_string(),
+    };
+
+    view! {
+        <button
+            class="text-sm text-text-secondary hover:text-text-primary \
+                   transition-colors cursor-pointer flex items-center gap-1"
+            on:click=move |_| on_click.run(())
+        >
+            <Icon kind=IconKind::Recurrence class="w-3.5 h-3.5"/>
+            {label}
+        </button>
     }
 }
 
