@@ -13,14 +13,18 @@ use crate::containers::traversable_task_list::{ExtraVisibleIds, TraversableTaskL
 use north_ui::{Icon, IconKind};
 
 #[component]
-pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
+pub fn TaskDetailModalView(
+    store: TaskDetailModalStore,
+    on_recurrence_open: Callback<()>,
+    on_recurrence_close: Callback<()>,
+    show_recurrence_modal: Signal<bool>,
+) -> impl IntoView {
     let app_store = use_app_store();
     let (title_draft, set_title_draft) = signal(String::new());
     let (body_draft, set_body_draft) = signal(String::new());
     let subtask_show_completed = RwSignal::new(false);
     let (show_inline_input, set_show_inline_input) = signal(false);
     let input_value = RwSignal::new(String::new());
-    let show_recurrence_modal = RwSignal::new(false);
     let extra_visible_ids = expect_context::<ExtraVisibleIds>().0;
     let title_input_ref = NodeRef::<leptos::html::Input>::new();
     let subtask_cursor = RwSignal::new(None::<i64>);
@@ -460,7 +464,7 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                         recurrence_type=recurrence_type
                                         recurrence_rule=recurrence_rule.clone()
                                         on_click=Callback::new(move |()| {
-                                            show_recurrence_modal.set(true);
+                                            on_recurrence_open.run(());
                                         })
                                     />
                                     <Show when=move || show_recurrence_modal.get()>
@@ -469,10 +473,10 @@ pub fn TaskDetailModalView(store: TaskDetailModalStore) -> impl IntoView {
                                             recurrence_rule=recurrence_rule.clone()
                                             on_save=Callback::new(move |(rt, rr)| {
                                                 store.set_recurrence(rt, rr);
-                                                show_recurrence_modal.set(false);
+                                                on_recurrence_close.run(());
                                             })
                                             on_close=Callback::new(move |()| {
-                                                show_recurrence_modal.set(false);
+                                                on_recurrence_close.run(());
                                             })
                                         />
                                     </Show>
