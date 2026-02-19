@@ -227,12 +227,30 @@ body {
 
 /* ── Drag-and-drop indicators ───────────────────────────── */
 
-.dnd-drop-above {
-  box-shadow: 0 2px 0 0 var(--accent) inset;
+.dnd-drop-above::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 10;
 }
 
-.dnd-drop-below {
-  box-shadow: 0 -2px 0 0 var(--accent) inset;
+.dnd-drop-below::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  transform: translateY(50%);
+  pointer-events: none;
+  z-index: 10;
 }
 
 .dnd-drop-nest {

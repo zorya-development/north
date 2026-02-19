@@ -135,11 +135,18 @@ pub fn TaskListItemView(
                     }
                     on:dragleave=move |_: web_sys::DragEvent| {
                         if let Some(ctx) = drag_ctx {
-                            if ctx.drop_target.get_untracked()
-                                .map(|(id, _)| id) == Some(task_id)
-                            {
-                                ctx.drop_target.set(None);
-                            }
+                            // Defer the clear so that dragover on the
+                            // next element fires first, preventing a
+                            // one-frame blink when crossing adjacent
+                            // task boundaries.
+                            request_animation_frame(move || {
+                                if ctx.drop_target.get_untracked()
+                                    .map(|(id, _)| id)
+                                    == Some(task_id)
+                                {
+                                    ctx.drop_target.set(None);
+                                }
+                            });
                         }
                     }
                 >
