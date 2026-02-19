@@ -1,6 +1,6 @@
 use leptos::prelude::*;
-use north_stores::{use_app_store, IdFilter, TaskDetailModalStore, TaskStoreFilter};
 
+use super::controller::TaskDetailModalController;
 use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::date_picker::DateTimePicker;
 use crate::components::recurrence_modal::RecurrenceModal;
@@ -9,43 +9,25 @@ use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
 use crate::containers::task_checkbox::TaskCheckbox;
 use crate::containers::task_list_item::ItemConfig;
-use crate::containers::traversable_task_list::{ExtraVisibleIds, TraversableTaskList};
+use crate::containers::traversable_task_list::TraversableTaskList;
 use north_ui::{Icon, IconKind};
 
 #[component]
 pub fn TaskDetailModalView(
-    store: TaskDetailModalStore,
-    on_recurrence_open: Callback<()>,
-    on_recurrence_close: Callback<()>,
-    show_recurrence_modal: Signal<bool>,
+    ctrl: TaskDetailModalController,
+    subtask_item_config: ItemConfig,
 ) -> impl IntoView {
-    let app_store = use_app_store();
-    let (title_draft, set_title_draft) = signal(String::new());
-    let (body_draft, set_body_draft) = signal(String::new());
     let subtask_show_completed = RwSignal::new(false);
     let (show_inline_input, set_show_inline_input) = signal(false);
     let input_value = RwSignal::new(String::new());
-    let extra_visible_ids = expect_context::<ExtraVisibleIds>().0;
     let title_input_ref = NodeRef::<leptos::html::Input>::new();
     let subtask_cursor = RwSignal::new(None::<i64>);
-    let focused_task_id = RwSignal::new(None::<i64>);
-    let subtask_item_config = ItemConfig {
-        show_project: false,
-        ..Default::default()
-    };
-
-    let save = move || {
-        let t = title_draft.get_untracked();
-        let b = body_draft.get_untracked();
-        let b = if b.trim().is_empty() { None } else { Some(b) };
-        store.update(t, b);
-    };
 
     view! {
         <div class="fixed inset-0 z-50 flex items-center justify-center">
             <div
                 class="absolute inset-0 bg-black/50"
-                on:click=move |_| store.close()
+                on:click=move |_| ctrl.close()
             />
             <div
                 role="dialog"
@@ -55,9 +37,9 @@ pub fn TaskDetailModalView(
                 style="background-color: var(--bg-secondary)"
             >
                 {move || {
-                    let task = store.task()?;
-                    let ancestor_list = store.ancestors();
-                    let has_stack_val = store.has_stack();
+                    let task = ctrl.task()?;
+                    let ancestor_list = ctrl.ancestors();
+                    let has_stack_val = ctrl.has_stack();
 
                     let task_id = task.id;
                     let title = task.title.clone();
@@ -71,17 +53,21 @@ pub fn TaskDetailModalView(
                     let recurrence_type = task.recurrence_type;
                     let recurrence_rule = task.recurrence_rule.clone();
 
-                    set_title_draft.set(title.clone());
-                    set_body_draft.set(body.clone().unwrap_or_default());
+                    ctrl.sync_drafts(title.clone(), body.clone());
 
-                    if focused_task_id.get_untracked() != Some(task_id) {
-                        focused_task_id.set(Some(task_id));
+                    if ctrl.focus_if_new_task(task_id) {
                         request_animation_frame(move || {
                             if let Some(el) = title_input_ref.get() {
                                 let _ = el.focus();
                             }
                         });
                     }
+
+                    let subtask_ids = ctrl.subtask_ids(task_id);
+                    let completed_count = ctrl.completed_subtask_count(task_id);
+                    let total_count = ctrl.total_subtask_count(task_id);
+                    let default_project_signal =
+                        ctrl.default_project_signal(project_id);
 
                     Some(view! {
                         // Header
@@ -111,7 +97,7 @@ pub fn TaskDetailModalView(
                                            hover:bg-bg-tertiary \
                                            transition-colors \
                                            disabled:opacity-30"
-                                    on:click=move |_| store.prev()
+                                    on:click=move |_| ctrl.prev()
                                     disabled=has_stack_val
                                     title="Previous task"
                                 >
@@ -126,7 +112,7 @@ pub fn TaskDetailModalView(
                                            hover:bg-bg-tertiary \
                                            transition-colors \
                                            disabled:opacity-30"
-                                    on:click=move |_| store.next()
+                                    on:click=move |_| ctrl.next()
                                     disabled=has_stack_val
                                     title="Next task"
                                 >
@@ -140,7 +126,7 @@ pub fn TaskDetailModalView(
                                            hover:text-danger-hover \
                                            hover:bg-bg-tertiary \
                                            transition-colors"
-                                    on:click=move |_| store.delete()
+                                    on:click=move |_| ctrl.delete()
                                     title="Delete task"
                                 >
                                     <Icon
@@ -153,7 +139,7 @@ pub fn TaskDetailModalView(
                                            hover:text-text-primary \
                                            hover:bg-bg-tertiary \
                                            transition-colors"
-                                    on:click=move |_| store.close()
+                                    on:click=move |_| ctrl.close()
                                     title="Close"
                                 >
                                     <Icon
@@ -181,7 +167,7 @@ pub fn TaskDetailModalView(
                                                            transition-colors \
                                                            whitespace-nowrap"
                                                     on:click=move |_| {
-                                                        store.navigate_to_ancestor(aid)
+                                                        ctrl.navigate_to_ancestor(aid)
                                                     }
                                                 >
                                                     {atitle}
@@ -222,20 +208,20 @@ pub fn TaskDetailModalView(
                                                focus:outline-none \
                                                no-focus-ring"
                                         prop:value=move || {
-                                            title_draft.get()
+                                            ctrl.title_draft.get()
                                         }
                                         on:input=move |ev| {
-                                            set_title_draft
+                                            ctrl.title_draft
                                                 .set(event_target_value(&ev));
                                         }
                                         on:keydown=move |ev| {
                                             if ev.key() == "Enter" {
                                                 ev.prevent_default();
-                                                save();
+                                                ctrl.save();
                                             }
                                         }
                                         on:blur=move |_| {
-                                            save();
+                                            ctrl.save();
                                         }
                                     />
                                 </div>
@@ -256,145 +242,109 @@ pub fn TaskDetailModalView(
                                                placeholder:italic"
                                         placeholder="Add description..."
                                         prop:value=move || {
-                                            body_draft.get()
+                                            ctrl.body_draft.get()
                                         }
                                         on:input=move |ev| {
-                                            set_body_draft.set(
+                                            ctrl.body_draft.set(
                                                 event_target_value(&ev),
                                             );
                                         }
                                         on:blur=move |_| {
-                                            save();
+                                            ctrl.save();
                                         }
                                     />
                                 </div>
 
                                 // Subtask area
-                                {
-                                    let all_subtasks = app_store
-                                        .tasks
-                                        .filtered(TaskStoreFilter {
-                                            parent_id: IdFilter::Is(task_id),
-                                            ..Default::default()
-                                        });
-                                    let subtask_ids = Memo::new(move |_| {
-                                        all_subtasks
-                                            .get()
-                                            .iter()
-                                            .map(|t| t.id)
-                                            .collect::<Vec<_>>()
-                                    });
-                                    let completed_count = Memo::new(move |_| {
-                                        all_subtasks
-                                            .get()
-                                            .iter()
-                                            .filter(|t| t.completed_at.is_some())
-                                            .count()
-                                    });
-                                    let total_count = Memo::new(move |_| {
-                                        all_subtasks.get().len()
-                                    });
-                                    let default_project_signal =
-                                        Signal::derive(move || project_id);
-
-                                    view! {
-                                        <div class="ml-6">
-                                            <TraversableTaskList
-                                                root_task_ids=subtask_ids
-                                                show_completed=subtask_show_completed
-                                                scoped=true
-                                                item_config=subtask_item_config
-                                                is_loaded=Signal::derive(|| true)
-                                                on_task_click=Callback::new(
-                                                    move |id| {
-                                                        store.navigate_to_subtask(id)
-                                                    },
-                                                )
-                                                on_reorder=Callback::new(
-                                                    move |(id, key, parent)| {
-                                                        app_store
-                                                            .tasks
-                                                            .reorder_task(id, key, parent)
-                                                    },
-                                                )
-                                                default_project_id=default_project_signal
-                                                empty_message="No subtasks."
-                                                allow_reorder=true
-                                                cursor_task_id=subtask_cursor
-                                            />
-                                            // Inline task input for mouse-friendly subtask creation
-                                            <Show when=move || show_inline_input.get()>
-                                                <InlineTaskInput
-                                                    parent_id=task_id
-                                                    value=input_value
-                                                    on_created=Callback::new(
-                                                        move |id| {
-                                                            extra_visible_ids.update(|ids| {
-                                                                if !ids.contains(&id) {
-                                                                    ids.push(id);
-                                                                }
-                                                            });
-                                                        },
-                                                    )
-                                                    on_close=Callback::new(
-                                                        move |()| {
-                                                            set_show_inline_input.set(false);
-                                                        },
-                                                    )
-                                                />
-                                            </Show>
-                                            <Show when=move || !show_inline_input.get()>
-                                                <button
-                                                    class="my-3 text-xs text-accent \
-                                                           hover:text-accent-hover \
-                                                           hover:underline cursor-pointer \
-                                                           transition-colors"
-                                                    on:click=move |_| {
-                                                        set_show_inline_input.set(true);
+                                <div class="ml-6">
+                                    <TraversableTaskList
+                                        root_task_ids=subtask_ids
+                                        show_completed=subtask_show_completed
+                                        scoped=true
+                                        item_config=subtask_item_config
+                                        is_loaded=Signal::derive(|| true)
+                                        on_task_click=Callback::new(
+                                            move |id| {
+                                                ctrl.navigate_to_subtask(id)
+                                            },
+                                        )
+                                        on_reorder=Callback::new(
+                                            move |(id, key, parent)| {
+                                                ctrl.reorder_task(id, key, parent)
+                                            },
+                                        )
+                                        default_project_id=default_project_signal
+                                        empty_message="No subtasks."
+                                        allow_reorder=true
+                                        cursor_task_id=subtask_cursor
+                                    />
+                                    // Inline task input
+                                    <Show when=move || show_inline_input.get()>
+                                        <InlineTaskInput
+                                            parent_id=task_id
+                                            value=input_value
+                                            on_created=Callback::new(
+                                                move |id| {
+                                                    ctrl.track_created_subtask(id);
+                                                },
+                                            )
+                                            on_close=Callback::new(
+                                                move |()| {
+                                                    set_show_inline_input.set(false);
+                                                },
+                                            )
+                                        />
+                                    </Show>
+                                    <Show when=move || !show_inline_input.get()>
+                                        <button
+                                            class="my-3 text-xs text-accent \
+                                                   hover:text-accent-hover \
+                                                   hover:underline cursor-pointer \
+                                                   transition-colors"
+                                            on:click=move |_| {
+                                                set_show_inline_input.set(true);
+                                            }
+                                        >
+                                            "+ Add subtask"
+                                        </button>
+                                    </Show>
+                                    // Toggle bar
+                                    <Show when=move || {
+                                        completed_count.get() > 0usize
+                                    }>
+                                        <div class="py-1 flex items-center \
+                                                    gap-2 text-xs">
+                                            <button
+                                                class="text-accent \
+                                                       hover:text-accent-hover \
+                                                       hover:underline \
+                                                       cursor-pointer \
+                                                       transition-colors"
+                                                on:click=move |_| {
+                                                    subtask_show_completed
+                                                        .update(|v| *v = !*v);
+                                                }
+                                            >
+                                                {move || {
+                                                    if subtask_show_completed.get() {
+                                                        "Hide Completed".to_string()
+                                                    } else {
+                                                        format!(
+                                                            "Show Completed ({})",
+                                                            completed_count.get(),
+                                                        )
                                                     }
-                                                >
-                                                    "+ Add subtask"
-                                                </button>
-                                            </Show>
-                                            // Toggle bar
-                                            <Show when=move || {
-                                                completed_count.get() > 0usize
-                                            }>
-                                                <div class="py-1 flex items-center \
-                                                            gap-2 text-xs">
-                                                    <button
-                                                        class="text-accent \
-                                                               hover:text-accent-hover \
-                                                               hover:underline \
-                                                               cursor-pointer \
-                                                               transition-colors"
-                                                        on:click=move |_| {
-                                                            subtask_show_completed
-                                                                .update(|v| *v = !*v);
-                                                        }
-                                                    >
-                                                        {move || {
-                                                            if subtask_show_completed.get() {
-                                                                "Hide Completed".to_string()
-                                                            } else {
-                                                                format!(
-                                                                    "Show Completed ({})",
-                                                                    completed_count.get(),
-                                                                )
-                                                            }
-                                                        }}
-                                                    </button>
-                                                    <span class="text-text-tertiary">
-                                                        {move || format!(
-                                                            "Total: {}",
-                                                            total_count.get(),
-                                                        )}
-                                                    </span>
-                                                </div>
-                                            </Show>
+                                                }}
+                                            </button>
+                                            <span class="text-text-tertiary">
+                                                {move || format!(
+                                                    "Total: {}",
+                                                    total_count.get(),
+                                                )}
+                                            </span>
                                         </div>
-                                    }
-                                }
+                                    </Show>
+                                </div>
                             </div>
 
                             // Right sidebar
@@ -409,11 +359,11 @@ pub fn TaskDetailModalView(
                                         project_title=project_title.clone()
                                         on_set_project=Callback::new(
                                             move |(_task_id, project_id): (i64, i64)| {
-                                                store.set_project(project_id)
+                                                ctrl.set_project(project_id)
                                             },
                                         )
                                         on_clear_project=Callback::new(
-                                            move |_id: i64| store.clear_project(),
+                                            move |_id: i64| ctrl.clear_project(),
                                         )
                                         always_visible=true
                                     />
@@ -426,7 +376,7 @@ pub fn TaskDetailModalView(
                                         tags=tags.clone()
                                         on_set_tags=Callback::new(
                                             move |(_task_id, tags): (i64, Vec<String>)| {
-                                                store.set_tags(tags)
+                                                ctrl.set_tags(tags)
                                             },
                                         )
                                         always_visible=true
@@ -440,11 +390,11 @@ pub fn TaskDetailModalView(
                                         start_at=start_at
                                         on_set_start_at=Callback::new(
                                             move |(_id, start_at): (i64, String)| {
-                                                store.set_start_at(start_at)
+                                                ctrl.set_start_at(start_at)
                                             },
                                         )
                                         on_clear_start_at=Callback::new(
-                                            move |_id: i64| store.clear_start_at(),
+                                            move |_id: i64| ctrl.clear_start_at(),
                                         )
                                         always_visible=true
                                     />
@@ -454,7 +404,12 @@ pub fn TaskDetailModalView(
                                 <SidebarRow label="Due date">
                                     <DueDatePicker
                                         due_date=due_date
-                                        store=store
+                                        on_set=Callback::new(
+                                            move |val: String| ctrl.set_due_date(val),
+                                        )
+                                        on_clear=Callback::new(
+                                            move |()| ctrl.clear_due_date(),
+                                        )
                                     />
                                 </SidebarRow>
 
@@ -464,19 +419,19 @@ pub fn TaskDetailModalView(
                                         recurrence_type=recurrence_type
                                         recurrence_rule=recurrence_rule.clone()
                                         on_click=Callback::new(move |()| {
-                                            on_recurrence_open.run(());
+                                            ctrl.open_recurrence_modal();
                                         })
                                     />
-                                    <Show when=move || show_recurrence_modal.get()>
+                                    <Show when=move || ctrl.show_recurrence_modal()>
                                         <RecurrenceModal
                                             recurrence_type=recurrence_type
                                             recurrence_rule=recurrence_rule.clone()
                                             on_save=Callback::new(move |(rt, rr)| {
-                                                store.set_recurrence(rt, rr);
-                                                on_recurrence_close.run(());
+                                                ctrl.set_recurrence(rt, rr);
+                                                ctrl.close_recurrence_modal();
                                             })
                                             on_close=Callback::new(move |()| {
-                                                on_recurrence_close.run(());
+                                                ctrl.close_recurrence_modal();
                                             })
                                         />
                                     </Show>
@@ -486,7 +441,9 @@ pub fn TaskDetailModalView(
                                 <SidebarRow label="Seq. limit">
                                     <SequentialLimitInput
                                         sequential_limit=sequential_limit
-                                        store=store
+                                        on_change=Callback::new(
+                                            move |n: i16| ctrl.set_sequential_limit(n),
+                                        )
                                     />
                                 </SidebarRow>
                             </div>
@@ -513,7 +470,8 @@ fn SidebarRow(label: &'static str, children: Children) -> impl IntoView {
 #[component]
 fn DueDatePicker(
     due_date: Option<chrono::NaiveDate>,
-    store: TaskDetailModalStore,
+    on_set: Callback<String>,
+    on_clear: Callback<()>,
 ) -> impl IntoView {
     let display = due_date.map(|d| d.format("%Y-%m-%d").to_string());
 
@@ -528,7 +486,7 @@ fn DueDatePicker(
                 on:change=move |ev| {
                     let val = event_target_value(&ev);
                     if !val.is_empty() {
-                        store.set_due_date(val);
+                        on_set.run(val);
                     }
                 }
             />
@@ -537,7 +495,7 @@ fn DueDatePicker(
                     <button
                         class="p-0.5 text-text-tertiary hover:text-text-primary \
                                transition-colors flex-shrink-0"
-                        on:click=move |_| store.clear_due_date()
+                        on:click=move |_| on_clear.run(())
                         title="Clear due date"
                     >
                         <Icon kind=IconKind::Close class="w-3 h-3"/>
@@ -576,7 +534,7 @@ fn RecurrenceSidebarButton(
 }
 
 #[component]
-fn SequentialLimitInput(sequential_limit: i16, store: TaskDetailModalStore) -> impl IntoView {
+fn SequentialLimitInput(sequential_limit: i16, on_change: Callback<i16>) -> impl IntoView {
     let (value, set_value) = signal(sequential_limit.to_string());
 
     view! {
@@ -595,7 +553,7 @@ fn SequentialLimitInput(sequential_limit: i16, store: TaskDetailModalStore) -> i
                 let val = event_target_value(&ev);
                 if let Ok(n) = val.parse::<i16>() {
                     if n >= 1 {
-                        store.set_sequential_limit(n);
+                        on_change.run(n);
                     }
                 }
             }
