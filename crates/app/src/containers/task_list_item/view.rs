@@ -4,10 +4,10 @@ use wasm_bindgen::JsCast;
 use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::date_picker::DateTimePicker;
 use crate::components::drag_drop::{DragDropContext, DropZone};
-use crate::components::task_meta::TaskMeta;
 use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
 use crate::containers::task_checkbox::TaskCheckbox;
+use crate::containers::task_meta::TaskMeta;
 use north_dto::Task;
 use north_ui::{DropdownItem, DropdownMenu, Icon, IconKind};
 
