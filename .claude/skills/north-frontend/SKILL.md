@@ -12,32 +12,15 @@ This skill covers styling, accessibility, component architecture, and Tailwind v
 
 ## 1. Component Architecture
 
-### 1.1 Container / Controller / View Pattern
+### 1.1 Component Types
 
-Pages and complex components follow a strict separation:
+- **Containers** (`containers/`) — Complex widgets connected to stores and repositories. Use controllers (view-model pattern) to orchestrate stores, repos, and domain models, preparing callbacks and reactive data for views. Prefer passing destructured controller fields/methods as props into views so views can be rendered independently (e.g. in a storybook) without a controller. Controller state is in-memory — resets when the container unmounts. Files: `controller.rs` (view-model), `view.rs` (pure UI), `container.rs` (wires controllers to views), `mod.rs` (re-exports). **Allowed deps:** stores, repositories, controllers.
+- **Components** (`components/`) — Presentational components not connected to stores or repositories. Compose atoms and HTML with clean, well-typed props interfaces (React-style). **Allowed deps:** props only (signals, memos, callbacks), atoms.
+- **Atoms** (`atoms/`) — Basic building blocks: buttons, inputs, typography, badges. Multi-dimension enum props with `fn classes(self) -> &'static str`. See `docs/UI_KIT.md` for the full catalog. **Allowed deps:** `leptos` only, no dto/store imports.
 
-| File | Responsibility | Allowed dependencies |
-|---|---|---|
-| `container.rs` | Entry point. Wires controller to view with **inline** `Callback` props. No intermediate variables for callbacks. | Stores, controller |
-| `controller.rs` | Business logic, data loading, `Memo` creation, store interaction. | Stores, repositories (via stores) |
-| `view.rs` | Pure rendering. Receives **all** data and handlers as props. Zero business logic. | Props only (signals, memos, callbacks) |
+**Before writing a new container, component, or atom**, read 2–3 existing ones from the corresponding directory for conventions and patterns.
 
-**When to use each decomposition:**
-
-| Complexity | Pattern | Files |
-|---|---|---|
-| Full page with data loading + filtering | Container + Controller + View | 4 files (+ mod.rs) |
-| Complex stateful domain component (pickers, modals, task items) | Container + View | 3 files (+ mod.rs) |
-| Simple presentational component | Single file | 1 file |
-
-### 1.2 Containers vs Components
-
-- **`containers/`** — Complex stateful domain components that wire stores, repositories, and rich interactions (pickers, sidebar, autocomplete, task list item, inline form, detail modal).
-- **`components/`** — Simpler or more presentational components (task list, date picker, layout, filter autocomplete, task meta).
-
-**Decision rule:** If the component manages store interaction, DOM positioning (Popover), or complex state machines, it belongs in `containers/`. If it primarily renders data it receives via props, it belongs in `components/`.
-
-### 1.3 Prop Conventions
+### 1.2 Prop Conventions
 
 ```rust
 // View props — always reactive types
@@ -57,7 +40,7 @@ pub fn InboxView(
 - Use `#[prop(into)]` for flexible signal acceptance. Use `#[prop(optional)]` for optional callbacks.
 - Pickers support `icon_only: bool` prop for compact rendering in task card action bars.
 
-### 1.4 Layer Rules
+### 1.3 Layer Rules
 
 ```
 Page → Store → Repository → Server Function
@@ -70,7 +53,7 @@ View (pure rendering)
 - Views talk to **nothing** — they receive everything via props.
 - Context: use `provide_context()` directly in containers. Consume via `expect_context::<T>()` or typed helpers (`use_app_store()`).
 
-### 1.5 Domain Models (repositories crate)
+### 1.4 Domain Models (repositories crate)
 
 Domain models live in `repositories/src/models/`. They convert API DTOs into frontend-friendly structs — unfolding compressed fields (e.g. raw RRULE strings → a `Recurrence` struct) and adding methods that centralize entity logic in one place.
 
@@ -80,11 +63,11 @@ Domain models live in `repositories/src/models/`. They convert API DTOs into fro
 
 Check `repositories/src/models/` when working with frontend data models or creating new ones.
 
-### 1.6 Reactive Callbacks
+### 1.5 Reactive Callbacks
 
 When a `Callback` prop's behavior depends on reactive state (toggles, settings, filters), wrap it in `Signal::derive` → `Signal<Callback<T, R>>`. The derive tracks the dependencies; the inner callback captures their snapshot as plain values. This eliminates the need for a separate "trigger" signal to force re-evaluation. Consumers call `signal.get()` inside a Memo to subscribe, then `callback.run(...)`.
 
-### 1.7 Data Loading
+### 1.6 Data Loading
 
 - Each page owns its data loading — call `refetch()` or create its own `Resource` on mount.
 - `AppLayout` is purely structural (auth guard, context providers, sidebar + main shell). It does NOT pre-fetch data.
@@ -346,28 +329,7 @@ Semantic, multi-dimension prop components in `crates/app/src/atoms/`. Generic UI
 - Variant controls structure (size/weight/transform). Color is always a separate prop
 - Each variant has a default HTML tag. Override with `tag` prop when needed
 
-### 4.1 Text
-
-```rust
-use crate::atoms::{Text, TextVariant, TextColor, TextTag};
-
-<Text variant=TextVariant::HeadingLg>"Inbox"</Text>           // <h1>
-<Text variant=TextVariant::HeadingMd>"Section"</Text>         // <h2>
-<Text variant=TextVariant::TitleMd>{title}</Text>             // task title
-<Text variant=TextVariant::LabelMd color=TextColor::Secondary>"Projects"</Text>  // sidebar
-<Text variant=TextVariant::LabelMd tag=TextTag::Label color=TextColor::Tertiary>"Due date"</Text>
-<Text>"Body text"</Text>                                       // defaults: BodyMd, <span>, Primary
-<Text variant=TextVariant::BodySm color=TextColor::Danger>{overdue_date}</Text>
-<Text variant=TextVariant::CodeMd color=TextColor::Accent>"query"</Text>  // <code>
-<Text truncate=true>{long_text}</Text>
-<Text variant=TextVariant::TitleMd color=TextColor::Tertiary line_through=true>{done_task}</Text>
-```
-
-Variants: `HeadingLg/Md/Sm`, `TitleLg/Md/Sm`, `BodyLg/Md/Sm`, `LabelLg/Md/Sm`, `CodeMd/Sm`.
-Colors: `Primary`, `Secondary`, `Tertiary`, `Accent`, `Danger`, `OnAccent`, `Inherit`.
-Tags: `H1`..`H4`, `P`, `Span`, `Label`, `Code` — only specify when overriding variant's default.
-
-### 4.2 Button Variants (raw patterns, atom pending)
+### 4.1 Button Variants (raw patterns, atom pending)
 
 ```rust
 // Primary action
@@ -391,7 +353,7 @@ class="px-3 py-1.5 text-sm text-danger cursor-pointer \
        transition-colors"
 ```
 
-### 4.3 Form Inputs (raw pattern, atom pending)
+### 4.2 Form Inputs (raw patterns, atom pending)
 
 ```rust
 class="w-full bg-bg-input border border-border rounded px-3 py-1.5 \
@@ -399,13 +361,13 @@ class="w-full bg-bg-input border border-border rounded px-3 py-1.5 \
        focus:outline-none focus:border-accent transition-colors"
 ```
 
-### 4.4 Modal Backdrop
+### 4.3 Modal Backdrop
 
 ```rust
 class="fixed inset-0 z-50 bg-backdrop flex items-center justify-center"
 ```
 
-### 4.5 Sidebar Navigation Item
+### 4.4 Sidebar Navigation Item
 
 ```rust
 class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm \
@@ -413,7 +375,7 @@ class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm \
        hover:bg-bg-tertiary transition-colors"
 ```
 
-### 4.6 Hover-Show Action Buttons (task list items)
+### 4.5 Hover-Show Action Buttons (task list items)
 
 ```rust
 // Container: show children on hover via group
