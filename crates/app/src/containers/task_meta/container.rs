@@ -1,5 +1,6 @@
 use leptos::prelude::*;
-use north_dto::{RecurrenceRule, RecurrenceType, TagInfo};
+use north_dto::TagInfo;
+use north_recurrence::{RecurrenceRule, RecurrenceType};
 
 use super::task_meta_item::TaskMetaItemVariant;
 use super::view::TaskMetaView;

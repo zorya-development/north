@@ -509,14 +509,14 @@ fn DueDatePicker(
 
 #[component]
 fn RecurrenceSidebarButton(
-    recurrence_type: Option<north_dto::RecurrenceType>,
+    recurrence_type: Option<north_recurrence::RecurrenceType>,
     recurrence_rule: Option<String>,
     on_click: Callback<()>,
 ) -> impl IntoView {
     let label = match recurrence_type {
         Some(_) => recurrence_rule
             .as_deref()
-            .and_then(north_dto::RecurrenceRule::parse)
+            .and_then(north_recurrence::RecurrenceRule::parse)
             .map(|r| r.summarize())
             .unwrap_or_else(|| "None".to_string()),
         None => "None".to_string(),

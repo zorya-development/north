@@ -1,7 +1,8 @@
 use chrono::Utc;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use north_dto::{CreateTask, RecurrenceType, Task, UpdateTask};
+use north_dto::{CreateTask, Task, UpdateTask};
+use north_recurrence::RecurrenceType;
 use north_repositories::TaskRepository;
 
 #[derive(Clone, Copy)]

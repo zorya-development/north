@@ -1,14 +1,14 @@
 use leptos::prelude::*;
-use north_dto::{Frequency, RecurrenceType, Weekday};
+use north_recurrence::{Frequency, RecurrenceType, Weekday};
 use north_ui::Modal;
 
 use super::components::{DayCheckbox, PresetChip, RadioChip};
-use super::controller::RecurrenceController;
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
+use crate::libs::ReactiveRecurrenceRule;
 
 #[component]
 pub fn RecurrenceModalView(
-    ctrl: RecurrenceController,
+    ctrl: ReactiveRecurrenceRule,
     on_save: Callback<()>,
     on_remove: Callback<()>,
     on_close: Callback<()>,

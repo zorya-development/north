@@ -1,6 +1,7 @@
 use crate::{ModalStore, TaskStore};
 use leptos::prelude::*;
-use north_dto::{RecurrenceType, Task};
+use north_dto::Task;
+use north_recurrence::RecurrenceType;
 
 #[derive(Clone, Copy)]
 pub struct TaskDetailModalStore {

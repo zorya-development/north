@@ -1747,6 +1747,7 @@ dependencies = [
  "leptos_router",
  "north-core",
  "north-dto",
+ "north-recurrence",
  "north-repositories",
  "north-server-fns",
  "north-stores",
@@ -1771,6 +1772,7 @@ dependencies = [
  "futures-util",
  "north-db",
  "north-dto",
+ "north-recurrence",
  "rrule",
  "serde",
  "serde_json",
@@ -1788,6 +1790,7 @@ dependencies = [
  "diesel-derive-enum",
  "futures-util",
  "north-dto",
+ "north-recurrence",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -1799,8 +1802,16 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "fractional_index",
+ "north-recurrence",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "north-recurrence"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -1863,6 +1874,7 @@ dependencies = [
  "chrono",
  "leptos",
  "north-dto",
+ "north-recurrence",
  "north-repositories",
  "web-sys",
 ]
