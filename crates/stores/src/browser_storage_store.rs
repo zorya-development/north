@@ -3,11 +3,13 @@ use std::collections::HashMap;
 use leptos::prelude::*;
 
 /// Reactive proxy over localStorage.
-/// Each key gets a lazily-created `RwSignal<bool>` initialized from
-/// localStorage. Writes update both the signal and localStorage.
+/// Uses a single `RwSignal<HashMap>` so all reads subscribe to the same
+/// signal — any key change notifies all readers. With only ~5 boolean
+/// flags this is negligible, and it avoids stale per-key signals when
+/// created inside reactive scopes.
 #[derive(Clone, Copy)]
 pub struct BrowserStorageStore {
-    signals: RwSignal<HashMap<String, RwSignal<bool>>>,
+    map: RwSignal<HashMap<String, bool>>,
 }
 
 impl Default for BrowserStorageStore {
@@ -19,41 +21,45 @@ impl Default for BrowserStorageStore {
 impl BrowserStorageStore {
     pub fn new() -> Self {
         Self {
-            signals: RwSignal::new(HashMap::new()),
+            map: RwSignal::new(HashMap::new()),
         }
     }
 
     /// Get a boolean value reactively.
-    /// On first access, reads from localStorage and caches the signal.
+    /// On first access, reads from localStorage and seeds the map.
     pub fn get_bool(&self, key: &str) -> bool {
-        self.signal_for(key).get()
+        self.ensure_loaded(key);
+        self.map.with(|m| m.get(key).copied().unwrap_or(false))
     }
 
-    /// Set a boolean value — updates the reactive signal and localStorage.
+    /// Set a boolean value — updates the reactive map and localStorage.
     pub fn set_bool(&self, key: &str, value: bool) {
-        self.signal_for(key).set(value);
+        self.map.update(|m| {
+            m.insert(key.to_string(), value);
+        });
         Self::write_to_storage(key, value);
     }
 
     /// Toggle a boolean value. Returns the new value.
     pub fn toggle_bool(&self, key: &str) -> bool {
-        let sig = self.signal_for(key);
-        let new_val = !sig.get_untracked();
-        sig.set(new_val);
-        Self::write_to_storage(key, new_val);
+        self.ensure_loaded(key);
+        let current = self
+            .map
+            .with_untracked(|m| m.get(key).copied().unwrap_or(false));
+        let new_val = !current;
+        self.set_bool(key, new_val);
         new_val
     }
 
-    fn signal_for(&self, key: &str) -> RwSignal<bool> {
-        if let Some(sig) = self.signals.with_untracked(|m| m.get(key).copied()) {
-            return sig;
+    /// Seed the key from localStorage if not already present (untracked).
+    fn ensure_loaded(&self, key: &str) {
+        let exists = self.map.with_untracked(|m| m.contains_key(key));
+        if !exists {
+            let val = Self::read_from_storage(key);
+            self.map.update_untracked(|m| {
+                m.insert(key.to_string(), val);
+            });
         }
-        let val = Self::read_from_storage(key);
-        let sig = RwSignal::new(val);
-        self.signals.update_untracked(|m| {
-            m.insert(key.to_string(), sig);
-        });
-        sig
     }
 
     fn read_from_storage(key: &str) -> bool {

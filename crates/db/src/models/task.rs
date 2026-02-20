@@ -60,7 +60,6 @@ pub struct TaskChangeset<'a> {
 
 impl From<TaskRow> for north_dto::Task {
     fn from(row: TaskRow) -> Self {
-        let actionable = row.completed_at.is_none();
         north_dto::Task {
             id: row.id,
             project_id: row.project_id,
@@ -82,7 +81,6 @@ impl From<TaskRow> for north_dto::Task {
             tags: vec![],
             subtask_count: 0,
             completed_subtask_count: 0,
-            actionable,
         }
     }
 }

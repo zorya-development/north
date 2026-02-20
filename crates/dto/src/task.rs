@@ -3,10 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::RecurrenceType;
 
-fn default_true() -> bool {
-    true
-}
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Task {
     pub id: i64,
@@ -33,8 +29,6 @@ pub struct Task {
     pub subtask_count: i64,
     #[serde(default)]
     pub completed_subtask_count: i64,
-    #[serde(default = "default_true")]
-    pub actionable: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -124,7 +118,6 @@ pub struct TaskFilter {
     pub project: Option<i64>,
     pub parent: Option<i64>,
     pub tag: Option<Vec<String>>,
-    pub actionable: Option<bool>,
     pub review_due: Option<bool>,
     pub inbox: Option<bool>,
     pub completed: Option<bool>,

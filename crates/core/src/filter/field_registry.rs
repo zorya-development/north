@@ -29,7 +29,6 @@ impl TaskFieldRegistry {
             tags,          // FilterField::Tags (enriched)
             subtask_count,
             completed_subtask_count,
-            actionable,
         } = task;
     }
 

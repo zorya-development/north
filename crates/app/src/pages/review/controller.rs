@@ -3,7 +3,9 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use north_dto::ProjectStatus;
 use north_repositories::TaskRepository;
-use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskStoreFilter};
+use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskModel, TaskStoreFilter};
+
+use crate::libs::is_actionable;
 
 const HIDE_NON_ACTIONABLE_KEY: &str = "north:hide-non-actionable:review";
 
@@ -16,8 +18,8 @@ pub struct ReviewController {
     pub is_loaded: Signal<bool>,
     pub show_reviewed: (ReadSignal<bool>, WriteSignal<bool>),
     pub hide_non_actionable: Signal<bool>,
-    pub pending_filter: Callback<north_stores::TaskModel, bool>,
-    pub reviewed_filter: Callback<north_stores::TaskModel, bool>,
+    pub pending_filter: Signal<Callback<north_stores::TaskModel, bool>>,
+    pub reviewed_filter: Signal<Callback<north_stores::TaskModel, bool>>,
 }
 
 impl ReviewController {
@@ -102,16 +104,25 @@ impl ReviewController {
         let show_completed = RwSignal::new(false);
         let show_completed_reviewed = RwSignal::new(false);
 
-        let pending_filter = Callback::new(move |task: north_stores::TaskModel| {
-            if task.completed_at.is_some() {
-                show_completed.get()
-            } else {
-                !hide_non_actionable.get() || task.actionable
-            }
+        let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
+
+        let pending_filter = Signal::derive(move || {
+            let hide = hide_non_actionable.get();
+            let show = show_completed.get();
+            Callback::new(move |task: TaskModel| {
+                if task.completed_at.is_some() {
+                    return show;
+                }
+                if !hide {
+                    return true;
+                }
+                is_actionable(&task, &all_tasks.get_untracked())
+            })
         });
 
-        let reviewed_filter = Callback::new(move |task: north_stores::TaskModel| {
-            task.completed_at.is_none() || show_completed_reviewed.get()
+        let reviewed_filter = Signal::derive(move || {
+            let show = show_completed_reviewed.get();
+            Callback::new(move |task: north_stores::TaskModel| task.completed_at.is_none() || show)
         });
 
         Self {

@@ -80,7 +80,11 @@ Domain models live in `repositories/src/models/`. They convert API DTOs into fro
 
 Check `repositories/src/models/` when working with frontend data models or creating new ones.
 
-### 1.6 Data Loading
+### 1.6 Reactive Callbacks
+
+When a `Callback` prop's behavior depends on reactive state (toggles, settings, filters), wrap it in `Signal::derive` → `Signal<Callback<T, R>>`. The derive tracks the dependencies; the inner callback captures their snapshot as plain values. This eliminates the need for a separate "trigger" signal to force re-evaluation. Consumers call `signal.get()` inside a Memo to subscribe, then `callback.run(...)`.
+
+### 1.7 Data Loading
 
 - Each page owns its data loading — call `refetch()` or create its own `Resource` on mount.
 - `AppLayout` is purely structural (auth guard, context providers, sidebar + main shell). It does NOT pre-fetch data.

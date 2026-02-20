@@ -290,7 +290,6 @@ mod tests {
             tags: vec![],
             subtask_count: 0,
             completed_subtask_count: 0,
-            actionable: true,
         }
     }
 

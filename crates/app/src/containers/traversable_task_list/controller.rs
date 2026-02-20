@@ -43,14 +43,15 @@ impl TraversableTaskListController {
         flat: bool,
         scoped: bool,
         cursor_task_id: Option<RwSignal<Option<i64>>>,
-        node_filter: Option<Callback<TaskModel, bool>>,
+        node_filter: Option<Signal<Callback<TaskModel, bool>>>,
     ) -> Self {
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
 
         let flat_nodes = Memo::new(move |_| {
+            let filter = node_filter.map(|s| s.get());
             let roots = root_task_ids.get();
             let tasks = all_tasks.get();
-            let include = |t: &TaskModel| node_filter.map(|f| f.run(t.clone())).unwrap_or(true);
+            let include = |t: &TaskModel| filter.as_ref().map(|f| f.run(t.clone())).unwrap_or(true);
             if flat {
                 flatten_flat(&roots, &tasks, &include)
             } else {

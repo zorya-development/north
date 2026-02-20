@@ -124,12 +124,7 @@ impl TaskService {
             rows
         };
 
-        let mut results = Self::load_with_meta(pool, rows).await?;
-        Self::compute_actionable_batch(pool, &mut results).await?;
-
-        if filter.actionable == Some(true) {
-            results.retain(|t| t.actionable);
-        }
+        let results = Self::load_with_meta(pool, rows).await?;
 
         Ok(results)
     }
@@ -144,11 +139,7 @@ impl TaskService {
             .await
             .optional()?
             .ok_or_else(|| ServiceError::NotFound("Task not found".into()))?;
-        let mut results = Self::load_with_meta(pool, vec![row]).await?;
-
-        if let Some(item) = results.first_mut() {
-            item.actionable = Self::compute_actionable_single(pool, item).await?;
-        }
+        let results = Self::load_with_meta(pool, vec![row]).await?;
 
         results
             .into_iter()
@@ -223,9 +214,6 @@ impl TaskService {
                 .await
                 .ok();
         }
-
-        // Compute actionable for new task
-        task.actionable = Self::compute_actionable_single(pool, &task).await?;
 
         Ok(task)
     }
@@ -785,94 +773,14 @@ impl TaskService {
                 let tags = tags_map.remove(&id).unwrap_or_default();
                 let subtask_count = count_map.get(&id).copied().unwrap_or(0);
                 let completed_subtask_count = completed_count_map.get(&id).copied().unwrap_or(0);
-                let actionable = row.completed_at.is_none();
                 let mut task = Task::from(row);
                 task.project_title = project_title;
                 task.tags = tags;
                 task.subtask_count = subtask_count;
                 task.completed_subtask_count = completed_subtask_count;
-                task.actionable = actionable;
                 task
             })
             .collect())
-    }
-
-    async fn compute_actionable_single(pool: &DbPool, task: &Task) -> ServiceResult<bool> {
-        if task.completed_at.is_some() {
-            return Ok(false);
-        }
-        if let Some(start) = task.start_at {
-            if start.date_naive() > Utc::now().date_naive() {
-                return Ok(false);
-            }
-        }
-        if task.parent_id.is_none() {
-            return Ok(true);
-        }
-
-        let mut conn = pool.get().await?;
-        let parent_id = task.parent_id.unwrap();
-
-        let parent_limit: i16 = tasks::table
-            .filter(tasks::id.eq(parent_id))
-            .select(tasks::sequential_limit)
-            .first(&mut conn)
-            .await
-            .unwrap_or(1);
-
-        let siblings_before: i64 = tasks::table
-            .filter(tasks::parent_id.eq(parent_id))
-            .filter(tasks::completed_at.is_null())
-            .filter(tasks::sort_key.lt(&task.sort_key))
-            .count()
-            .get_result(&mut conn)
-            .await?;
-
-        Ok(siblings_before < parent_limit as i64)
-    }
-
-    async fn compute_actionable_batch(pool: &DbPool, results: &mut [Task]) -> ServiceResult<()> {
-        let today = Utc::now().date_naive();
-
-        let parent_ids: Vec<i64> = results
-            .iter()
-            .filter_map(|r| r.parent_id)
-            .collect::<std::collections::HashSet<_>>()
-            .into_iter()
-            .collect();
-
-        let _parent_limits: HashMap<i64, i16> = if !parent_ids.is_empty() {
-            let mut conn = pool.get().await?;
-            tasks::table
-                .filter(tasks::id.eq_any(&parent_ids))
-                .select((tasks::id, tasks::sequential_limit))
-                .load::<(i64, i16)>(&mut conn)
-                .await?
-                .into_iter()
-                .collect()
-        } else {
-            HashMap::new()
-        };
-
-        for item in results.iter_mut() {
-            if item.completed_at.is_some() {
-                item.actionable = false;
-                continue;
-            }
-            if let Some(start) = item.start_at {
-                if start.date_naive() > today {
-                    item.actionable = false;
-                    continue;
-                }
-            }
-            if item.parent_id.is_none() {
-                item.actionable = true;
-                continue;
-            }
-            item.actionable = true;
-        }
-
-        Ok(())
     }
 
     pub async fn review_all(pool: &DbPool, user_id: i64) -> ServiceResult<()> {
@@ -945,7 +853,6 @@ impl TaskService {
             .await?;
 
         let mut results = Self::load_with_meta(pool, rows).await?;
-        Self::compute_actionable_batch(pool, &mut results).await?;
 
         if let Some(ref order_by) = parsed.order_by {
             use crate::filter::dsl::{FilterField, SortDirection};

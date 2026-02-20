@@ -1,5 +1,7 @@
 use leptos::prelude::*;
-use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskStoreFilter};
+use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskModel, TaskStoreFilter};
+
+use crate::libs::is_actionable;
 
 const HIDE_NON_ACTIONABLE_KEY: &str = "north:hide-non-actionable:all_tasks";
 
@@ -11,7 +13,7 @@ pub struct AllTasksController {
     pub completed_count: Memo<usize>,
     pub is_loaded: Signal<bool>,
     pub hide_non_actionable: Signal<bool>,
-    pub node_filter: Callback<north_stores::TaskModel, bool>,
+    pub node_filter: Signal<Callback<north_stores::TaskModel, bool>>,
     app_store: AppStore,
 }
 
@@ -45,12 +47,20 @@ impl AllTasksController {
         let hide_non_actionable =
             Signal::derive(move || app_store.browser_storage.get_bool(HIDE_NON_ACTIONABLE_KEY));
 
-        let node_filter = Callback::new(move |task: north_stores::TaskModel| {
-            if task.completed_at.is_some() {
-                show_completed.get()
-            } else {
-                !hide_non_actionable.get() || task.actionable
-            }
+        let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
+
+        let node_filter = Signal::derive(move || {
+            let hide = hide_non_actionable.get();
+            let show = show_completed.get();
+            Callback::new(move |task: TaskModel| {
+                if task.completed_at.is_some() {
+                    return show;
+                }
+                if !hide {
+                    return true;
+                }
+                is_actionable(&task, &all_tasks.get_untracked())
+            })
         });
 
         Self {

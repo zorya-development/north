@@ -44,7 +44,6 @@ pub struct TaskModel {
     pub tags: Vec<TagInfo>,
     pub subtask_count: i64,
     pub completed_subtask_count: i64,
-    pub actionable: bool,
 }
 
 impl From<Task> for TaskModel {
@@ -79,7 +78,6 @@ impl From<Task> for TaskModel {
             tags: t.tags,
             subtask_count: t.subtask_count,
             completed_subtask_count: t.completed_subtask_count,
-            actionable: t.actionable,
         }
     }
 }
@@ -110,7 +108,6 @@ mod tests {
             tags: vec![],
             subtask_count: 0,
             completed_subtask_count: 0,
-            actionable: true,
         }
     }
 
