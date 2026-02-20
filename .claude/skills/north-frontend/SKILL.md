@@ -14,9 +14,13 @@ This skill covers styling, accessibility, component architecture, and Tailwind v
 
 ### 1.1 Component Types
 
-- **Containers** (`containers/`) — Complex widgets connected to stores and repositories. Use controllers (view-model pattern) to orchestrate stores, repos, and domain models, preparing callbacks and reactive data for views. Prefer passing destructured controller fields/methods as props into views so views can be rendered independently (e.g. in a storybook) without a controller. Controller state is in-memory — resets when the container unmounts. Files: `controller.rs` (view-model), `view.rs` (pure UI), `container.rs` (wires controllers to views), `mod.rs` (re-exports). **Allowed deps:** stores, repositories, controllers.
+- **Containers** (`containers/`) — Complex widgets connected to stores and repositories. Use controllers (view-model pattern) to orchestrate stores, repos, and domain models, preparing callbacks and reactive data for views. Prefer passing destructured controller fields/methods as props into views so views can be rendered independently (e.g. in a storybook) without a controller. Controller state is in-memory — resets when the container unmounts. Files: `controller.rs` (view-model), `view.rs` (pure UI), `container.rs` (wires controllers to views), `mod.rs` (re-exports), `components/` (optional subdirectory for sub-components extracted from the view). **Allowed deps:** stores, repositories, controllers.
 - **Components** (`components/`) — Presentational components not connected to stores or repositories. Compose atoms and HTML with clean, well-typed props interfaces (React-style). **Allowed deps:** props only (signals, memos, callbacks), atoms.
 - **Atoms** (`atoms/`) — Basic building blocks: buttons, inputs, typography, badges. Multi-dimension enum props with `fn classes(self) -> &'static str`. See `docs/UI_KIT.md` for the full catalog. **Allowed deps:** `leptos` only, no dto/store imports.
+
+**One component per file.** Never place multiple `#[component]` definitions in a single file. Extract each component into its own file — containers use `{container}/components/` for sub-components, top-level components use `components/` with one file per component and a `mod.rs` re-export.
+
+**Before writing any view code**, check `crates/app/src/atoms/` and `docs/UI_KIT.md` for existing atoms that cover your need. Use atoms instead of hand-rolling Tailwind classes. Only fall back to raw HTML+Tailwind when no atom exists yet.
 
 **Before writing a new container, component, or atom**, read 2–3 existing ones from the corresponding directory for conventions and patterns.
 
@@ -125,6 +129,8 @@ The project uses a three-layer theme pattern in `style/main.css`:
 - Font families: `font-sans` (Inter), `font-mono` (JetBrains Mono, for code)
 
 ### 2.5 Interaction States
+
+**Every button and clickable element MUST have `cursor-pointer` and visible hover feedback.** Tailwind v4 defaults buttons to `cursor: default`, so this is never optional. No exceptions — if it's clickable, it gets `cursor-pointer` + a hover state change + `transition-colors`.
 
 Every interactive element MUST have visible state transitions:
 
