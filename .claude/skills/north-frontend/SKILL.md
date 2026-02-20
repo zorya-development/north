@@ -72,46 +72,13 @@ View (pure rendering)
 
 ### 1.5 Domain Models (repositories crate)
 
-The repositories crate defines domain models that the frontend (stores, controllers) works with. These wrap DTO types with parsed/enriched data.
+Domain models live in `repositories/src/models/`. They convert API DTOs into frontend-friendly structs — unfolding compressed fields (e.g. raw RRULE strings → a `Recurrence` struct) and adding methods that centralize entity logic in one place.
 
-**TaskModel** (`repositories/src/models/task_model.rs`) — the primary model used by stores and controllers:
+**When needed:** Writing controllers or store logic that works with data coming from the backend. If you find yourself parsing or interpreting DTO fields in multiple places, that logic belongs in a domain model.
 
-```rust
-pub struct TaskModel {
-    pub id: i64,
-    pub project_id: Option<i64>,
-    pub parent_id: Option<i64>,
-    pub user_id: i64,
-    pub title: String,
-    pub body: Option<String>,
-    pub sort_key: String,
-    pub sequential_limit: i16,
-    pub start_at: Option<DateTime<Utc>>,
-    pub due_date: Option<NaiveDate>,
-    pub completed_at: Option<DateTime<Utc>>,
-    pub reviewed_at: Option<NaiveDate>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub recurrence: Option<Recurrence>,   // Parsed, not raw strings
-    pub project_title: Option<String>,
-    pub tags: Vec<TagInfo>,
-    pub subtask_count: i64,
-    pub completed_subtask_count: i64,
-    pub actionable: bool,
-}
-```
+**Pattern:** `From<Dto>` converts the DTO, optionally unfolding fields into richer types. Methods on the model keep domain logic co-located with the entity.
 
-**Recurrence** — parsed recurrence rule with convenience methods:
-
-```rust
-pub struct Recurrence {
-    pub recurrence_type: RecurrenceType,
-    pub rule: RecurrenceRule,
-}
-// Methods: summarize() → String, rule_string() → String
-```
-
-`TaskModel` is constructed via `From<Task>` (DTO → domain model). Other repositories return DTOs directly (`Project`, `Tag`, `SavedFilter`, `UserSettings`).
+Check `repositories/src/models/` when working with frontend data models or creating new ones.
 
 ### 1.6 Data Loading
 
