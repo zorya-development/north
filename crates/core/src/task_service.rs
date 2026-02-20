@@ -7,8 +7,8 @@ use north_db::models::{NewTask, NewTaskTag, TagRow, TaskChangeset, TaskRow};
 use north_db::schema::{projects, tags, task_tags, tasks, users};
 use north_db::sql_types::RecurrenceTypeMapping;
 use north_db::DbPool;
+use north_dto::RecurrenceType;
 use north_dto::{CreateTask, TagInfo, Task, TaskFilter, UpdateTask, UserSettings};
-use north_recurrence::RecurrenceType;
 
 use crate::{ServiceError, ServiceResult};
 
@@ -690,7 +690,7 @@ impl TaskService {
     }
 
     fn next_after_completion_date(rrule_str: &str) -> ServiceResult<Option<chrono::DateTime<Utc>>> {
-        let rule = match north_recurrence::RecurrenceRule::parse(rrule_str) {
+        let rule = match north_dto::RecurrenceRule::parse(rrule_str) {
             Some(r) => r,
             None => return Ok(None),
         };
@@ -698,10 +698,10 @@ impl TaskService {
         let interval = rule.interval as i64;
         let now = Utc::now();
         let next = match rule.freq {
-            north_recurrence::Frequency::Daily => now + chrono::Duration::days(interval),
-            north_recurrence::Frequency::Weekly => now + chrono::Duration::weeks(interval),
-            north_recurrence::Frequency::Monthly => now + chrono::Duration::days(interval * 30),
-            north_recurrence::Frequency::Yearly => now + chrono::Duration::days(interval * 365),
+            north_dto::Frequency::Daily => now + chrono::Duration::days(interval),
+            north_dto::Frequency::Weekly => now + chrono::Duration::weeks(interval),
+            north_dto::Frequency::Monthly => now + chrono::Duration::days(interval * 30),
+            north_dto::Frequency::Yearly => now + chrono::Duration::days(interval * 365),
         };
 
         Ok(Some(next))

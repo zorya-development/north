@@ -9,7 +9,6 @@ hydrate = ["north-repositories/hydrate", "dep:web-sys"]
 
 [dependencies]
 north-dto = { workspace = true }
-north-recurrence = { workspace = true }
 north-repositories = { workspace = true }
 leptos = "0.7"
 chrono = { workspace = true }

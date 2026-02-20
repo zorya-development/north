@@ -1,14 +1,14 @@
 use leptos::prelude::*;
-use north_recurrence::{Frequency, RecurrenceType, Weekday};
+use north_dto::{Frequency, RecurrenceType, Weekday};
 use north_ui::Modal;
 
 use super::components::{DayCheckbox, PresetChip, RadioChip};
+use super::controller::RecurrenceModalController;
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
-use crate::libs::ReactiveRecurrenceRule;
 
 #[component]
 pub fn RecurrenceModalView(
-    ctrl: ReactiveRecurrenceRule,
+    ctrl: RecurrenceModalController,
     on_save: Callback<()>,
     on_remove: Callback<()>,
     on_close: Callback<()>,
@@ -21,19 +21,19 @@ pub fn RecurrenceModalView(
         }
     });
 
-    let active_preset = ctrl.active_preset();
-    let freq = ctrl.freq();
-    let interval = ctrl.interval();
+    let active_preset = ctrl.rule.active_preset();
+    let freq = ctrl.rule.freq();
+    let interval = ctrl.rule.interval();
     let is_weekly = Signal::derive(move || freq.get() == Frequency::Weekly);
     let is_monthly = Signal::derive(move || freq.get() == Frequency::Monthly);
     let is_yearly = Signal::derive(move || freq.get() == Frequency::Yearly);
     let show_monthday = Signal::derive(move || is_monthly.get() || is_yearly.get());
     let is_plural = Signal::derive(move || interval.get() != 1);
-    let is_custom = ctrl.is_custom();
-    let summary = ctrl.summary();
-    let time_str = ctrl.time_str();
-    let monthday_str = ctrl.by_month_day_str();
-    let month_str = ctrl.by_month_str();
+    let is_custom = ctrl.rule.is_custom();
+    let summary = ctrl.rule.summary();
+    let time_str = ctrl.rule.time_str();
+    let monthday_str = ctrl.rule.by_month_day_str();
+    let month_str = ctrl.rule.by_month_str();
 
     view! {
         <Modal open=open_read set_open=open_write>
@@ -45,27 +45,27 @@ pub fn RecurrenceModalView(
                     <PresetChip
                         label="Daily"
                         active=Signal::derive(move || active_preset.get() == "daily")
-                        on_click=Callback::new(move |()| ctrl.select_preset("daily"))
+                        on_click=Callback::new(move |()| ctrl.rule.select_preset("daily"))
                     />
                     <PresetChip
                         label="Weekly"
                         active=Signal::derive(move || active_preset.get() == "weekly")
-                        on_click=Callback::new(move |()| ctrl.select_preset("weekly"))
+                        on_click=Callback::new(move |()| ctrl.rule.select_preset("weekly"))
                     />
                     <PresetChip
                         label="Monthly"
                         active=Signal::derive(move || active_preset.get() == "monthly")
-                        on_click=Callback::new(move |()| ctrl.select_preset("monthly"))
+                        on_click=Callback::new(move |()| ctrl.rule.select_preset("monthly"))
                     />
                     <PresetChip
                         label="Yearly"
                         active=Signal::derive(move || active_preset.get() == "yearly")
-                        on_click=Callback::new(move |()| ctrl.select_preset("yearly"))
+                        on_click=Callback::new(move |()| ctrl.rule.select_preset("yearly"))
                     />
                     <PresetChip
                         label="Custom"
                         active=Signal::derive(move || active_preset.get() == "custom")
-                        on_click=Callback::new(move |()| ctrl.select_preset("custom"))
+                        on_click=Callback::new(move |()| ctrl.rule.select_preset("custom"))
                     />
                 </div>
 
@@ -84,7 +84,7 @@ pub fn RecurrenceModalView(
                             prop:value=move || interval.get().to_string()
                             on:input=move |ev| {
                                 if let Ok(n) = event_target_value(&ev).parse::<u32>() {
-                                    ctrl.set_interval(n);
+                                    ctrl.rule.set_interval(n);
                                 }
                             }
                             class="w-16 bg-bg-input border border-border \
@@ -100,7 +100,7 @@ pub fn RecurrenceModalView(
                                    focus:border-accent"
                             prop:value=move || freq.get().code()
                             on:change=move |ev| {
-                                ctrl.set_freq_from_code(&event_target_value(&ev));
+                                ctrl.rule.set_freq_from_code(&event_target_value(&ev));
                             }
                         >
                             <option value="DAILY">
@@ -125,13 +125,13 @@ pub fn RecurrenceModalView(
                         {Weekday::ALL
                             .into_iter()
                             .map(|day| {
-                                let selected = ctrl.is_day_selected(day);
+                                let selected = ctrl.rule.is_day_selected(day);
                                 view! {
                                     <DayCheckbox
                                         label=day.label()
                                         selected=selected
                                         on_toggle=Callback::new(move |()| {
-                                            ctrl.toggle_day(day);
+                                            ctrl.rule.toggle_day(day);
                                         })
                                     />
                                 }
@@ -158,7 +158,7 @@ pub fn RecurrenceModalView(
                                    focus:border-accent"
                             prop:value=move || month_str.get()
                             on:change=move |ev| {
-                                ctrl.set_month(&event_target_value(&ev));
+                                ctrl.rule.set_month(&event_target_value(&ev));
                             }
                         >
                             <option value="">"—"</option>
@@ -196,7 +196,7 @@ pub fn RecurrenceModalView(
                                    focus:border-accent"
                             prop:value=move || monthday_str.get()
                             on:change=move |ev| {
-                                ctrl.set_month_day(&event_target_value(&ev));
+                                ctrl.rule.set_month_day(&event_target_value(&ev));
                             }
                         >
                             <option value="">"—"</option>
@@ -229,7 +229,7 @@ pub fn RecurrenceModalView(
                             type="time"
                             prop:value=move || time_str.get()
                             on:input=move |ev| {
-                                ctrl.set_time(&event_target_value(&ev));
+                                ctrl.rule.set_time(&event_target_value(&ev));
                             }
                             class="bg-bg-input border border-border \
                                    rounded px-3 py-1.5 text-sm \
@@ -240,7 +240,7 @@ pub fn RecurrenceModalView(
                             variant=TextVariant::BodySm
                             color=TextColor::Tertiary
                         >
-                            {move || ctrl.timezone.get()}
+                            {move || ctrl.rule.timezone.get()}
                         </Text>
                     </div>
                 </div>
@@ -259,11 +259,11 @@ pub fn RecurrenceModalView(
                         <RadioChip
                             label="From due date"
                             active=Signal::derive(move || {
-                                ctrl.recurrence_type.get()
+                                ctrl.rule.recurrence_type.get()
                                     == RecurrenceType::Scheduled
                             })
                             on_click=Callback::new(move |()| {
-                                ctrl.set_recurrence_type(
+                                ctrl.rule.set_recurrence_type(
                                     RecurrenceType::Scheduled,
                                 );
                             })
@@ -271,11 +271,11 @@ pub fn RecurrenceModalView(
                         <RadioChip
                             label="After completion"
                             active=Signal::derive(move || {
-                                ctrl.recurrence_type.get()
+                                ctrl.rule.recurrence_type.get()
                                     == RecurrenceType::AfterCompletion
                             })
                             on_click=Callback::new(move |()| {
-                                ctrl.set_recurrence_type(
+                                ctrl.rule.set_recurrence_type(
                                     RecurrenceType::AfterCompletion,
                                 );
                             })

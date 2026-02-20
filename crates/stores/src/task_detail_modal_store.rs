@@ -1,6 +1,6 @@
 use crate::{ModalStore, TaskStore};
 use leptos::prelude::*;
-use north_recurrence::RecurrenceType;
+use north_dto::RecurrenceType;
 use north_repositories::TaskModel;
 
 #[derive(Clone, Copy)]

@@ -2,7 +2,7 @@ use chrono::Utc;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use north_dto::ProjectStatus;
-use north_repositories::{SettingsRepository, TaskRepository};
+use north_repositories::TaskRepository;
 use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskStoreFilter};
 
 const HIDE_NON_ACTIONABLE_KEY: &str = "north:hide-non-actionable:review";
@@ -25,16 +25,7 @@ impl ReviewController {
         let task_detail_modal_store = app_store.task_detail_modal;
         let show_reviewed = signal(false);
 
-        // Load review interval from user settings (Effect runs client-only,
-        // avoiding spawn_local panic during SSR).
-        let review_interval = RwSignal::new(7_i64);
-        Effect::new(move || {
-            spawn_local(async move {
-                if let Ok(settings) = SettingsRepository::get().await {
-                    review_interval.set(settings.review_interval_days as i64);
-                }
-            });
-        });
+        let review_interval = app_store.settings.review_interval_days();
 
         // All active top-level tasks
         let all_active = app_store.tasks.filtered(TaskStoreFilter {

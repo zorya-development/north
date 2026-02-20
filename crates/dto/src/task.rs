@@ -1,7 +1,7 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 
-use north_recurrence::RecurrenceType;
+use crate::RecurrenceType;
 
 fn default_true() -> bool {
     true

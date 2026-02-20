@@ -1,5 +1,7 @@
 use leptos::prelude::*;
 
+use north_stores::Recurrence;
+
 use super::controller::TaskDetailModalController;
 use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::date_picker::DateTimePicker;
@@ -422,9 +424,14 @@ pub fn TaskDetailModalView(
                                         })
                                     />
                                     <Show when=move || ctrl.show_recurrence_modal()>
+                                        {
+                                            let (rec_type, rec_rule) = recurrence.as_ref()
+                                                .map(|r| (r.recurrence_type, r.rule_string()))
+                                                .unwrap_or_else(Recurrence::default_rule);
+                                            view! {
                                         <RecurrenceModal
-                                            recurrence_type={recurrence.as_ref().map(|r| r.recurrence_type)}
-                                            recurrence_rule={recurrence.as_ref().map(|r| r.rule_string())}
+                                            recurrence_type=Some(rec_type)
+                                            recurrence_rule=Some(rec_rule)
                                             on_save=Callback::new(move |(rt, rr)| {
                                                 ctrl.set_recurrence(rt, rr);
                                                 ctrl.close_recurrence_modal();
@@ -433,6 +440,8 @@ pub fn TaskDetailModalView(
                                                 ctrl.close_recurrence_modal();
                                             })
                                         />
+                                            }
+                                        }
                                     </Show>
                                 </SidebarRow>
 

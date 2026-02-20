@@ -1,6 +1,6 @@
 use chrono::{DateTime, NaiveDate, Utc};
+use north_dto::{RecurrenceRule, RecurrenceType};
 use north_dto::{TagInfo, Task};
-use north_recurrence::{RecurrenceRule, RecurrenceType};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Recurrence {
@@ -15,6 +15,11 @@ impl Recurrence {
 
     pub fn rule_string(&self) -> String {
         self.rule.to_rrule_string()
+    }
+
+    pub fn default_rule() -> (RecurrenceType, String) {
+        let rule = RecurrenceRule::default();
+        (RecurrenceType::Scheduled, rule.to_rrule_string())
     }
 }
 
@@ -125,7 +130,7 @@ mod tests {
         let model = TaskModel::from(dto);
         let rec = model.recurrence.expect("should have recurrence");
         assert_eq!(rec.recurrence_type, RecurrenceType::Scheduled);
-        assert_eq!(rec.rule.freq, north_recurrence::Frequency::Daily);
+        assert_eq!(rec.rule.freq, north_dto::Frequency::Daily);
         assert_eq!(rec.summarize(), "Every day at 9 AM");
         assert_eq!(
             rec.rule_string(),

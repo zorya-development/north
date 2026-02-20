@@ -1,7 +1,6 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use north_dto::UpdateSettings;
-use north_repositories::SettingsRepository;
 use north_stores::status_bar_store::StatusBarVariant;
 use north_stores::use_app_store;
 
@@ -14,24 +13,12 @@ pub struct SettingsController {
 
 impl SettingsController {
     pub fn new() -> Self {
-        let interval = signal(String::new());
-        let timezone = signal("UTC".to_string());
-        let loaded = RwSignal::new(false);
+        let app_store = use_app_store();
+        let current = app_store.settings.get();
 
-        let set_interval = interval.1;
-        let set_timezone = timezone.1;
-        // Effect runs client-only, avoiding spawn_local panic during SSR.
-        Effect::new(move || {
-            spawn_local(async move {
-                if let Ok(settings) = SettingsRepository::get().await {
-                    set_interval.set(settings.review_interval_days.to_string());
-                    set_timezone.set(settings.timezone);
-                }
-                loaded.set(true);
-            });
-        });
-
-        let is_loaded = Signal::derive(move || loaded.get());
+        let interval = signal(current.review_interval_days.to_string());
+        let timezone = signal(current.timezone);
+        let is_loaded = Signal::derive(move || true);
 
         Self {
             interval,
@@ -43,7 +30,7 @@ impl SettingsController {
     pub fn save(&self) {
         let interval_str = self.interval.0.get_untracked();
         let tz = self.timezone.0.get_untracked();
-        let status_bar = use_app_store().status_bar;
+        let app_store = use_app_store();
 
         if let Ok(days) = interval_str.parse::<i16>() {
             if days >= 1 {
@@ -53,8 +40,10 @@ impl SettingsController {
                         timezone: Some(tz),
                         ..Default::default()
                     };
-                    if SettingsRepository::update(input).await.is_ok() {
-                        status_bar.notify(StatusBarVariant::Success, "Settings saved");
+                    if app_store.settings.update_async(input).await {
+                        app_store
+                            .status_bar
+                            .notify(StatusBarVariant::Success, "Settings saved");
                     }
                 });
             }

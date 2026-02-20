@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_recurrence::RecurrenceType;
+use north_dto::RecurrenceType;
 use north_stores::{
     AppStore, IdFilter, ModalStore, TaskDetailModalStore, TaskModel, TaskStoreFilter,
 };

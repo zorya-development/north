@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_recurrence::{Frequency, RecurrenceRule, RecurrenceType, Weekday};
+use north_dto::{Frequency, RecurrenceRule, RecurrenceType, Weekday};
 
 #[derive(Clone, Copy)]
 pub struct ReactiveRecurrenceRule {

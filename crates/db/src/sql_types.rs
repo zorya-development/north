@@ -90,24 +90,20 @@ pub enum RecurrenceTypeMapping {
     AfterCompletion,
 }
 
-impl From<RecurrenceTypeMapping> for north_recurrence::RecurrenceType {
+impl From<RecurrenceTypeMapping> for north_dto::RecurrenceType {
     fn from(val: RecurrenceTypeMapping) -> Self {
         match val {
-            RecurrenceTypeMapping::Scheduled => north_recurrence::RecurrenceType::Scheduled,
-            RecurrenceTypeMapping::AfterCompletion => {
-                north_recurrence::RecurrenceType::AfterCompletion
-            }
+            RecurrenceTypeMapping::Scheduled => north_dto::RecurrenceType::Scheduled,
+            RecurrenceTypeMapping::AfterCompletion => north_dto::RecurrenceType::AfterCompletion,
         }
     }
 }
 
-impl From<north_recurrence::RecurrenceType> for RecurrenceTypeMapping {
-    fn from(val: north_recurrence::RecurrenceType) -> Self {
+impl From<north_dto::RecurrenceType> for RecurrenceTypeMapping {
+    fn from(val: north_dto::RecurrenceType) -> Self {
         match val {
-            north_recurrence::RecurrenceType::Scheduled => RecurrenceTypeMapping::Scheduled,
-            north_recurrence::RecurrenceType::AfterCompletion => {
-                RecurrenceTypeMapping::AfterCompletion
-            }
+            north_dto::RecurrenceType::Scheduled => RecurrenceTypeMapping::Scheduled,
+            north_dto::RecurrenceType::AfterCompletion => RecurrenceTypeMapping::AfterCompletion,
         }
     }
 }

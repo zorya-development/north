@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 north-dto = { path = "../dto" }
-north-recurrence = { workspace = true }
 diesel = { version = "2.2", features = ["postgres", "chrono", "serde_json"] }
 diesel-async = { version = "0.5", features = ["postgres", "deadpool"] }
 diesel-derive-enum = { version = "2.1", features = ["postgres"] }

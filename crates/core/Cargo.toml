@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 north-db = { path = "../db" }
 north-dto = { path = "../dto" }
-north-recurrence = { workspace = true }
 diesel = { version = "2.2", features = ["postgres", "chrono", "serde_json"] }
 diesel-async = { version = "0.5", features = ["postgres", "deadpool"] }
 futures-util = { version = "0.3", features = ["async-await"] }
