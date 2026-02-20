@@ -1,6 +1,7 @@
 use crate::{ModalStore, TaskStore};
 use leptos::prelude::*;
-use north_dto::Task;
+use north_dto::RecurrenceType;
+use north_repositories::TaskModel;
 
 #[derive(Clone, Copy)]
 pub struct TaskDetailModalStore {
@@ -9,7 +10,7 @@ pub struct TaskDetailModalStore {
     open_task_id: RwSignal<Option<i64>>,
     task_stack: RwSignal<Vec<i64>>,
     task_ids: RwSignal<Vec<i64>>,
-    task_memo: RwSignal<Option<Memo<Option<Task>>>>,
+    task_memo: RwSignal<Option<Memo<Option<TaskModel>>>>,
 }
 
 impl TaskDetailModalStore {
@@ -17,7 +18,7 @@ impl TaskDetailModalStore {
         let open_task_id = RwSignal::new(None::<i64>);
         let task_stack = RwSignal::new(vec![]);
         let task_ids = RwSignal::new(vec![]);
-        let task_memo: RwSignal<Option<Memo<Option<Task>>>> = RwSignal::new(None);
+        let task_memo: RwSignal<Option<Memo<Option<TaskModel>>>> = RwSignal::new(None);
 
         let current_task_id = Self::current_task_id_memo(open_task_id, task_stack);
 
@@ -59,7 +60,7 @@ impl TaskDetailModalStore {
         }
     }
 
-    pub fn task(&self) -> Option<Task> {
+    pub fn task(&self) -> Option<TaskModel> {
         self.task_memo.get().and_then(|memo| memo.get())
     }
 
@@ -207,5 +208,15 @@ impl TaskDetailModalStore {
     pub fn set_sequential_limit(&self, limit: i16) {
         let Some(task) = self.task() else { return };
         self.task_store.set_sequential_limit(task.id, limit);
+    }
+
+    pub fn set_recurrence(
+        &self,
+        recurrence_type: Option<RecurrenceType>,
+        recurrence_rule: Option<String>,
+    ) {
+        let Some(task) = self.task() else { return };
+        self.task_store
+            .set_recurrence(task.id, recurrence_type, recurrence_rule);
     }
 }

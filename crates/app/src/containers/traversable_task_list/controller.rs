@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use north_dto::CreateTask;
-use north_stores::{AppStore, ModalStore, StatusBarVariant, TaskStoreFilter};
+use north_stores::{AppStore, ModalStore, StatusBarVariant, TaskModel, TaskStoreFilter};
 
 use super::tree::*;
 use crate::containers::task_list_item::ItemConfig;
@@ -33,7 +33,6 @@ impl TraversableTaskListController {
         app_store: AppStore,
         modal: ModalStore,
         root_task_ids: Memo<Vec<i64>>,
-        show_completed: RwSignal<bool>,
         show_keybindings_help: RwSignal<bool>,
         on_task_click: Option<Callback<i64>>,
         on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
@@ -44,16 +43,19 @@ impl TraversableTaskListController {
         flat: bool,
         scoped: bool,
         cursor_task_id: Option<RwSignal<Option<i64>>>,
+        node_filter: Option<Signal<Callback<TaskModel, bool>>>,
     ) -> Self {
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
 
         let flat_nodes = Memo::new(move |_| {
+            let filter = node_filter.map(|s| s.get());
             let roots = root_task_ids.get();
             let tasks = all_tasks.get();
+            let include = |t: &TaskModel| filter.as_ref().map(|f| f.run(t.clone())).unwrap_or(true);
             if flat {
-                flatten_flat(&roots, &tasks, show_completed.get())
+                flatten_flat(&roots, &tasks, &include)
             } else {
-                flatten_tree(&roots, &tasks, show_completed.get())
+                flatten_tree(&roots, &tasks, &include)
             }
         });
 
@@ -378,16 +380,20 @@ impl TraversableTaskListController {
         let Some(task_id) = self.cursor_task_id.get_untracked() else {
             return;
         };
-        let title = self
-            .app_store
-            .tasks
-            .get_by_id(task_id)
-            .get_untracked()
-            .map(|t| t.title.clone())
-            .unwrap_or_default();
+        let task = self.app_store.tasks.get_by_id(task_id).get_untracked();
+        let title = task.as_ref().map(|t| t.title.clone()).unwrap_or_default();
+        let has_recurrence = task
+            .as_ref()
+            .map(|t| t.recurrence.is_some())
+            .unwrap_or(false);
         self.pending_delete.set(true);
+        let suffix = if has_recurrence {
+            " Recurring subtasks will stop."
+        } else {
+            ""
+        };
         self.app_store.status_bar.show_message(
-            format!("Delete \"{title}\"?  Enter to confirm \u{00b7} Esc to cancel"),
+            format!("Delete \"{title}\"?{suffix}  Enter to confirm \u{00b7} Esc to cancel"),
             StatusBarVariant::Danger,
         );
     }
@@ -434,7 +440,7 @@ impl TraversableTaskListController {
 
     // ── Task reorder (Shift+Arrow) ──────────────────────────────
 
-    fn all_tasks(&self) -> Vec<north_dto::Task> {
+    fn all_tasks(&self) -> Vec<TaskModel> {
         self.app_store
             .tasks
             .filtered(TaskStoreFilter::default())

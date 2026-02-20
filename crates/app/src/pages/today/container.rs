@@ -15,7 +15,12 @@ pub fn TodayPage() -> impl IntoView {
             show_completed=ctrl.show_completed
             completed_count=ctrl.completed_count
             is_loaded=ctrl.is_loaded
+            hide_non_actionable=ctrl.hide_non_actionable
+            node_filter=ctrl.node_filter
             on_task_click=Callback::new(move |id| ctrl.open_detail(id))
+            on_toggle_visibility=Callback::new(move |()| {
+                ctrl.toggle_actionable_visibility()
+            })
         />
     }
 }

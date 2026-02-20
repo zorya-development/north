@@ -48,8 +48,6 @@ pub fn FilterView(
         }
     });
 
-    // Filter results always show all (including completed)
-    let show_completed = RwSignal::new(true);
     let item_config = ItemConfig::default();
 
     view! {
@@ -240,7 +238,6 @@ pub fn FilterView(
 
             <TraversableTaskList
                 root_task_ids=filter_result_ids
-                show_completed=show_completed
                 item_config=item_config
                 is_loaded=is_loaded
                 allow_create=false

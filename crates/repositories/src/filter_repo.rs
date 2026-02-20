@@ -1,5 +1,7 @@
 use leptos::prelude::ServerFnError;
-use north_dto::{DslSuggestion, SavedFilter, Task};
+use north_dto::{DslSuggestion, SavedFilter};
+
+use crate::TaskModel;
 
 pub struct FilterRepository;
 
@@ -28,8 +30,10 @@ impl FilterRepository {
         north_server_fns::filters::delete_saved_filter(id).await
     }
 
-    pub async fn execute(query: String) -> Result<Vec<Task>, ServerFnError> {
-        north_server_fns::filters::execute_filter(query).await
+    pub async fn execute(query: String) -> Result<Vec<TaskModel>, ServerFnError> {
+        north_server_fns::filters::execute_filter(query)
+            .await
+            .map(|tasks| tasks.into_iter().map(TaskModel::from).collect())
     }
 
     pub async fn validate_query(query: String) -> Result<(), ServerFnError> {

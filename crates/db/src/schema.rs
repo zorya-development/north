@@ -10,6 +10,10 @@ pub mod sql_types {
     pub struct ProjectViewType;
 
     #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "recurrence_type"))]
+    pub struct RecurrenceType;
+
+    #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "user_role"))]
     pub struct UserRole;
 }
@@ -75,6 +79,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::RecurrenceType;
+
     tasks (id) {
         id -> Int8,
         project_id -> Nullable<Int8>,
@@ -90,6 +97,8 @@ diesel::table! {
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
         sort_key -> Varchar,
+        recurrence_type -> Nullable<RecurrenceType>,
+        recurrence_rule -> Nullable<Varchar>,
     }
 }
 

@@ -1,13 +1,14 @@
 use leptos::prelude::*;
 
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
+use crate::constants::TIMEZONE_GROUPS;
 
 #[component]
 pub fn SettingsView(
     interval: ReadSignal<String>,
     set_interval: WriteSignal<String>,
-    saved: ReadSignal<bool>,
-    set_saved: WriteSignal<bool>,
+    timezone: ReadSignal<String>,
+    set_timezone: WriteSignal<String>,
     is_loaded: Signal<bool>,
     on_save: Callback<()>,
 ) -> impl IntoView {
@@ -39,7 +40,6 @@ pub fn SettingsView(
                             min="1"
                             prop:value=move || interval.get()
                             on:input=move |ev| {
-                                set_saved.set(false);
                                 set_interval.set(event_target_value(&ev));
                             }
                             class="w-24 bg-bg-input border border-border \
@@ -49,20 +49,58 @@ pub fn SettingsView(
                         />
                     </div>
 
-                    <div class="flex items-center gap-3">
-                        <button
-                            on:click=move |_| on_save.run(())
-                            class="px-4 py-1.5 text-sm bg-accent \
-                                   text-on-accent rounded \
-                                   hover:bg-accent-hover \
-                                   transition-colors"
+                    <div class="space-y-2">
+                        <Text variant=TextVariant::LabelLg color=TextColor::Secondary tag=TextTag::Label class="block">
+                            "Timezone"
+                        </Text>
+                        <Text variant=TextVariant::BodySm color=TextColor::Tertiary tag=TextTag::P>
+                            "Used for scheduling recurring tasks."
+                        </Text>
+                        <select
+                            on:change=move |ev| {
+                                set_timezone.set(event_target_value(&ev));
+                            }
+                            class="w-64 bg-bg-input border border-border \
+                                   rounded px-3 py-1.5 text-sm \
+                                   text-text-primary focus:outline-none \
+                                   focus:border-accent"
                         >
-                            "Save"
-                        </button>
-                        <Show when=move || saved.get()>
-                            <span class="text-sm text-success">"Saved"</span>
-                        </Show>
+                            <option value="UTC" selected=move || timezone.get() == "UTC">"UTC"</option>
+                            {TIMEZONE_GROUPS
+                                .iter()
+                                .map(|(label, zones)| {
+                                    view! {
+                                        <optgroup label=*label>
+                                            {zones
+                                                .iter()
+                                                .map(|tz| {
+                                                    let tz = *tz;
+                                                    view! {
+                                                        <option
+                                                            value=tz
+                                                            selected=move || timezone.get() == tz
+                                                        >
+                                                            {tz}
+                                                        </option>
+                                                    }
+                                                })
+                                                .collect_view()}
+                                        </optgroup>
+                                    }
+                                })
+                                .collect_view()}
+                        </select>
                     </div>
+
+                    <button
+                        on:click=move |_| on_save.run(())
+                        class="px-4 py-1.5 text-sm bg-accent \
+                               text-on-accent rounded \
+                               hover:bg-accent-hover \
+                               transition-colors"
+                    >
+                        "Save"
+                    </button>
                 </div>
             </Show>
         </div>

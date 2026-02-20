@@ -1,4 +1,4 @@
-use north_dto::Task;
+use north_stores::TaskModel;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FlatNode {
@@ -31,38 +31,41 @@ pub enum InlineMode {
 
 /// Build a flat traversal list from a set of root task IDs and all tasks.
 /// DFS pre-order: per parent group, active tasks sorted by sort_key come first,
-/// then completed tasks (when show_completed is on).
-pub fn flatten_tree(root_ids: &[i64], all_tasks: &[Task], show_completed: bool) -> Vec<FlatNode> {
+/// then completed tasks. The `include` predicate decides which tasks to keep.
+pub fn flatten_tree(
+    root_ids: &[i64],
+    all_tasks: &[TaskModel],
+    include: &dyn Fn(&TaskModel) -> bool,
+) -> Vec<FlatNode> {
     let mut nodes = Vec::new();
 
-    let mut roots: Vec<&Task> = root_ids
+    let roots: Vec<&TaskModel> = root_ids
         .iter()
         .filter_map(|id| all_tasks.iter().find(|t| t.id == *id))
+        .filter(|t| include(t))
         .collect();
 
-    let (mut active, mut completed): (Vec<&Task>, Vec<&Task>) =
-        roots.drain(..).partition(|t| t.completed_at.is_none());
+    let (mut active, mut completed): (Vec<&TaskModel>, Vec<&TaskModel>) =
+        roots.into_iter().partition(|t| t.completed_at.is_none());
 
     active.sort_by(|a, b| a.sort_key.cmp(&b.sort_key));
     for task in &active {
-        flatten_subtree(task, all_tasks, 0, show_completed, &mut nodes);
+        flatten_subtree(task, all_tasks, 0, include, &mut nodes);
     }
 
-    if show_completed {
-        completed.sort_by(|a, b| a.sort_key.cmp(&b.sort_key));
-        for task in &completed {
-            flatten_subtree(task, all_tasks, 0, show_completed, &mut nodes);
-        }
+    completed.sort_by(|a, b| a.sort_key.cmp(&b.sort_key));
+    for task in &completed {
+        flatten_subtree(task, all_tasks, 0, include, &mut nodes);
     }
 
     nodes
 }
 
 fn flatten_subtree(
-    task: &Task,
-    all_tasks: &[Task],
+    task: &TaskModel,
+    all_tasks: &[TaskModel],
     depth: u8,
-    show_completed: bool,
+    include: &dyn Fn(&TaskModel) -> bool,
     nodes: &mut Vec<FlatNode>,
 ) {
     nodes.push(FlatNode {
@@ -72,34 +75,37 @@ fn flatten_subtree(
         is_completed: task.completed_at.is_some(),
     });
 
-    let children: Vec<&Task> = all_tasks
+    let children: Vec<&TaskModel> = all_tasks
         .iter()
         .filter(|t| t.parent_id == Some(task.id))
+        .filter(|t| include(t))
         .collect();
 
-    let (mut active, mut completed): (Vec<&Task>, Vec<&Task>) =
+    let (mut active, mut completed): (Vec<&TaskModel>, Vec<&TaskModel>) =
         children.into_iter().partition(|t| t.completed_at.is_none());
 
     active.sort_by(|a, b| a.sort_key.cmp(&b.sort_key));
     for child in &active {
-        flatten_subtree(child, all_tasks, depth + 1, show_completed, nodes);
+        flatten_subtree(child, all_tasks, depth + 1, include, nodes);
     }
 
-    if show_completed {
-        completed.sort_by(|a, b| a.sort_key.cmp(&b.sort_key));
-        for child in &completed {
-            flatten_subtree(child, all_tasks, depth + 1, show_completed, nodes);
-        }
+    completed.sort_by(|a, b| a.sort_key.cmp(&b.sort_key));
+    for child in &completed {
+        flatten_subtree(child, all_tasks, depth + 1, include, nodes);
     }
 }
 
 /// Build a flat list preserving input order — no child expansion.
 /// Used by filter page where results come from the server in a specific order.
-pub fn flatten_flat(root_ids: &[i64], all_tasks: &[Task], show_completed: bool) -> Vec<FlatNode> {
+pub fn flatten_flat(
+    root_ids: &[i64],
+    all_tasks: &[TaskModel],
+    include: &dyn Fn(&TaskModel) -> bool,
+) -> Vec<FlatNode> {
     root_ids
         .iter()
         .filter_map(|&id| all_tasks.iter().find(|t| t.id == id))
-        .filter(|t| show_completed || t.completed_at.is_none())
+        .filter(|t| include(t))
         .map(|t| FlatNode {
             task_id: t.id,
             parent_id: t.parent_id,
@@ -151,7 +157,7 @@ pub fn parent_of(flat: &[FlatNode], task_id: i64) -> Option<i64> {
 /// anchor's parent when indented/outdented).
 pub fn compute_sort_key(
     flat: &[FlatNode],
-    all_tasks: &[Task],
+    all_tasks: &[TaskModel],
     anchor_task_id: i64,
     placement: Placement,
     parent_id: Option<i64>,
@@ -191,7 +197,7 @@ pub fn compute_sort_key(
     }
 }
 
-pub fn task_sort_key(all_tasks: &[Task], task_id: i64) -> Option<String> {
+pub fn task_sort_key(all_tasks: &[TaskModel], task_id: i64) -> Option<String> {
     all_tasks
         .iter()
         .find(|t| t.id == task_id)
@@ -262,10 +268,9 @@ pub fn find_parent_for_depth(
 mod tests {
     use super::*;
     use chrono::Utc;
-    use north_dto::Task;
 
-    fn make_task(id: i64, parent_id: Option<i64>, sort_key: &str) -> Task {
-        Task {
+    fn make_task(id: i64, parent_id: Option<i64>, sort_key: &str) -> TaskModel {
+        TaskModel {
             id,
             project_id: None,
             parent_id,
@@ -280,15 +285,15 @@ mod tests {
             reviewed_at: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
+            recurrence: None,
             project_title: None,
             tags: vec![],
             subtask_count: 0,
             completed_subtask_count: 0,
-            actionable: true,
         }
     }
 
-    fn make_completed_task(id: i64, parent_id: Option<i64>, sort_key: &str) -> Task {
+    fn make_completed_task(id: i64, parent_id: Option<i64>, sort_key: &str) -> TaskModel {
         let mut t = make_task(id, parent_id, sort_key);
         t.completed_at = Some(Utc::now());
         t
@@ -303,7 +308,7 @@ mod tests {
             make_task(4, Some(1), "b"),
         ];
         let roots = vec![1, 2];
-        let flat = flatten_tree(&roots, &tasks, false);
+        let flat = flatten_tree(&roots, &tasks, &|t| t.completed_at.is_none());
 
         assert_eq!(flat.len(), 4);
         assert_eq!(flat[0].task_id, 1);
@@ -321,11 +326,11 @@ mod tests {
         let tasks = vec![make_task(1, None, "a"), make_completed_task(2, None, "b")];
         let roots = vec![1, 2];
 
-        let flat = flatten_tree(&roots, &tasks, false);
+        let flat = flatten_tree(&roots, &tasks, &|t| t.completed_at.is_none());
         assert_eq!(flat.len(), 1);
         assert_eq!(flat[0].task_id, 1);
 
-        let flat = flatten_tree(&roots, &tasks, true);
+        let flat = flatten_tree(&roots, &tasks, &|_| true);
         assert_eq!(flat.len(), 2);
     }
 

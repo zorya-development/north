@@ -21,13 +21,14 @@ impl TaskFieldRegistry {
             due_date,     // FilterField::DueDate
             completed_at, // FilterField::Status (derived)
             reviewed_at,
-            created_at,    // FilterField::Created
-            updated_at,    // FilterField::Updated
+            created_at, // FilterField::Created
+            updated_at, // FilterField::Updated
+            recurrence_type,
+            recurrence_rule,
             project_title, // FilterField::Project (enriched)
             tags,          // FilterField::Tags (enriched)
             subtask_count,
             completed_subtask_count,
-            actionable,
         } = task;
     }
 

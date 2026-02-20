@@ -21,7 +21,6 @@ impl TtlHandle {
 #[component]
 pub fn TraversableTaskList(
     root_task_ids: Memo<Vec<i64>>,
-    show_completed: RwSignal<bool>,
     #[prop(default = ItemConfig::default())] item_config: ItemConfig,
     #[prop(default = "No tasks.")] empty_message: &'static str,
     #[prop(optional)] on_task_click: Option<Callback<i64>>,
@@ -39,6 +38,7 @@ pub fn TraversableTaskList(
     #[prop(default = false)] scoped: bool,
     #[prop(optional)] cursor_task_id: Option<RwSignal<Option<i64>>>,
     #[prop(optional)] handle: Option<RwSignal<Option<TtlHandle>>>,
+    #[prop(optional)] node_filter: Option<Signal<Callback<north_stores::TaskModel, bool>>>,
 ) -> impl IntoView {
     let app_store = use_app_store();
     if item_config.draggable {
@@ -52,7 +52,6 @@ pub fn TraversableTaskList(
         app_store,
         app_store.modal,
         root_task_ids,
-        show_completed,
         show_keybindings_help,
         on_task_click,
         on_reorder,
@@ -63,6 +62,7 @@ pub fn TraversableTaskList(
         flat,
         scoped,
         cursor_task_id,
+        node_filter,
     );
 
     if let Some(handle) = handle {

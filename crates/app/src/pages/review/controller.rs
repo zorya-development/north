@@ -2,8 +2,12 @@ use chrono::Utc;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use north_dto::ProjectStatus;
-use north_repositories::{SettingsRepository, TaskRepository};
-use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskStoreFilter};
+use north_repositories::TaskRepository;
+use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskModel, TaskStoreFilter};
+
+use crate::libs::is_actionable;
+
+const HIDE_NON_ACTIONABLE_KEY: &str = "north:hide-non-actionable:review";
 
 #[derive(Clone, Copy)]
 pub struct ReviewController {
@@ -13,6 +17,9 @@ pub struct ReviewController {
     pub reviewed_task_ids: Memo<Vec<i64>>,
     pub is_loaded: Signal<bool>,
     pub show_reviewed: (ReadSignal<bool>, WriteSignal<bool>),
+    pub hide_non_actionable: Signal<bool>,
+    pub pending_filter: Signal<Callback<north_stores::TaskModel, bool>>,
+    pub reviewed_filter: Signal<Callback<north_stores::TaskModel, bool>>,
 }
 
 impl ReviewController {
@@ -20,16 +27,7 @@ impl ReviewController {
         let task_detail_modal_store = app_store.task_detail_modal;
         let show_reviewed = signal(false);
 
-        // Load review interval from user settings (Effect runs client-only,
-        // avoiding spawn_local panic during SSR).
-        let review_interval = RwSignal::new(7_i64);
-        Effect::new(move || {
-            spawn_local(async move {
-                if let Ok(settings) = SettingsRepository::get().await {
-                    review_interval.set(settings.review_interval_days as i64);
-                }
-            });
-        });
+        let review_interval = app_store.settings.review_interval_days();
 
         // All active top-level tasks
         let all_active = app_store.tasks.filtered(TaskStoreFilter {
@@ -100,6 +98,33 @@ impl ReviewController {
 
         let is_loaded = app_store.tasks.loaded_signal();
 
+        let hide_non_actionable =
+            Signal::derive(move || app_store.browser_storage.get_bool(HIDE_NON_ACTIONABLE_KEY));
+
+        let show_completed = RwSignal::new(false);
+        let show_completed_reviewed = RwSignal::new(false);
+
+        let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
+
+        let pending_filter = Signal::derive(move || {
+            let hide = hide_non_actionable.get();
+            let show = show_completed.get();
+            Callback::new(move |task: TaskModel| {
+                if task.completed_at.is_some() {
+                    return show;
+                }
+                if !hide {
+                    return true;
+                }
+                is_actionable(&task, &all_tasks.get_untracked())
+            })
+        });
+
+        let reviewed_filter = Signal::derive(move || {
+            let show = show_completed_reviewed.get();
+            Callback::new(move |task: north_stores::TaskModel| task.completed_at.is_none() || show)
+        });
+
         Self {
             app_store,
             task_detail_modal_store,
@@ -107,6 +132,9 @@ impl ReviewController {
             reviewed_task_ids,
             is_loaded,
             show_reviewed,
+            hide_non_actionable,
+            pending_filter,
+            reviewed_filter,
         }
     }
 
@@ -122,5 +150,11 @@ impl ReviewController {
     pub fn open_detail(&self, task_id: i64) {
         let task_ids = self.review_task_ids.get_untracked();
         self.task_detail_modal_store.open(task_id, task_ids);
+    }
+
+    pub fn toggle_actionable_visibility(&self) {
+        self.app_store
+            .browser_storage
+            .toggle_bool(HIDE_NON_ACTIONABLE_KEY);
     }
 }

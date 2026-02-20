@@ -12,8 +12,11 @@ pub fn InboxView(
     show_completed: RwSignal<bool>,
     completed_count: Memo<usize>,
     is_loaded: Signal<bool>,
+    hide_non_actionable: Signal<bool>,
+    node_filter: Signal<Callback<north_stores::TaskModel, bool>>,
     on_task_click: Callback<i64>,
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
+    on_toggle_visibility: Callback<()>,
 ) -> impl IntoView {
     let show_keybindings_help = RwSignal::new(false);
     let (help_read, help_write) = show_keybindings_help.split();
@@ -41,6 +44,17 @@ pub fn InboxView(
                     </button>
                 </div>
                 <div class="flex items-center gap-3 mt-2">
+                    <button
+                        on:click=move |_| {
+                            if let Some(h) = ttl_handle.get_untracked() {
+                                h.start_create_top();
+                            }
+                        }
+                        class="text-xs text-text-secondary hover:text-text-primary \
+                               transition-colors cursor-pointer"
+                    >
+                        "+" " Add task"
+                    </button>
                     {move || {
                         let count = completed_count.get();
                         if count > 0 {
@@ -73,22 +87,25 @@ pub fn InboxView(
                         }
                     }}
                     <button
-                        on:click=move |_| {
-                            if let Some(h) = ttl_handle.get_untracked() {
-                                h.start_create_top();
-                            }
-                        }
-                        class="text-sm text-text-secondary hover:text-accent \
-                               transition-colors cursor-pointer"
+                        on:click=move |_| on_toggle_visibility.run(())
+                        class="text-xs text-text-secondary \
+                               hover:text-text-primary transition-colors \
+                               cursor-pointer"
                     >
-                        "+" " Add task"
+                        {move || {
+                            if hide_non_actionable.get() {
+                                "Show all tasks"
+                            } else {
+                                "Hide non-actionable"
+                            }
+                        }}
                     </button>
                 </div>
             </div>
 
             <TraversableTaskList
                 root_task_ids=root_task_ids
-                show_completed=show_completed
+                node_filter=node_filter
                 item_config=item_config
                 is_loaded=is_loaded
                 on_reorder=on_reorder

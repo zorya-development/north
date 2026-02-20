@@ -1,9 +1,7 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 
-fn default_true() -> bool {
-    true
-}
+use crate::RecurrenceType;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Task {
@@ -21,6 +19,8 @@ pub struct Task {
     pub reviewed_at: Option<NaiveDate>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub recurrence_type: Option<RecurrenceType>,
+    pub recurrence_rule: Option<String>,
     #[serde(default)]
     pub project_title: Option<String>,
     #[serde(default)]
@@ -29,8 +29,6 @@ pub struct Task {
     pub subtask_count: i64,
     #[serde(default)]
     pub completed_subtask_count: i64,
-    #[serde(default = "default_true")]
-    pub actionable: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -99,6 +97,20 @@ pub struct UpdateTask {
         with = "crate::serde_helpers::double_option"
     )]
     pub reviewed_at: Option<Option<NaiveDate>>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "crate::serde_helpers::is_none_outer",
+        with = "crate::serde_helpers::double_option"
+    )]
+    pub recurrence_type: Option<Option<RecurrenceType>>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "crate::serde_helpers::is_none_outer",
+        with = "crate::serde_helpers::double_option"
+    )]
+    pub recurrence_rule: Option<Option<String>>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -106,7 +118,6 @@ pub struct TaskFilter {
     pub project: Option<i64>,
     pub parent: Option<i64>,
     pub tag: Option<Vec<String>>,
-    pub actionable: Option<bool>,
     pub review_due: Option<bool>,
     pub inbox: Option<bool>,
     pub completed: Option<bool>,

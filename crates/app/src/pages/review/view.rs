@@ -11,10 +11,14 @@ pub fn ReviewView(
     review_task_ids: Memo<Vec<i64>>,
     reviewed_task_ids: Memo<Vec<i64>>,
     is_loaded: Signal<bool>,
+    hide_non_actionable: Signal<bool>,
+    pending_filter: Signal<Callback<north_stores::TaskModel, bool>>,
+    reviewed_filter: Signal<Callback<north_stores::TaskModel, bool>>,
     show_reviewed: ReadSignal<bool>,
     set_show_reviewed: WriteSignal<bool>,
     on_review_all: Callback<()>,
     on_task_click: Callback<i64>,
+    on_toggle_visibility: Callback<()>,
 ) -> impl IntoView {
     let review_config = ItemConfig {
         show_review: true,
@@ -23,9 +27,6 @@ pub fn ReviewView(
 
     let show_keybindings_help = RwSignal::new(false);
     let (help_read, help_write) = show_keybindings_help.split();
-
-    let show_completed = RwSignal::new(false);
-    let show_completed_reviewed = RwSignal::new(false);
 
     view! {
         <div class="space-y-4">
@@ -52,12 +53,26 @@ pub fn ReviewView(
                     >
                         "Mark All as Reviewed"
                     </button>
+                    <button
+                        on:click=move |_| on_toggle_visibility.run(())
+                        class="text-xs text-text-secondary \
+                               hover:text-text-primary transition-colors \
+                               cursor-pointer"
+                    >
+                        {move || {
+                            if hide_non_actionable.get() {
+                                "Show all tasks"
+                            } else {
+                                "Hide non-actionable"
+                            }
+                        }}
+                    </button>
                 </div>
             </div>
 
             <TraversableTaskList
                 root_task_ids=review_task_ids
-                show_completed=show_completed
+                node_filter=pending_filter
                 item_config=review_config
                 is_loaded=is_loaded
                 allow_create=false
@@ -87,7 +102,7 @@ pub fn ReviewView(
                     <div class="mt-3">
                         <TraversableTaskList
                             root_task_ids=reviewed_task_ids
-                            show_completed=show_completed_reviewed
+                            node_filter=reviewed_filter
                             item_config=review_config
                             is_loaded=is_loaded
                             allow_create=false

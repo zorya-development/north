@@ -1,14 +1,14 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use north_dto::{DslSuggestion, Task};
-use north_repositories::FilterRepository;
+use north_dto::DslSuggestion;
+use north_repositories::{FilterRepository, TaskModel};
 
 #[derive(Clone, Copy)]
 pub struct FilterDslStore {
     query: RwSignal<String>,
     parse_error: RwSignal<Option<String>>,
     suggestions: RwSignal<Vec<DslSuggestion>>,
-    result_tasks: RwSignal<Vec<Task>>,
+    result_tasks: RwSignal<Vec<TaskModel>>,
     result_ids: RwSignal<Vec<i64>>,
     loaded: RwSignal<bool>,
 }
@@ -101,7 +101,7 @@ impl FilterDslStore {
         });
     }
 
-    pub fn result_tasks(&self) -> ReadSignal<Vec<Task>> {
+    pub fn result_tasks(&self) -> ReadSignal<Vec<TaskModel>> {
         self.result_tasks.read_only()
     }
 

@@ -1,12 +1,11 @@
 use leptos::prelude::*;
-use north_dto::Task;
-use north_stores::AppStore;
+use north_stores::{AppStore, TaskModel};
 
 #[derive(Clone, Copy)]
 pub struct TaskListItemController {
     app_store: AppStore,
     task_id: i64,
-    pub task: Memo<Option<Task>>,
+    pub task: Memo<Option<TaskModel>>,
 }
 
 impl TaskListItemController {

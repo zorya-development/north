@@ -10,6 +10,7 @@ A self-hosted, GTD-inspired task management system built entirely in Rust. North
 
 - **Inbox & Today views** — capture tasks quickly, then focus on what's actionable today
 - **Sequential subtasks** — configurable N-next visibility so you only see the tasks you should work on now
+- **Recurring tasks** — flexible recurrence rules (daily, weekly, monthly, yearly) with fixed-schedule or after-completion modes
 - **GTD review cycles** — per-task review tracking with configurable intervals to keep your system current
 - **Projects & tags** — organize work with colored projects (list or kanban view) and user-defined tags
 - **Filter DSL** — JQL-like query language with autocomplete for building saved filters (`status = 'ACTIVE' AND tags =~ 'work:*' ORDER BY due_date ASC`)
@@ -18,6 +19,7 @@ A self-hosted, GTD-inspired task management system built entirely in Rust. North
 - **Markdown support** — full CommonMark rendering in task descriptions
 - **Drag and drop** — reorder tasks, nest subtasks, and organize with drag-and-drop or keyboard shortcuts
 - **Dark & light themes** — respects system preference with manual toggle
+- **Timezone support** — per-user timezone setting for accurate scheduling and recurrence display
 - **REST API** — full CRUD API for external integrations alongside the web UI
 - **Single binary** — one Rust binary serves both the server-rendered pages and the WASM-hydrated client
 
@@ -212,7 +214,7 @@ north/
 ├── public/             # Static assets
 ├── chart/              # Helm chart for Kubernetes deployment
 ├── docker/             # Base, dev, and prod Dockerfiles
-└── docs/               # Product requirements and design system
+└── docs/               # Product requirements, design system, and architecture reference
 ```
 
 Data flows through the layers in one direction:
