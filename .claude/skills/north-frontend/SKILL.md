@@ -1,7 +1,7 @@
 ---
 name: north-frontend
 description: Frontend development guide for the North app crate — Tailwind v4, a11y, component architecture, and styling conventions.
-trigger: When writing or modifying files in crates/app/, crates/ui/, or style/main.css. Activated when working on Leptos views, components, containers, pages, or CSS.
+trigger: When writing or modifying files in crates/app/, crates/ui/, crates/stores/, crates/repositories/, or style/main.css. Activated when working on Leptos views, components, containers, pages, stores, repositories, or CSS.
 ---
 
 # North Frontend Development Guide
@@ -70,7 +70,50 @@ View (pure rendering)
 - Views talk to **nothing** — they receive everything via props.
 - Context: use `provide_context()` directly in containers. Consume via `expect_context::<T>()` or typed helpers (`use_app_store()`).
 
-### 1.5 Data Loading
+### 1.5 Domain Models (repositories crate)
+
+The repositories crate defines domain models that the frontend (stores, controllers) works with. These wrap DTO types with parsed/enriched data.
+
+**TaskModel** (`repositories/src/models/task_model.rs`) — the primary model used by stores and controllers:
+
+```rust
+pub struct TaskModel {
+    pub id: i64,
+    pub project_id: Option<i64>,
+    pub parent_id: Option<i64>,
+    pub user_id: i64,
+    pub title: String,
+    pub body: Option<String>,
+    pub sort_key: String,
+    pub sequential_limit: i16,
+    pub start_at: Option<DateTime<Utc>>,
+    pub due_date: Option<NaiveDate>,
+    pub completed_at: Option<DateTime<Utc>>,
+    pub reviewed_at: Option<NaiveDate>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub recurrence: Option<Recurrence>,   // Parsed, not raw strings
+    pub project_title: Option<String>,
+    pub tags: Vec<TagInfo>,
+    pub subtask_count: i64,
+    pub completed_subtask_count: i64,
+    pub actionable: bool,
+}
+```
+
+**Recurrence** — parsed recurrence rule with convenience methods:
+
+```rust
+pub struct Recurrence {
+    pub recurrence_type: RecurrenceType,
+    pub rule: RecurrenceRule,
+}
+// Methods: summarize() → String, rule_string() → String
+```
+
+`TaskModel` is constructed via `From<Task>` (DTO → domain model). Other repositories return DTOs directly (`Project`, `Tag`, `SavedFilter`, `UserSettings`).
+
+### 1.6 Data Loading
 
 - Each page owns its data loading — call `refetch()` or create its own `Resource` on mount.
 - `AppLayout` is purely structural (auth guard, context providers, sidebar + main shell). It does NOT pre-fetch data.

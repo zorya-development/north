@@ -82,6 +82,12 @@ Reactive client state. `AppStore` wraps all sub-stores, provided globally via co
 ### repositories (north-repositories)
 Thin async facade. Decouples stores from server function details. No business logic — pure pass-through. Includes `TaskRepository`, `ProjectRepository`, `FilterRepository`, `TagRepository`, `SettingsRepository`.
 
+Defines domain models used by the frontend (stores, controllers):
+- **TaskModel** — wraps `Task` DTO with parsed `Recurrence` (not raw strings), enrichment fields (project_title, tags, subtask counts, actionable). Constructed via `From<Task>`.
+- **Recurrence** — parsed recurrence rule (`RecurrenceType` + `RecurrenceRule`), provides `summarize()` and `rule_string()` convenience methods.
+
+Other repositories return DTOs directly (`Project`, `Tag`, `SavedFilter`, `UserSettings`).
+
 ### server-fns (north-server-fns)
 Leptos `#[server]` RPC boundary. Each function extracts `DbPool` from context and `user_id` from JWT, then delegates to core. The `#[server]` macro generates client stubs (HTTP POST) and server handlers. Covers tasks, projects, filters, tags, and settings.
 
