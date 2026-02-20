@@ -51,8 +51,7 @@ pub fn TaskDetailModalView(
                     let start_at = task.start_at;
                     let due_date = task.due_date;
                     let sequential_limit = task.sequential_limit;
-                    let recurrence_type = task.recurrence_type;
-                    let recurrence_rule = task.recurrence_rule.clone();
+                    let recurrence = task.recurrence.clone();
 
                     ctrl.sync_drafts(title.clone(), body.clone());
 
@@ -417,16 +416,15 @@ pub fn TaskDetailModalView(
                                 // Recurrence
                                 <SidebarRow label="Recurrence">
                                     <RecurrenceSidebarButton
-                                        recurrence_type=recurrence_type
-                                        recurrence_rule=recurrence_rule.clone()
+                                        recurrence=recurrence.clone()
                                         on_click=Callback::new(move |()| {
                                             ctrl.open_recurrence_modal();
                                         })
                                     />
                                     <Show when=move || ctrl.show_recurrence_modal()>
                                         <RecurrenceModal
-                                            recurrence_type=recurrence_type
-                                            recurrence_rule=recurrence_rule.clone()
+                                            recurrence_type={recurrence.as_ref().map(|r| r.recurrence_type)}
+                                            recurrence_rule={recurrence.as_ref().map(|r| r.rule_string())}
                                             on_save=Callback::new(move |(rt, rr)| {
                                                 ctrl.set_recurrence(rt, rr);
                                                 ctrl.close_recurrence_modal();
@@ -509,18 +507,13 @@ fn DueDatePicker(
 
 #[component]
 fn RecurrenceSidebarButton(
-    recurrence_type: Option<north_recurrence::RecurrenceType>,
-    recurrence_rule: Option<String>,
+    recurrence: Option<north_stores::Recurrence>,
     on_click: Callback<()>,
 ) -> impl IntoView {
-    let label = match recurrence_type {
-        Some(_) => recurrence_rule
-            .as_deref()
-            .and_then(north_recurrence::RecurrenceRule::parse)
-            .map(|r| r.summarize())
-            .unwrap_or_else(|| "None".to_string()),
-        None => "None".to_string(),
-    };
+    let label = recurrence
+        .as_ref()
+        .map(|r| r.summarize())
+        .unwrap_or_else(|| "None".to_string());
 
     view! {
         <button

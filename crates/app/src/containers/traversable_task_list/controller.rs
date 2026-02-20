@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use north_dto::CreateTask;
-use north_stores::{AppStore, ModalStore, StatusBarVariant, TaskStoreFilter};
+use north_stores::{AppStore, ModalStore, StatusBarVariant, TaskModel, TaskStoreFilter};
 
 use super::tree::*;
 use crate::containers::task_list_item::ItemConfig;
@@ -43,15 +43,14 @@ impl TraversableTaskListController {
         flat: bool,
         scoped: bool,
         cursor_task_id: Option<RwSignal<Option<i64>>>,
-        node_filter: Option<Callback<north_dto::Task, bool>>,
+        node_filter: Option<Callback<TaskModel, bool>>,
     ) -> Self {
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
 
         let flat_nodes = Memo::new(move |_| {
             let roots = root_task_ids.get();
             let tasks = all_tasks.get();
-            let include =
-                |t: &north_dto::Task| node_filter.map(|f| f.run(t.clone())).unwrap_or(true);
+            let include = |t: &TaskModel| node_filter.map(|f| f.run(t.clone())).unwrap_or(true);
             if flat {
                 flatten_flat(&roots, &tasks, &include)
             } else {
@@ -384,7 +383,7 @@ impl TraversableTaskListController {
         let title = task.as_ref().map(|t| t.title.clone()).unwrap_or_default();
         let has_recurrence = task
             .as_ref()
-            .map(|t| t.recurrence_type.is_some())
+            .map(|t| t.recurrence.is_some())
             .unwrap_or(false);
         self.pending_delete.set(true);
         let suffix = if has_recurrence {
@@ -440,7 +439,7 @@ impl TraversableTaskListController {
 
     // ── Task reorder (Shift+Arrow) ──────────────────────────────
 
-    fn all_tasks(&self) -> Vec<north_dto::Task> {
+    fn all_tasks(&self) -> Vec<TaskModel> {
         self.app_store
             .tasks
             .filtered(TaskStoreFilter::default())

@@ -13,7 +13,7 @@ pub fn TodayView(
     completed_count: Memo<usize>,
     is_loaded: Signal<bool>,
     hide_non_actionable: Signal<bool>,
-    node_filter: Callback<north_dto::Task, bool>,
+    node_filter: Callback<north_stores::TaskModel, bool>,
     on_task_click: Callback<i64>,
     on_toggle_visibility: Callback<()>,
 ) -> impl IntoView {

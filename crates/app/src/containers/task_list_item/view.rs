@@ -8,12 +8,12 @@ use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
 use crate::containers::task_checkbox::TaskCheckbox;
 use crate::containers::task_meta::TaskMeta;
-use north_dto::Task;
+use north_stores::TaskModel;
 use north_ui::{DropdownItem, DropdownMenu, Icon, IconKind};
 
 #[component]
 pub fn TaskListItemView(
-    task: Memo<Option<Task>>,
+    task: Memo<Option<TaskModel>>,
     #[prop(default = false)] show_review: bool,
     #[prop(default = true)] show_project: bool,
     #[prop(default = false)] draggable: bool,
@@ -51,8 +51,7 @@ pub fn TaskListItemView(
             let start_at = t.start_at;
             let reviewed_at = t.reviewed_at;
             let tags = t.tags.clone();
-            let recurrence_type = t.recurrence_type;
-            let recurrence_rule = t.recurrence_rule.clone();
+            let recurrence = t.recurrence.clone();
 
             view! {
                 <div
@@ -301,8 +300,7 @@ pub fn TaskListItemView(
                         reviewed_at=reviewed_at
                         show_review=show_review
                         on_review=on_review
-                        recurrence_type=recurrence_type
-                        recurrence_rule=recurrence_rule
+                        recurrence=recurrence
                         class="pl-6"
                     />
                 </div>

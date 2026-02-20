@@ -1,6 +1,8 @@
 use leptos::prelude::*;
 use north_recurrence::RecurrenceType;
-use north_stores::{AppStore, IdFilter, ModalStore, TaskDetailModalStore, TaskStoreFilter};
+use north_stores::{
+    AppStore, IdFilter, ModalStore, TaskDetailModalStore, TaskModel, TaskStoreFilter,
+};
 
 use crate::containers::traversable_task_list::ExtraVisibleIds;
 
@@ -14,14 +16,14 @@ pub struct TaskDetailModalController {
     pub body_draft: RwSignal<String>,
     pub focused_task_id: RwSignal<Option<i64>>,
     pub subtask_show_completed: RwSignal<bool>,
-    pub subtask_filter: Callback<north_dto::Task, bool>,
+    pub subtask_filter: Callback<TaskModel, bool>,
 }
 
 impl TaskDetailModalController {
     pub fn new(app_store: AppStore) -> Self {
         let extra_visible_ids = expect_context::<ExtraVisibleIds>().0;
         let subtask_show_completed = RwSignal::new(false);
-        let subtask_filter = Callback::new(move |task: north_dto::Task| {
+        let subtask_filter = Callback::new(move |task: TaskModel| {
             task.completed_at.is_none() || subtask_show_completed.get()
         });
 
@@ -40,7 +42,7 @@ impl TaskDetailModalController {
 
     // --- Data access ---
 
-    pub fn task(&self) -> Option<north_dto::Task> {
+    pub fn task(&self) -> Option<TaskModel> {
         self.store.task()
     }
 
@@ -186,7 +188,7 @@ impl TaskDetailModalController {
 
     // --- Private ---
 
-    fn all_subtasks(&self, task_id: i64) -> Memo<Vec<north_dto::Task>> {
+    fn all_subtasks(&self, task_id: i64) -> Memo<Vec<TaskModel>> {
         self.app_store.tasks.filtered(TaskStoreFilter {
             parent_id: IdFilter::Is(task_id),
             ..Default::default()

@@ -8,6 +8,8 @@ ssr = ["north-server-fns/ssr"]
 hydrate = ["north-server-fns/hydrate"]
 
 [dependencies]
+chrono = { workspace = true }
 north-dto = { workspace = true }
+north-recurrence = { workspace = true }
 north-server-fns = { workspace = true }
 leptos = "0.7"

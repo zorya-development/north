@@ -15,7 +15,7 @@ pub fn ProjectView(
     completed_count: Memo<usize>,
     is_loaded: Signal<bool>,
     hide_non_actionable: Signal<bool>,
-    node_filter: Callback<north_dto::Task, bool>,
+    node_filter: Callback<north_stores::TaskModel, bool>,
     default_project_id: Signal<Option<i64>>,
     on_task_click: Callback<i64>,
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,

@@ -1,13 +1,13 @@
 use chrono::Utc;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use north_dto::{CreateTask, Task, UpdateTask};
+use north_dto::{CreateTask, UpdateTask};
 use north_recurrence::RecurrenceType;
-use north_repositories::TaskRepository;
+use north_repositories::{TaskModel, TaskRepository};
 
 #[derive(Clone, Copy)]
 pub struct TaskStore {
-    tasks: RwSignal<Vec<Task>>,
+    tasks: RwSignal<Vec<TaskModel>>,
     loaded: RwSignal<bool>,
 }
 
@@ -42,7 +42,7 @@ impl TaskStore {
 
     // ── Reactive state methods ──────────────────────────────────
 
-    pub fn load(&self, tasks: Vec<Task>) {
+    pub fn load(&self, tasks: Vec<TaskModel>) {
         self.tasks.set(tasks);
         self.loaded.set(true);
     }
@@ -55,7 +55,7 @@ impl TaskStore {
         self.loaded.into()
     }
 
-    pub fn get_by_id(&self, id: i64) -> Memo<Option<Task>> {
+    pub fn get_by_id(&self, id: i64) -> Memo<Option<TaskModel>> {
         let tasks = self.tasks;
         Memo::new(move |_| tasks.get().into_iter().find(|t| t.id == id))
     }
@@ -85,7 +85,7 @@ impl TaskStore {
         ancestors
     }
 
-    pub fn filtered(&self, filter: TaskStoreFilter) -> Memo<Vec<Task>> {
+    pub fn filtered(&self, filter: TaskStoreFilter) -> Memo<Vec<TaskModel>> {
         let tasks = self.tasks;
         Memo::new(move |_| {
             tasks
@@ -110,7 +110,7 @@ impl TaskStore {
         })
     }
 
-    pub fn update_in_place(&self, id: i64, f: impl FnOnce(&mut Task)) {
+    pub fn update_in_place(&self, id: i64, f: impl FnOnce(&mut TaskModel)) {
         self.tasks.update(|tasks| {
             if let Some(t) = tasks.iter_mut().find(|t| t.id == id) {
                 f(t);
@@ -124,7 +124,7 @@ impl TaskStore {
         });
     }
 
-    pub fn add(&self, task: Task) {
+    pub fn add(&self, task: TaskModel) {
         self.tasks.update(|tasks| {
             tasks.push(task);
         });
@@ -199,7 +199,7 @@ impl TaskStore {
     /// Create a task and return it. Does NOT update the parent's subtask_count
     /// to avoid triggering a re-render of the parent task item (which would
     /// destroy any inline input that is currently focused).
-    pub async fn create_task_async(&self, input: CreateTask) -> Option<Task> {
+    pub async fn create_task_async(&self, input: CreateTask) -> Option<TaskModel> {
         match TaskRepository::create(input).await {
             Ok(task) => {
                 self.add(task.clone());

@@ -16,8 +16,8 @@ pub struct ReviewController {
     pub is_loaded: Signal<bool>,
     pub show_reviewed: (ReadSignal<bool>, WriteSignal<bool>),
     pub hide_non_actionable: Signal<bool>,
-    pub pending_filter: Callback<north_dto::Task, bool>,
-    pub reviewed_filter: Callback<north_dto::Task, bool>,
+    pub pending_filter: Callback<north_stores::TaskModel, bool>,
+    pub reviewed_filter: Callback<north_stores::TaskModel, bool>,
 }
 
 impl ReviewController {
@@ -111,7 +111,7 @@ impl ReviewController {
         let show_completed = RwSignal::new(false);
         let show_completed_reviewed = RwSignal::new(false);
 
-        let pending_filter = Callback::new(move |task: north_dto::Task| {
+        let pending_filter = Callback::new(move |task: north_stores::TaskModel| {
             if task.completed_at.is_some() {
                 show_completed.get()
             } else {
@@ -119,7 +119,7 @@ impl ReviewController {
             }
         });
 
-        let reviewed_filter = Callback::new(move |task: north_dto::Task| {
+        let reviewed_filter = Callback::new(move |task: north_stores::TaskModel| {
             task.completed_at.is_none() || show_completed_reviewed.get()
         });
 

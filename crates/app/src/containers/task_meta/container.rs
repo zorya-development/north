@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 use north_dto::TagInfo;
-use north_recurrence::{RecurrenceRule, RecurrenceType};
+use north_stores::Recurrence;
 
 use super::task_meta_item::TaskMetaItemVariant;
 use super::view::TaskMetaView;
@@ -16,8 +16,7 @@ pub fn TaskMeta(
     #[prop(default = 0)] completed_subtask_count: i64,
     #[prop(optional)] on_toggle_subtasks: Option<Callback<()>>,
     #[prop(default = Callback::new(|_| {}))] on_review: Callback<()>,
-    #[prop(default = None)] recurrence_type: Option<RecurrenceType>,
-    #[prop(default = None)] recurrence_rule: Option<String>,
+    #[prop(default = None)] recurrence: Option<Recurrence>,
     #[prop(optional)] on_recurrence_click: Option<Callback<()>>,
     #[prop(default = "")] class: &'static str,
 ) -> impl IntoView {
@@ -26,15 +25,10 @@ pub fn TaskMeta(
         || !tags.is_empty()
         || show_review
         || subtask_count > 0
-        || recurrence_type.is_some();
+        || recurrence.is_some();
 
     has_meta.then(|| {
-        let recurrence_label = recurrence_type.and_then(|_| {
-            recurrence_rule
-                .as_deref()
-                .and_then(RecurrenceRule::parse)
-                .map(|r| r.summarize())
-        });
+        let recurrence_label = recurrence.as_ref().map(|r| r.summarize());
 
         let (start_at_display, start_at_variant) = match start_at {
             Some(dt) => {

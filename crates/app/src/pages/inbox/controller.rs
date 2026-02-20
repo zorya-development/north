@@ -11,7 +11,7 @@ pub struct InboxController {
     pub completed_count: Memo<usize>,
     pub is_loaded: Signal<bool>,
     pub hide_non_actionable: Signal<bool>,
-    pub node_filter: Callback<north_dto::Task, bool>,
+    pub node_filter: Callback<north_stores::TaskModel, bool>,
     app_store: AppStore,
 }
 
@@ -46,7 +46,7 @@ impl InboxController {
         let hide_non_actionable =
             Signal::derive(move || app_store.browser_storage.get_bool(HIDE_NON_ACTIONABLE_KEY));
 
-        let node_filter = Callback::new(move |task: north_dto::Task| {
+        let node_filter = Callback::new(move |task: north_stores::TaskModel| {
             if task.completed_at.is_some() {
                 show_completed.get()
             } else {

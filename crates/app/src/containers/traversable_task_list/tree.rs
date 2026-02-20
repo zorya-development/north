@@ -1,4 +1,4 @@
-use north_dto::Task;
+use north_stores::TaskModel;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FlatNode {
@@ -34,18 +34,18 @@ pub enum InlineMode {
 /// then completed tasks. The `include` predicate decides which tasks to keep.
 pub fn flatten_tree(
     root_ids: &[i64],
-    all_tasks: &[Task],
-    include: &dyn Fn(&Task) -> bool,
+    all_tasks: &[TaskModel],
+    include: &dyn Fn(&TaskModel) -> bool,
 ) -> Vec<FlatNode> {
     let mut nodes = Vec::new();
 
-    let roots: Vec<&Task> = root_ids
+    let roots: Vec<&TaskModel> = root_ids
         .iter()
         .filter_map(|id| all_tasks.iter().find(|t| t.id == *id))
         .filter(|t| include(t))
         .collect();
 
-    let (mut active, mut completed): (Vec<&Task>, Vec<&Task>) =
+    let (mut active, mut completed): (Vec<&TaskModel>, Vec<&TaskModel>) =
         roots.into_iter().partition(|t| t.completed_at.is_none());
 
     active.sort_by(|a, b| a.sort_key.cmp(&b.sort_key));
@@ -62,10 +62,10 @@ pub fn flatten_tree(
 }
 
 fn flatten_subtree(
-    task: &Task,
-    all_tasks: &[Task],
+    task: &TaskModel,
+    all_tasks: &[TaskModel],
     depth: u8,
-    include: &dyn Fn(&Task) -> bool,
+    include: &dyn Fn(&TaskModel) -> bool,
     nodes: &mut Vec<FlatNode>,
 ) {
     nodes.push(FlatNode {
@@ -75,13 +75,13 @@ fn flatten_subtree(
         is_completed: task.completed_at.is_some(),
     });
 
-    let children: Vec<&Task> = all_tasks
+    let children: Vec<&TaskModel> = all_tasks
         .iter()
         .filter(|t| t.parent_id == Some(task.id))
         .filter(|t| include(t))
         .collect();
 
-    let (mut active, mut completed): (Vec<&Task>, Vec<&Task>) =
+    let (mut active, mut completed): (Vec<&TaskModel>, Vec<&TaskModel>) =
         children.into_iter().partition(|t| t.completed_at.is_none());
 
     active.sort_by(|a, b| a.sort_key.cmp(&b.sort_key));
@@ -99,8 +99,8 @@ fn flatten_subtree(
 /// Used by filter page where results come from the server in a specific order.
 pub fn flatten_flat(
     root_ids: &[i64],
-    all_tasks: &[Task],
-    include: &dyn Fn(&Task) -> bool,
+    all_tasks: &[TaskModel],
+    include: &dyn Fn(&TaskModel) -> bool,
 ) -> Vec<FlatNode> {
     root_ids
         .iter()
@@ -157,7 +157,7 @@ pub fn parent_of(flat: &[FlatNode], task_id: i64) -> Option<i64> {
 /// anchor's parent when indented/outdented).
 pub fn compute_sort_key(
     flat: &[FlatNode],
-    all_tasks: &[Task],
+    all_tasks: &[TaskModel],
     anchor_task_id: i64,
     placement: Placement,
     parent_id: Option<i64>,
@@ -197,7 +197,7 @@ pub fn compute_sort_key(
     }
 }
 
-pub fn task_sort_key(all_tasks: &[Task], task_id: i64) -> Option<String> {
+pub fn task_sort_key(all_tasks: &[TaskModel], task_id: i64) -> Option<String> {
     all_tasks
         .iter()
         .find(|t| t.id == task_id)
@@ -268,10 +268,9 @@ pub fn find_parent_for_depth(
 mod tests {
     use super::*;
     use chrono::Utc;
-    use north_dto::Task;
 
-    fn make_task(id: i64, parent_id: Option<i64>, sort_key: &str) -> Task {
-        Task {
+    fn make_task(id: i64, parent_id: Option<i64>, sort_key: &str) -> TaskModel {
+        TaskModel {
             id,
             project_id: None,
             parent_id,
@@ -286,8 +285,7 @@ mod tests {
             reviewed_at: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
-            recurrence_type: None,
-            recurrence_rule: None,
+            recurrence: None,
             project_title: None,
             tags: vec![],
             subtask_count: 0,
@@ -296,7 +294,7 @@ mod tests {
         }
     }
 
-    fn make_completed_task(id: i64, parent_id: Option<i64>, sort_key: &str) -> Task {
+    fn make_completed_task(id: i64, parent_id: Option<i64>, sort_key: &str) -> TaskModel {
         let mut t = make_task(id, parent_id, sort_key);
         t.completed_at = Some(Utc::now());
         t

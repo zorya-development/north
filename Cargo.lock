@@ -1818,8 +1818,10 @@ dependencies = [
 name = "north-repositories"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "leptos",
  "north-dto",
+ "north-recurrence",
  "north-server-fns",
 ]
 

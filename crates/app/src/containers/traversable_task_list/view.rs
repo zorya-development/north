@@ -1,6 +1,5 @@
 use leptos::prelude::*;
-use north_dto::Task;
-use north_stores::TaskStoreFilter;
+use north_stores::{TaskModel, TaskStoreFilter};
 use north_ui::Spinner;
 use wasm_bindgen::JsCast;
 
@@ -256,7 +255,7 @@ pub fn TraversableTaskListView(
 fn handle_drop(
     drag_ctx: Option<DragDropContext>,
     flat_nodes: &[FlatNode],
-    all_tasks: &[Task],
+    all_tasks: &[TaskModel],
     ctrl: TraversableTaskListController,
 ) {
     let Some(ctx) = drag_ctx else { return };
