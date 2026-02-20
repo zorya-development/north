@@ -5,10 +5,24 @@ use north_dto::RecurrenceType;
 use north_dto::{CreateTask, UpdateTask};
 use north_repositories::{TaskModel, TaskRepository};
 
+#[cfg(feature = "hydrate")]
+const REORDER_DEBOUNCE_MS: i32 = 1000;
+
+#[derive(Clone)]
+struct PendingReorder {
+    task_id: i64,
+    sort_key: String,
+    parent_id: Option<Option<i64>>,
+}
+
 #[derive(Clone, Copy)]
 pub struct TaskStore {
     tasks: RwSignal<Vec<TaskModel>>,
     loaded: RwSignal<bool>,
+    #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+    reorder_timeout: RwSignal<i32>,
+    #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+    pending_reorder: RwSignal<Option<PendingReorder>>,
 }
 
 #[derive(Clone, Default)]
@@ -37,6 +51,8 @@ impl TaskStore {
         Self {
             tasks: RwSignal::new(vec![]),
             loaded: RwSignal::new(false),
+            reorder_timeout: RwSignal::new(0),
+            pending_reorder: RwSignal::new(None),
         }
     }
 
@@ -353,14 +369,92 @@ impl TaskStore {
     }
 
     pub fn reorder_task(&self, task_id: i64, sort_key: String, parent_id: Option<Option<i64>>) {
+        // Optimistic update — UI reacts immediately
+        self.update_in_place(task_id, |t| {
+            t.sort_key = sort_key.clone();
+            if let Some(pid) = parent_id {
+                t.parent_id = pid;
+            }
+        });
+
+        // Accumulate changes — sort_key always updates, parent_id merges (keeps
+        // the most recent Some value so an outdent isn't lost by a later up/down).
+        let pending = match self.pending_reorder.get_untracked() {
+            Some(mut p) if p.task_id == task_id => {
+                p.sort_key = sort_key;
+                if parent_id.is_some() {
+                    p.parent_id = parent_id;
+                }
+                p
+            }
+            _ => PendingReorder {
+                task_id,
+                sort_key,
+                parent_id,
+            },
+        };
+        self.pending_reorder.set(Some(pending));
+
+        // Debounce server sync
+        self.schedule_reorder_flush();
+    }
+
+    #[cfg(feature = "hydrate")]
+    fn schedule_reorder_flush(&self) {
+        use wasm_bindgen::prelude::*;
+
+        // Cancel previous pending timeout
+        let prev = self.reorder_timeout.get_untracked();
+        if prev != 0 {
+            if let Some(w) = web_sys::window() {
+                w.clear_timeout_with_handle(prev);
+            }
+        }
+
+        let store = *self;
+        let cb = Closure::once(Box::new(move || {
+            store.reorder_timeout.set(0);
+            let Some(pending) = store.pending_reorder.get_untracked() else {
+                return;
+            };
+            store.pending_reorder.set(None);
+            spawn_local(async move {
+                let input = UpdateTask {
+                    sort_key: Some(pending.sort_key),
+                    parent_id: pending.parent_id,
+                    ..Default::default()
+                };
+                if TaskRepository::update(pending.task_id, input).await.is_ok() {
+                    store.refetch_async().await;
+                }
+            });
+        }) as Box<dyn FnOnce()>);
+
+        let handle = web_sys::window()
+            .expect("window")
+            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                cb.as_ref().unchecked_ref(),
+                REORDER_DEBOUNCE_MS,
+            )
+            .unwrap_or(0);
+        cb.forget();
+        self.reorder_timeout.set(handle);
+    }
+
+    #[cfg(not(feature = "hydrate"))]
+    fn schedule_reorder_flush(&self) {
+        let Some(pending) = self.pending_reorder.get_untracked() else {
+            return;
+        };
+        self.pending_reorder.set(None);
         let store = *self;
         spawn_local(async move {
             let input = UpdateTask {
-                sort_key: Some(sort_key),
-                parent_id,
+                sort_key: Some(pending.sort_key),
+                parent_id: pending.parent_id,
                 ..Default::default()
             };
-            if TaskRepository::update(task_id, input).await.is_ok() {
+            if TaskRepository::update(pending.task_id, input).await.is_ok() {
                 store.refetch_async().await;
             }
         });

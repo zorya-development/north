@@ -5,11 +5,12 @@ edition = "2021"
 
 [features]
 ssr = ["north-repositories/ssr"]
-hydrate = ["north-repositories/hydrate", "dep:web-sys"]
+hydrate = ["north-repositories/hydrate", "dep:web-sys", "dep:wasm-bindgen"]
 
 [dependencies]
 north-dto = { workspace = true }
 north-repositories = { workspace = true }
 leptos = "0.7"
 chrono = { workspace = true }
+wasm-bindgen = { version = "0.2", optional = true }
 web-sys = { version = "0.3", optional = true, features = ["Window", "Storage"] }

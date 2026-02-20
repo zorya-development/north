@@ -1865,6 +1865,7 @@ dependencies = [
  "leptos",
  "north-dto",
  "north-repositories",
+ "wasm-bindgen",
  "web-sys",
 ]
 
