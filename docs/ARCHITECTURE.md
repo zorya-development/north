@@ -28,7 +28,6 @@ north/
 │   └── release.yml             # Release: prod Docker image + GitHub release on master
 │
 └── crates/
-    ├── recurrence/             # Pure RRULE types and logic (north-recurrence)
     ├── dto/                    # Pure data types (no IO) — compiled for both server and WASM
     ├── db/                     # Diesel schema, models, pool type
     ├── core/                   # Business logic layer (all services, filter DSL, Diesel queries)
@@ -42,11 +41,8 @@ north/
 
 ## Crate Details
 
-### recurrence (north-recurrence)
-Pure RRULE types and logic. No IO, no framework deps — only `serde`. Types: `RecurrenceType` (Scheduled, AfterCompletion), `Frequency` (Daily, Weekly, Monthly, Yearly), `Weekday`, `RecurrenceRule` (structured type with `parse()`/`to_rrule_string()` for serialization, `summarize()` for human-readable display, `time_str()`/`set_time_str()` for time access). Re-exported by `north-dto`.
-
 ### dto (north-dto)
-Pure data types with serde + chrono, no IO. Compiled for both server and WASM. Re-exports all types from `north-recurrence`. Key types:
+Pure data types with serde + chrono, no IO. Compiled for both server and WASM. Includes recurrence types (`RecurrenceType`, `RecurrenceRule`, `Frequency`, `Weekday`) with RRULE serialization, human-readable `summarize()`, and after-completion/scheduled modes. Key types:
 - `Task` (includes enrichment fields: project_title, tags, subtask_count, completed_subtask_count, actionable, recurrence_type, recurrence_rule)
 - `CreateTask` (includes optional `sort_key` for positional insertion)
 - `TaskFilter`, `ProjectFilter`, `ProjectStatus` (Active, Archived)

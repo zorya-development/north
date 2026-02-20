@@ -41,9 +41,9 @@ GTD-inspired task management system. Single Rust binary serving SSR + WASM via L
 ### Dependency Graph
 
 ```
-recurrence → dto → db → core → server-fns → repositories → stores → app
-                                                                      ↑
-                                                                     ui
+dto → db → core → server-fns → repositories → stores → app
+                                                        ↑
+                                                       ui
 server (Axum binary, calls core directly)
 ```
 

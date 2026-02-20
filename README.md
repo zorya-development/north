@@ -214,7 +214,7 @@ north/
 ├── public/             # Static assets
 ├── chart/              # Helm chart for Kubernetes deployment
 ├── docker/             # Base, dev, and prod Dockerfiles
-└── docs/               # Product requirements and design system
+└── docs/               # Product requirements, design system, and architecture reference
 ```
 
 Data flows through the layers in one direction:
