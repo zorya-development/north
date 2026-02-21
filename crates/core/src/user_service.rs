@@ -44,6 +44,9 @@ impl UserService {
         if let Some(ref tz) = input.timezone {
             settings.timezone = tz.clone();
         }
+        if let Some(collapsed) = input.sidebar_collapsed {
+            settings.sidebar_collapsed = collapsed;
+        }
 
         let val =
             serde_json::to_value(&settings).map_err(|e| ServiceError::BadRequest(e.to_string()))?;

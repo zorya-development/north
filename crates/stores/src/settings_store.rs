@@ -47,6 +47,23 @@ impl SettingsStore {
         Signal::derive(move || settings.get().review_interval_days as i64)
     }
 
+    pub fn sidebar_collapsed(&self) -> Signal<bool> {
+        let settings = self.settings;
+        Signal::derive(move || settings.get().sidebar_collapsed)
+    }
+
+    /// Optimistically toggle sidebar_collapsed and persist to server.
+    pub fn toggle_sidebar_collapsed(&self) {
+        let new_val = !self.settings.get_untracked().sidebar_collapsed;
+        // Optimistic update
+        self.settings.update(|s| s.sidebar_collapsed = new_val);
+        // Persist
+        self.update(UpdateSettings {
+            sidebar_collapsed: Some(new_val),
+            ..Default::default()
+        });
+    }
+
     pub fn update(&self, input: UpdateSettings) {
         let store = *self;
         spawn_local(async move {
