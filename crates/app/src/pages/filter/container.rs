@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use leptos_router::hooks::{use_navigate, use_params_map};
+use leptos_router::hooks::{use_navigate, use_params_map, use_query_map};
 use north_stores::use_app_store;
 
 use super::controller::FilterController;
@@ -18,11 +18,14 @@ pub fn FilterPage() -> impl IntoView {
             .and_then(|id| id.parse::<i64>().ok())
     });
 
+    let query_map = use_query_map();
+    let initial_query = Memo::new(move |_| query_map.read().get("q").filter(|s| !s.is_empty()));
+
     let nav_cb = Callback::new(move |path: String| {
         navigate(&path, Default::default());
     });
 
-    let ctrl = FilterController::new(app_store, filter_id, nav_cb);
+    let ctrl = FilterController::new(app_store, filter_id, initial_query, nav_cb);
 
     view! {
         <FilterView

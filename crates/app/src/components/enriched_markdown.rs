@@ -3,7 +3,7 @@ use north_stores::AppStore;
 use north_ui::MarkdownView;
 
 /// Renders markdown body text with enriched `#tag` and `@project` tokens.
-/// - `#tag` → `[#tag](/filter?q=tags%3D%22tagname%22)` (link to filter page)
+/// - `#tag` → `[#tag](/filters/new?q=tags%3D%22tagname%22)` (link to filter page)
 /// - `@project` → `[@project](/project/{id})` (link to project page)
 /// Tokens inside code blocks and existing markdown links are left unchanged.
 #[component]
@@ -106,7 +106,7 @@ fn enrich_body(text: &str, app_store: Option<AppStore>) -> String {
                     '#' => {
                         let query = format!("tags=\"{}\"", token.to_lowercase());
                         let encoded = urlencoding::encode(&query);
-                        result.push_str(&format!("[#{token}](/filter?q={encoded})"));
+                        result.push_str(&format!("[#{token}](/filters/new?q={encoded})"));
                     }
                     '@' => {
                         let project_id = app_store.and_then(|s| {
@@ -155,7 +155,7 @@ mod tests {
     fn test_tag_converted() {
         let result = enrich_body("Check #urgent task", None);
         assert!(result.contains("[#urgent]"));
-        assert!(result.contains("/filter?q="));
+        assert!(result.contains("/filters/new?q="));
     }
 
     #[test]
