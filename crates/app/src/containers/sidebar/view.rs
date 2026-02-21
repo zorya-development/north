@@ -54,7 +54,7 @@ pub fn SidebarView(
                 <NavItem href="/tasks" label="All Tasks" icon=IconKind::Tasks collapsed=collapsed/>
 
                 // Projects section
-                <div class="pt-4">
+                <div class=move || if collapsed.get() { "" } else { "pt-4" }>
                     <Show
                         when=move || !collapsed.get()
                         fallback=move || {
@@ -154,7 +154,7 @@ pub fn SidebarView(
                 </div>
 
                 // Filters section
-                <div class="pt-4">
+                <div class=move || if collapsed.get() { "" } else { "pt-4" }>
                     <Show
                         when=move || !collapsed.get()
                         fallback=move || {
@@ -253,17 +253,16 @@ fn ProjectsFlyout(
     let (new_title, set_new_title) = signal(String::new());
 
     view! {
-        <div class="w-full">
             <Popover
                 open=popover_open
                 set_open=set_popover_open
+                class="w-full"
                 trigger=Box::new(move || {
                     view! {
                         <button
                             class="flex items-center justify-center w-full py-1.5 \
-                                   rounded-lg text-text-tertiary \
-                                   hover:text-text-secondary hover:bg-bg-tertiary \
-                                   transition-colors"
+                                   rounded-lg text-text-primary \
+                                   hover:bg-bg-tertiary transition-colors"
                             on:click=move |_| set_popover_open.update(|o| *o = !*o)
                             title="Projects"
                         >
@@ -361,7 +360,6 @@ fn ProjectsFlyout(
                 </div>
             </div>
             </Popover>
-        </div>
     }
 }
 
@@ -371,17 +369,16 @@ fn FiltersFlyout(saved_filters: Signal<Vec<SavedFilter>>) -> impl IntoView {
     let (popover_open, set_popover_open) = signal(false);
 
     view! {
-        <div class="w-full">
             <Popover
                 open=popover_open
                 set_open=set_popover_open
+                class="w-full"
                 trigger=Box::new(move || {
                     view! {
                         <button
                             class="flex items-center justify-center w-full py-1.5 \
-                                   rounded-lg text-text-tertiary \
-                                   hover:text-text-secondary hover:bg-bg-tertiary \
-                                   transition-colors"
+                                   rounded-lg text-text-primary \
+                                   hover:bg-bg-tertiary transition-colors"
                             on:click=move |_| set_popover_open.update(|o| *o = !*o)
                             title="Filters"
                         >
@@ -427,7 +424,6 @@ fn FiltersFlyout(saved_filters: Signal<Vec<SavedFilter>>) -> impl IntoView {
                     </div>
                 </div>
             </Popover>
-        </div>
     }
 }
 

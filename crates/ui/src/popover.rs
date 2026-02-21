@@ -7,6 +7,7 @@ pub fn Popover(
     set_open: WriteSignal<bool>,
     trigger: Children,
     children: Children,
+    #[prop(optional)] class: &'static str,
 ) -> impl IntoView {
     let trigger_ref = NodeRef::<leptos::html::Div>::new();
     let panel_ref = NodeRef::<leptos::html::Div>::new();
@@ -79,7 +80,7 @@ pub fn Popover(
     });
 
     view! {
-        <div node_ref=trigger_ref class="relative inline-flex">
+        <div node_ref=trigger_ref class=format!("relative inline-flex {class}")>
             {trigger()}
             <div
                 class="fixed inset-0 z-40"
