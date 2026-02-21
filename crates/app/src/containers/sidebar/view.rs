@@ -27,8 +27,8 @@ pub fn SidebarView(
     let (new_title, set_new_title) = signal(String::new());
 
     let aside_class = move || {
-        let base = "bg-sidebar border-r border-(--border-muted) flex flex-col h-full \
-                    transition-[width] duration-200 ease-in-out overflow-hidden";
+        let base =
+            "bg-sidebar border-r border-(--border-muted) flex flex-col h-full overflow-hidden";
         if collapsed.get() {
             format!("w-[52px] {base}")
         } else {
