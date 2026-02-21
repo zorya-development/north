@@ -286,6 +286,7 @@ mod tests {
             created_at: Utc::now(),
             updated_at: Utc::now(),
             recurrence: None,
+            is_url_fetching: None,
             project_title: None,
             tags: vec![],
             subtask_count: 0,

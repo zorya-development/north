@@ -443,6 +443,124 @@ impl TaskService {
         Ok(Task::from(row))
     }
 
+    pub async fn create_with_tokens(
+        pool: &DbPool,
+        user_id: i64,
+        input: &CreateTask,
+    ) -> ServiceResult<Task> {
+        let parsed = crate::filter::text_parser::parse_tokens(&input.title);
+
+        let mut resolved_project_id = input.project_id;
+        if let Some(ref project_name) = parsed.project {
+            if let Ok(Some(pid)) =
+                crate::ProjectService::find_by_title(pool, user_id, project_name).await
+            {
+                resolved_project_id = Some(pid);
+            }
+        }
+
+        let title = if parsed.cleaned.is_empty() {
+            input.title.clone()
+        } else {
+            parsed.cleaned
+        };
+
+        let create_input = CreateTask {
+            title,
+            body: input.body.clone(),
+            project_id: resolved_project_id,
+            ..input.clone()
+        };
+
+        let mut task = Self::create(pool, user_id, &create_input).await?;
+
+        if !parsed.tags.is_empty() {
+            crate::TagService::add_task_tags_pooled(pool, user_id, task.id, &parsed.tags).await?;
+            task = Self::get_by_id(pool, user_id, task.id).await?;
+        }
+
+        task = Self::maybe_resolve_urls(pool, user_id, task).await?;
+
+        Ok(task)
+    }
+
+    pub async fn update_with_tokens(
+        pool: &DbPool,
+        user_id: i64,
+        id: i64,
+        input: &UpdateTask,
+    ) -> ServiceResult<Task> {
+        let mut resolved_input = input.clone();
+        let mut tags_to_add = Vec::new();
+        let mut has_urls = false;
+
+        if let Some(ref title) = input.title {
+            let parsed = crate::filter::text_parser::parse_tokens(title);
+            let cleaned = if parsed.cleaned.is_empty() {
+                title.clone()
+            } else {
+                parsed.cleaned
+            };
+            if crate::url_service::has_bare_urls(&cleaned) {
+                has_urls = true;
+            }
+            resolved_input.title = Some(cleaned);
+            tags_to_add = parsed.tags;
+
+            if let Some(ref project_name) = parsed.project {
+                if let Ok(Some(pid)) =
+                    crate::ProjectService::find_by_title(pool, user_id, project_name).await
+                {
+                    resolved_input.project_id = Some(Some(pid));
+                }
+            }
+        }
+
+        if let Some(Some(ref body)) = input.body {
+            if crate::url_service::has_bare_urls(body) {
+                has_urls = true;
+            }
+        }
+
+        if has_urls {
+            resolved_input.is_url_fetching = Some(Some(Utc::now()));
+        }
+
+        let mut task = Self::update(pool, user_id, id, &resolved_input).await?;
+
+        if !tags_to_add.is_empty() {
+            crate::TagService::add_task_tags_pooled(pool, user_id, task.id, &tags_to_add).await?;
+            task = Self::get_by_id(pool, user_id, task.id).await?;
+        }
+
+        if has_urls {
+            let bg_pool = pool.clone();
+            let task_id = task.id;
+            let bg_title = task.title.clone();
+            let bg_body = task.body.clone();
+            tokio::spawn(async move {
+                let resolved_title = crate::url_service::resolve_urls_in_text(&bg_title).await;
+                let resolved_body = match bg_body {
+                    Some(ref body) => Some(crate::url_service::resolve_urls_in_text(body).await),
+                    None => None,
+                };
+
+                let update_input = UpdateTask {
+                    title: Some(resolved_title),
+                    body: Some(resolved_body),
+                    is_url_fetching: Some(None),
+                    ..Default::default()
+                };
+                if let Err(e) = TaskService::update(&bg_pool, user_id, task_id, &update_input).await
+                {
+                    tracing::error!(task_id, error = %e, "Background URL resolution failed");
+                }
+            });
+        }
+
+        Ok(task)
+    }
+
     pub async fn delete(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<()> {
         let mut conn = pool.get().await?;
         let affected = diesel::delete(
@@ -702,6 +820,52 @@ impl TaskService {
     }
 
     // ── Internal helpers ───────────────────────────────────────────
+
+    async fn maybe_resolve_urls(
+        pool: &DbPool,
+        user_id: i64,
+        mut task: Task,
+    ) -> ServiceResult<Task> {
+        let has_urls = crate::url_service::has_bare_urls(&task.title)
+            || task
+                .body
+                .as_deref()
+                .is_some_and(crate::url_service::has_bare_urls);
+
+        if !has_urls {
+            return Ok(task);
+        }
+
+        let flag_input = UpdateTask {
+            is_url_fetching: Some(Some(Utc::now())),
+            ..Default::default()
+        };
+        task = Self::update(pool, user_id, task.id, &flag_input).await?;
+
+        let bg_pool = pool.clone();
+        let task_id = task.id;
+        let bg_title = task.title.clone();
+        let bg_body = task.body.clone();
+        tokio::spawn(async move {
+            let resolved_title = crate::url_service::resolve_urls_in_text(&bg_title).await;
+            let resolved_body = match bg_body {
+                Some(ref body) => Some(crate::url_service::resolve_urls_in_text(body).await),
+                None => None,
+            };
+
+            let update_input = UpdateTask {
+                title: Some(resolved_title),
+                body: Some(resolved_body),
+                is_url_fetching: Some(None),
+                ..Default::default()
+            };
+            if let Err(e) = TaskService::update(&bg_pool, user_id, task_id, &update_input).await {
+                tracing::error!(task_id, error = %e, "Background URL resolution failed");
+            }
+        });
+
+        Ok(task)
+    }
 
     async fn load_with_meta(pool: &DbPool, task_rows: Vec<TaskRow>) -> ServiceResult<Vec<Task>> {
         if task_rows.is_empty() {
