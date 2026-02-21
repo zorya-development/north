@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Generate release notes:
+# Generate release notes from a pre-generated changelog:
 # - If ANTHROPIC_API_KEY is set: AI-enhanced user-friendly notes
-# - Otherwise: Use git-cliff technical changelog as-is
+# - Otherwise: Use the changelog as-is
 
-VERSION="${1:-}"
-if [[ -z "$VERSION" ]]; then
-  echo "Usage: $0 <version>" >&2
+CHANGELOG="${1:-}"
+if [[ -z "$CHANGELOG" ]]; then
+  echo "Usage: $0 <changelog-content>" >&2
   exit 1
 fi
 
@@ -15,22 +15,7 @@ TEMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TEMP_DIR"' EXIT
 
 TECHNICAL="$TEMP_DIR/technical.md"
-
-# Get previous tag for range
-PREV_TAG=$(git describe --tags --abbrev=0 "v$VERSION^" 2>/dev/null || echo "")
-if [[ -n "$PREV_TAG" ]]; then
-  COMMIT_RANGE="$PREV_TAG..v$VERSION"
-  echo "📝 Generating changelog for range: $COMMIT_RANGE" >&2
-else
-  COMMIT_RANGE="v$VERSION"
-  echo "📝 Generating changelog for tag: $COMMIT_RANGE" >&2
-fi
-
-# Generate technical changelog with git-cliff
-git-cliff --config cliff.toml \
-  --strip header \
-  "$COMMIT_RANGE" \
-  > "$TECHNICAL"
+echo "$CHANGELOG" > "$TECHNICAL"
 
 # If no API key, just output technical notes
 if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
