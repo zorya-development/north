@@ -194,8 +194,11 @@ impl TaskStore {
                 body: Some(body),
                 ..Default::default()
             };
-            if TaskRepository::update(id, input).await.is_ok() {
+            if let Ok(task) = TaskRepository::update_with_tokens(id, input).await {
                 store.refetch_async().await;
+                if task.is_url_fetching.is_some() {
+                    store.poll_url_resolution(id);
+                }
             }
         });
     }
@@ -203,11 +206,16 @@ impl TaskStore {
     pub fn create_task(&self, input: CreateTask) {
         let store = *self;
         spawn_local(async move {
-            if let Ok(task) = TaskRepository::create(input).await {
+            if let Ok(task) = TaskRepository::create_with_tokens(input).await {
+                let should_poll = task.is_url_fetching.is_some();
+                let task_id = task.id;
                 if let Some(pid) = task.parent_id {
                     store.update_in_place(pid, |t| t.subtask_count += 1);
                 }
                 store.add(task);
+                if should_poll {
+                    store.poll_url_resolution(task_id);
+                }
             }
         });
     }
@@ -216,9 +224,14 @@ impl TaskStore {
     /// to avoid triggering a re-render of the parent task item (which would
     /// destroy any inline input that is currently focused).
     pub async fn create_task_async(&self, input: CreateTask) -> Option<TaskModel> {
-        match TaskRepository::create(input).await {
+        match TaskRepository::create_with_tokens(input).await {
             Ok(task) => {
+                let should_poll = task.is_url_fetching.is_some();
+                let task_id = task.id;
                 self.add(task.clone());
+                if should_poll {
+                    self.poll_url_resolution(task_id);
+                }
                 Some(task)
             }
             Err(_) => None,
@@ -461,6 +474,40 @@ impl TaskStore {
     }
 
     // ── Internal helpers ────────────────────────────────────────
+
+    #[cfg(feature = "hydrate")]
+    fn poll_url_resolution(&self, task_id: i64) {
+        let store = *self;
+        spawn_local(async move {
+            let started = Utc::now();
+            loop {
+                gloo_timers::future::sleep(std::time::Duration::from_secs(2)).await;
+
+                if Utc::now() - started > chrono::Duration::seconds(60) {
+                    break;
+                }
+
+                match TaskRepository::get(task_id).await {
+                    Ok(task) => {
+                        if task.is_url_fetching.is_none() {
+                            store.update_in_place(task_id, |t| {
+                                t.title = task.title;
+                                t.body = task.body;
+                                t.is_url_fetching = None;
+                            });
+                            break;
+                        }
+                    }
+                    Err(_) => break,
+                }
+            }
+        });
+    }
+
+    #[cfg(not(feature = "hydrate"))]
+    fn poll_url_resolution(&self, _task_id: i64) {
+        // No-op on server
+    }
 
     async fn refetch_async(&self) {
         if let Ok(tasks) = TaskRepository::list().await {

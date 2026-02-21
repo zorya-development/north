@@ -83,14 +83,16 @@ pub fn AutocompleteInputView(
     #[prop(optional)] placeholder: &'static str,
     #[prop(optional)] class: &'static str,
     on_keydown: Option<std::sync::Arc<dyn Fn(KeyboardEvent) + Send + Sync>>,
-    #[prop(optional)] autofocus: bool,
+    autofocus: bool,
+    on_blur: Option<Callback<()>>,
+    node_ref: Option<NodeRef<html::Input>>,
     tags: Signal<Vec<Tag>>,
     projects: Signal<Vec<Project>>,
 ) -> impl IntoView {
     let (trigger_state, set_trigger_state) = signal(None::<TriggerState>);
     let (highlighted, set_highlighted) = signal(0_usize);
     let (suggestions, set_suggestions) = signal(Vec::<SuggestionItem>::new());
-    let input_ref = NodeRef::<html::Input>::new();
+    let input_ref = node_ref.unwrap_or_default();
 
     if autofocus {
         Effect::new(move || {
@@ -186,6 +188,9 @@ pub fn AutocompleteInputView(
                 on:blur=move |_| {
                     set_suggestions.set(vec![]);
                     set_trigger_state.set(None);
+                    if let Some(cb) = on_blur {
+                        cb.run(());
+                    }
                 }
                 class=class
             />
@@ -208,12 +213,23 @@ pub fn AutocompleteTextareaView(
     #[prop(optional)] class: &'static str,
     #[prop(optional, default = 3)] rows: u32,
     on_keydown: Option<std::sync::Arc<dyn Fn(KeyboardEvent) + Send + Sync>>,
+    on_blur: Option<Callback<()>>,
+    autofocus: bool,
     tags: Signal<Vec<Tag>>,
     projects: Signal<Vec<Project>>,
 ) -> impl IntoView {
     let (trigger_state, set_trigger_state) = signal(None::<TriggerState>);
     let (highlighted, set_highlighted) = signal(0_usize);
     let (suggestions, set_suggestions) = signal(Vec::<SuggestionItem>::new());
+    let textarea_ref = NodeRef::<html::Textarea>::new();
+
+    if autofocus {
+        Effect::new(move || {
+            if let Some(el) = textarea_ref.get() {
+                let _ = el.focus();
+            }
+        });
+    }
 
     let update_suggestions = move |val: &str, cursor: usize| {
         if let Some(ts) = find_trigger(val, cursor) {
@@ -240,6 +256,7 @@ pub fn AutocompleteTextareaView(
     view! {
         <div class="relative">
             <textarea
+                node_ref=textarea_ref
                 placeholder=placeholder
                 prop:value=move || value.get()
                 on:input=move |ev| {
@@ -299,6 +316,9 @@ pub fn AutocompleteTextareaView(
                 on:blur=move |_| {
                     set_suggestions.set(vec![]);
                     set_trigger_state.set(None);
+                    if let Some(cb) = on_blur {
+                        cb.run(());
+                    }
                 }
                 rows=rows
                 class=class

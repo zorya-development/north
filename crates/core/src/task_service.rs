@@ -198,6 +198,7 @@ impl TaskService {
                 due_date: input.due_date,
                 recurrence_type: None,
                 recurrence_rule: None,
+                is_url_fetching: None,
             })
             .returning(TaskRow::as_returning())
             .get_result(&mut conn)
@@ -327,6 +328,9 @@ impl TaskService {
         }
         if let Some(ref recurrence_rule) = input.recurrence_rule {
             changeset.recurrence_rule = Some(recurrence_rule.as_deref());
+        }
+        if let Some(ref is_url_fetching) = input.is_url_fetching {
+            changeset.is_url_fetching = Some(*is_url_fetching);
         }
 
         // When completing and no explicit sort_key, reset to empty.
@@ -567,6 +571,7 @@ impl TaskService {
                 due_date: next_due,
                 recurrence_type: completed_task.recurrence_type,
                 recurrence_rule: completed_task.recurrence_rule.as_deref(),
+                is_url_fetching: None,
             })
             .returning(TaskRow::as_returning())
             .get_result(&mut conn)
@@ -595,6 +600,7 @@ impl TaskService {
                     due_date: None,
                     recurrence_type: None,
                     recurrence_rule: None,
+                    is_url_fetching: None,
                 })
                 .returning(TaskRow::as_returning())
                 .get_result(&mut conn)
