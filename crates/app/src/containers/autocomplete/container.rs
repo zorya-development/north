@@ -1,4 +1,5 @@
 use leptos::ev::KeyboardEvent;
+use leptos::html;
 use leptos::prelude::*;
 
 use north_stores::AppStore;
@@ -13,6 +14,8 @@ pub fn AutocompleteInput(
     #[prop(optional)] class: &'static str,
     #[prop(optional)] on_keydown: Option<std::sync::Arc<dyn Fn(KeyboardEvent) + Send + Sync>>,
     #[prop(optional)] autofocus: bool,
+    #[prop(optional)] on_blur: Option<Callback<()>>,
+    #[prop(optional)] node_ref: Option<NodeRef<html::Input>>,
 ) -> impl IntoView {
     let app_store = use_context::<AppStore>();
     let tags = Signal::derive(move || app_store.map(|s| s.tags.get()).unwrap_or_default());
@@ -26,6 +29,8 @@ pub fn AutocompleteInput(
             class=class
             on_keydown=on_keydown
             autofocus=autofocus
+            on_blur=on_blur
+            node_ref=node_ref
             tags=tags
             projects=projects
         />
@@ -40,6 +45,8 @@ pub fn AutocompleteTextarea(
     #[prop(optional)] class: &'static str,
     #[prop(optional, default = 3)] rows: u32,
     #[prop(optional)] on_keydown: Option<std::sync::Arc<dyn Fn(KeyboardEvent) + Send + Sync>>,
+    #[prop(optional)] on_blur: Option<Callback<()>>,
+    #[prop(optional)] autofocus: bool,
 ) -> impl IntoView {
     let app_store = use_context::<AppStore>();
     let tags = Signal::derive(move || app_store.map(|s| s.tags.get()).unwrap_or_default());
@@ -53,6 +60,8 @@ pub fn AutocompleteTextarea(
             class=class
             rows=rows
             on_keydown=on_keydown
+            on_blur=on_blur
+            autofocus=autofocus
             tags=tags
             projects=projects
         />

@@ -45,7 +45,7 @@ pub enum TextVariant {
 }
 
 impl TextVariant {
-    fn classes(self) -> &'static str {
+    pub fn classes(self) -> &'static str {
         match self {
             Self::HeadingLg => "text-2xl font-semibold tracking-tight",
             Self::HeadingMd => "text-xl font-semibold",
@@ -90,7 +90,7 @@ pub enum TextColor {
 }
 
 impl TextColor {
-    fn classes(self) -> &'static str {
+    pub fn classes(self) -> &'static str {
         match self {
             Self::Primary => "text-text-primary",
             Self::Secondary => "text-text-secondary",
