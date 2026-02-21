@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Generate release notes from a pre-generated changelog:
+# Generate release notes from a pre-generated changelog.
+# Outputs to stdout.
 # - If ANTHROPIC_API_KEY is set: AI-enhanced user-friendly notes
 # - Otherwise: Use the changelog as-is
 
@@ -21,14 +22,6 @@ echo "$CHANGELOG" > "$TECHNICAL"
 if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
   echo "ℹ️  No ANTHROPIC_API_KEY set, using technical changelog" >&2
   cat "$TECHNICAL"
-
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    {
-      echo "notes<<EOF"
-      cat "$TECHNICAL"
-      echo "EOF"
-    } >> "$GITHUB_OUTPUT"
-  fi
   exit 0
 fi
 
@@ -119,25 +112,8 @@ if [[ -z "$AI_NOTES" || "$AI_NOTES" == "null" ]]; then
   echo "❌ AI enhancement failed, falling back to technical notes" >&2
   echo "Response: $RESPONSE" >&2
   cat "$TECHNICAL"
-
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    {
-      echo "notes<<EOF"
-      cat "$TECHNICAL"
-      echo "EOF"
-    } >> "$GITHUB_OUTPUT"
-  fi
   exit 0
 fi
 
 echo "✅ Release notes generated!" >&2
 echo "$AI_NOTES"
-
-# Save to GitHub Actions output
-if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-  {
-    echo "notes<<EOF"
-    echo "$AI_NOTES"
-    echo "EOF"
-  } >> "$GITHUB_OUTPUT"
-fi

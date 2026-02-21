@@ -125,11 +125,11 @@ jobs:
           args: --latest --strip header
 
       - name: Generate release notes
-        id: notes
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CHANGELOG: ${{ steps.changelog.outputs.content }}
         run: |
-          bash scripts/generate-release-notes.sh "${{ steps.changelog.outputs.content }}"
+          bash scripts/generate-release-notes.sh "$CHANGELOG" > release-notes.md
 
       - name: Create GitHub release
         env:
@@ -137,5 +137,5 @@ jobs:
         run: |
           gh release create "v${{ needs.resolve.outputs.app_version }}" \
             --title "v${{ needs.resolve.outputs.app_version }}" \
-            --notes "${{ steps.notes.outputs.notes }}" \
+            --notes-file release-notes.md \
             --target "${{ github.event.workflow_run.head_sha }}"
