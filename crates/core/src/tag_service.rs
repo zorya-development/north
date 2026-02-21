@@ -81,6 +81,17 @@ impl TagService {
         Self::sync_task_tags(&mut conn, user_id, task_id, names).await
     }
 
+    /// Pool-level wrapper: gets a connection and calls add_task_tags.
+    pub async fn add_task_tags_pooled(
+        pool: &DbPool,
+        user_id: i64,
+        task_id: i64,
+        names: &[String],
+    ) -> ServiceResult<()> {
+        let mut conn = pool.get().await?;
+        Self::add_task_tags(&mut conn, user_id, task_id, names).await
+    }
+
     /// Additive tag sync: upsert tags and add links without removing existing ones.
     pub async fn add_task_tags(
         conn: &mut AsyncPgConnection,

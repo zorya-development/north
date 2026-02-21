@@ -5,7 +5,7 @@ use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::drag_drop::DragDropContext;
 use crate::components::theme_toggle::ThemeToggle;
 use north_dto::{Project, SavedFilter};
-use north_ui::{Icon, IconKind};
+use north_ui::{Icon, IconKind, Popover};
 
 const PRESET_COLORS: &[&str] = &[
     "#6b7280", "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6",
@@ -16,6 +16,8 @@ const PRESET_COLORS: &[&str] = &[
 pub fn SidebarView(
     projects: Signal<Vec<Project>>,
     saved_filters: Signal<Vec<SavedFilter>>,
+    collapsed: Signal<bool>,
+    on_toggle_collapsed: Callback<()>,
     on_create_project: Callback<String>,
     on_archive_project: Callback<i64>,
     on_edit_project: Callback<(i64, String, String)>,
@@ -24,103 +26,369 @@ pub fn SidebarView(
     let (creating, set_creating) = signal(false);
     let (new_title, set_new_title) = signal(String::new());
 
+    let aside_class = move || {
+        let base =
+            "bg-sidebar border-r border-(--border-muted) flex flex-col h-full overflow-hidden";
+        if collapsed.get() {
+            format!("w-[52px] {base}")
+        } else {
+            format!("w-60 {base}")
+        }
+    };
+
     view! {
-        <aside class="w-60 bg-sidebar border-r border-(--border-muted) flex flex-col h-full">
-            <div class="px-5 pt-2 pb-2 mb-6 flex justify-center h-[140px]">
-                <div class="sidebar-logo w-full"/>
-            </div>
+        <aside class=aside_class>
+            // Logo area
+            <Show
+                when=move || !collapsed.get()
+                fallback=move || view! { <div class="h-4 flex-shrink-0"/> }
+            >
+                <div class="px-5 pt-2 pb-2 mb-6 flex justify-center h-[140px]">
+                    <div class="sidebar-logo w-full"/>
+                </div>
+            </Show>
 
-            <nav class="flex-1 px-2 space-y-1">
-                <NavItem href="/inbox" label="Inbox" icon=IconKind::Inbox/>
-                <NavItem href="/today" label="Today" icon=IconKind::Today/>
-                <NavItem href="/tasks" label="All Tasks" icon=IconKind::Tasks/>
+            <nav class="flex-1 px-2 space-y-1 min-w-0">
+                <NavItem href="/inbox" label="Inbox" icon=IconKind::Inbox collapsed=collapsed/>
+                <NavItem href="/today" label="Today" icon=IconKind::Today collapsed=collapsed/>
+                <NavItem href="/tasks" label="All Tasks" icon=IconKind::Tasks collapsed=collapsed/>
 
-                <div class="pt-4">
-                    <div class="flex items-center justify-between px-3">
-                        <Text variant=TextVariant::LabelMd color=TextColor::Secondary>
-                            "Projects"
-                        </Text>
-                        <button
-                            class="p-0.5 rounded text-text-tertiary \
-                                   hover:text-text-secondary \
-                                   hover:bg-bg-tertiary transition-colors"
-                            on:click=move |_| {
-                                set_creating.update(|v| *v = !*v);
+                // Projects section
+                <div class=move || if collapsed.get() { "" } else { "pt-4" }>
+                    <Show
+                        when=move || !collapsed.get()
+                        fallback=move || {
+                            view! {
+                                <ProjectsFlyout
+                                    projects=projects
+                                    on_create_project=on_create_project
+                                    on_archive_project=on_archive_project
+                                    on_edit_project=on_edit_project
+                                    on_drop_task_to_project=on_drop_task_to_project
+                                />
                             }
-                        >
-                            <Icon kind=IconKind::Plus class="w-3.5 h-3.5"/>
-                        </button>
-                    </div>
-
-                    <Show when=move || creating.get()>
-                        <form
-                            class="px-1 mt-1"
-                            on:submit=move |ev| {
-                                ev.prevent_default();
-                                let title = new_title.get_untracked();
-                                if !title.trim().is_empty() {
-                                    on_create_project.run(
-                                        title.trim().to_string(),
-                                    );
-                                    set_creating.set(false);
-                                    set_new_title.set(String::new());
+                        }
+                    >
+                        <div class="flex items-center justify-between px-3">
+                            <Text variant=TextVariant::LabelMd color=TextColor::Secondary>
+                                "Projects"
+                            </Text>
+                            <button
+                                class="p-0.5 rounded text-text-tertiary \
+                                       hover:text-text-secondary \
+                                       hover:bg-bg-tertiary transition-colors"
+                                on:click=move |_| {
+                                    set_creating.update(|v| *v = !*v);
                                 }
-                            }
-                        >
-                            <input
-                                type="text"
-                                class="w-full bg-bg-input border border-border \
-                                       rounded px-2 py-1.5 text-sm \
-                                       text-text-primary placeholder:text-text-tertiary \
-                                       focus:outline-none focus:border-accent"
-                                placeholder="Project name"
-                                autofocus=true
-                                bind:value=(new_title, set_new_title)
-                                on:keydown=move |ev| {
-                                    if ev.key() == "Escape" {
+                            >
+                                <Icon kind=IconKind::Plus class="w-3.5 h-3.5"/>
+                            </button>
+                        </div>
+
+                        <Show when=move || creating.get()>
+                            <form
+                                class="px-1 mt-1"
+                                on:submit=move |ev| {
+                                    ev.prevent_default();
+                                    let title = new_title.get_untracked();
+                                    if !title.trim().is_empty() {
+                                        on_create_project.run(
+                                            title.trim().to_string(),
+                                        );
                                         set_creating.set(false);
                                         set_new_title.set(String::new());
                                     }
                                 }
-                            />
-                        </form>
-                    </Show>
-
-                    <div class="mt-1 space-y-0.5">
-                        {move || {
-                            projects
-                                .get()
-                                .into_iter()
-                                .map(|p| {
-                                    let pid = p.id;
-                                    let title = p.title.clone();
-                                    let color = p.color.clone();
-                                    view! {
-                                        <ProjectItem
-                                            id=pid
-                                            title=title
-                                            color=color
-                                            on_archive=move || {
-                                                on_archive_project.run(pid);
-                                            }
-                                            on_edit=move |id, t, c| {
-                                                on_edit_project.run((id, t, c));
-                                            }
-                                            on_drop_task=on_drop_task_to_project
-                                        />
+                            >
+                                <input
+                                    type="text"
+                                    class="w-full bg-bg-input border border-border \
+                                           rounded px-2 py-1.5 text-sm \
+                                           text-text-primary placeholder:text-text-tertiary \
+                                           focus:outline-none focus:border-accent"
+                                    placeholder="Project name"
+                                    autofocus=true
+                                    bind:value=(new_title, set_new_title)
+                                    on:keydown=move |ev| {
+                                        if ev.key() == "Escape" {
+                                            set_creating.set(false);
+                                            set_new_title.set(String::new());
+                                        }
                                     }
-                                })
-                                .collect::<Vec<_>>()
-                        }}
-                    </div>
+                                />
+                            </form>
+                        </Show>
 
-                    <div class="mt-1">
-                        <NavItem href="/archive" label="Archive" icon=IconKind::Archive/>
-                    </div>
+                        <div class="mt-1 space-y-0.5">
+                            {move || {
+                                projects
+                                    .get()
+                                    .into_iter()
+                                    .map(|p| {
+                                        let pid = p.id;
+                                        let title = p.title.clone();
+                                        let color = p.color.clone();
+                                        view! {
+                                            <ProjectItem
+                                                id=pid
+                                                title=title
+                                                color=color
+                                                on_archive=move || {
+                                                    on_archive_project.run(pid);
+                                                }
+                                                on_edit=move |id, t, c| {
+                                                    on_edit_project.run((id, t, c));
+                                                }
+                                                on_drop_task=on_drop_task_to_project
+                                            />
+                                        }
+                                    })
+                                    .collect::<Vec<_>>()
+                            }}
+                        </div>
+
+                        <div class="mt-1">
+                            <NavItem href="/archive" label="Archive" icon=IconKind::Archive collapsed=collapsed/>
+                        </div>
+                    </Show>
+                </div>
+
+                // Filters section
+                <div class=move || if collapsed.get() { "" } else { "pt-4" }>
+                    <Show
+                        when=move || !collapsed.get()
+                        fallback=move || {
+                            view! {
+                                <FiltersFlyout saved_filters=saved_filters/>
+                            }
+                        }
+                    >
+                        <div class="flex items-center justify-between px-3">
+                            <Text variant=TextVariant::LabelMd color=TextColor::Secondary>
+                                "Filters"
+                            </Text>
+                            <a
+                                href="/filters/new"
+                                class="p-0.5 rounded text-text-tertiary \
+                                       hover:text-text-secondary \
+                                       hover:bg-bg-tertiary transition-colors"
+                            >
+                                <Icon kind=IconKind::Plus class="w-3.5 h-3.5"/>
+                            </a>
+                        </div>
+
+                        <div class="mt-1 space-y-0.5">
+                            {move || {
+                                saved_filters
+                                    .get()
+                                    .into_iter()
+                                    .map(|f| {
+                                        let href = format!("/filters/{}", f.id);
+                                        view! {
+                                            <FilterNavItem
+                                                href=href
+                                                title=f.title
+                                            />
+                                        }
+                                    })
+                                    .collect::<Vec<_>>()
+                            }}
+                        </div>
+                    </Show>
                 </div>
 
                 <div class="pt-4">
-                    <div class="flex items-center justify-between px-3">
+                    <NavItem href="/review" label="Review" icon=IconKind::Review collapsed=collapsed/>
+                    <NavItem href="/stats" label="Stats" icon=IconKind::Stats collapsed=collapsed/>
+                </div>
+            </nav>
+
+            <div class="p-2 border-t border-(--border-muted) space-y-0.5">
+                <NavItem href="/settings" label="Settings" icon=IconKind::Settings collapsed=collapsed/>
+                <ThemeToggle collapsed=Signal::derive(move || collapsed.get())/>
+
+                // Toggle button — always last
+                <button
+                    class=move || {
+                        let base = "flex items-center w-full rounded-lg text-sm \
+                                    text-text-tertiary hover:text-text-secondary \
+                                    hover:bg-bg-tertiary transition-colors";
+                        if collapsed.get() {
+                            format!("{base} justify-center py-1.5 px-0")
+                        } else {
+                            format!("{base} gap-2 px-3 py-0.5")
+                        }
+                    }
+                    on:click=move |_| on_toggle_collapsed.run(())
+                    aria-expanded=move || (!collapsed.get()).to_string()
+                    aria-label="Toggle sidebar"
+                    title=move || if collapsed.get() { "Expand sidebar (Ctrl+B)" } else { "Collapse sidebar (Ctrl+B)" }
+                >
+                    <Show
+                        when=move || collapsed.get()
+                        fallback=move || view! {
+                            <Icon kind=IconKind::ChevronLeft class="w-4 h-4 flex-shrink-0"/>
+                            <span class="truncate">"Collapse"</span>
+                        }
+                    >
+                        <Icon kind=IconKind::ChevronRight class="w-4 h-4 flex-shrink-0"/>
+                    </Show>
+                </button>
+            </div>
+        </aside>
+    }
+}
+
+/// Flyout popover for projects when sidebar is collapsed.
+#[component]
+fn ProjectsFlyout(
+    projects: Signal<Vec<Project>>,
+    on_create_project: Callback<String>,
+    on_archive_project: Callback<i64>,
+    on_edit_project: Callback<(i64, String, String)>,
+    on_drop_task_to_project: Callback<(i64, i64)>,
+) -> impl IntoView {
+    let (popover_open, set_popover_open) = signal(false);
+    let (creating, set_creating) = signal(false);
+    let (new_title, set_new_title) = signal(String::new());
+
+    view! {
+            <Popover
+                open=popover_open
+                set_open=set_popover_open
+                class="w-full"
+                trigger=Box::new(move || {
+                    view! {
+                        <button
+                            class="flex items-center justify-center w-full py-1.5 \
+                                   rounded-lg text-text-primary \
+                                   hover:bg-bg-tertiary transition-colors"
+                            on:click=move |_| set_popover_open.update(|o| *o = !*o)
+                            title="Projects"
+                        >
+                            <Icon kind=IconKind::Folder class="w-4 h-4 flex-shrink-0"/>
+                        </button>
+                    }.into_any()
+                })
+            >
+                <div class="p-2 w-[220px] max-h-[320px] overflow-y-auto">
+                <div class="flex items-center justify-between px-2 mb-1">
+                    <Text variant=TextVariant::LabelMd color=TextColor::Secondary>
+                        "Projects"
+                    </Text>
+                    <button
+                        class="p-0.5 rounded text-text-tertiary \
+                               hover:text-text-secondary \
+                               hover:bg-bg-tertiary transition-colors"
+                        on:click=move |_| set_creating.update(|v| *v = !*v)
+                    >
+                        <Icon kind=IconKind::Plus class="w-3.5 h-3.5"/>
+                    </button>
+                </div>
+
+                <Show when=move || creating.get()>
+                    <form
+                        class="px-1 mb-1"
+                        on:submit=move |ev| {
+                            ev.prevent_default();
+                            let title = new_title.get_untracked();
+                            if !title.trim().is_empty() {
+                                on_create_project.run(title.trim().to_string());
+                                set_creating.set(false);
+                                set_new_title.set(String::new());
+                            }
+                        }
+                    >
+                        <input
+                            type="text"
+                            class="w-full bg-bg-input border border-border \
+                                   rounded px-2 py-1.5 text-sm \
+                                   text-text-primary placeholder:text-text-tertiary \
+                                   focus:outline-none focus:border-accent"
+                            placeholder="Project name"
+                            autofocus=true
+                            bind:value=(new_title, set_new_title)
+                            on:keydown=move |ev| {
+                                if ev.key() == "Escape" {
+                                    set_creating.set(false);
+                                    set_new_title.set(String::new());
+                                }
+                            }
+                        />
+                    </form>
+                </Show>
+
+                <div class="space-y-0.5">
+                    {move || {
+                        projects
+                            .get()
+                            .into_iter()
+                            .map(|p| {
+                                let pid = p.id;
+                                let title = p.title.clone();
+                                let color = p.color.clone();
+                                view! {
+                                    <ProjectItem
+                                        id=pid
+                                        title=title
+                                        color=color
+                                        on_archive=move || {
+                                            on_archive_project.run(pid);
+                                        }
+                                        on_edit=move |id, t, c| {
+                                            on_edit_project.run((id, t, c));
+                                        }
+                                        on_drop_task=on_drop_task_to_project
+                                    />
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                    }}
+                </div>
+
+                <div class="mt-1 pt-1 border-t border-border">
+                    <a
+                        href="/archive"
+                        class="flex items-center gap-2 px-3 py-1.5 rounded-lg \
+                               text-sm text-text-primary hover:bg-bg-tertiary \
+                               transition-colors"
+                        on:click=move |_| set_popover_open.set(false)
+                    >
+                        <Icon kind=IconKind::Archive class="w-4 h-4 flex-shrink-0"/>
+                        "Archive"
+                    </a>
+                </div>
+            </div>
+            </Popover>
+    }
+}
+
+/// Flyout popover for saved filters when sidebar is collapsed.
+#[component]
+fn FiltersFlyout(saved_filters: Signal<Vec<SavedFilter>>) -> impl IntoView {
+    let (popover_open, set_popover_open) = signal(false);
+
+    view! {
+            <Popover
+                open=popover_open
+                set_open=set_popover_open
+                class="w-full"
+                trigger=Box::new(move || {
+                    view! {
+                        <button
+                            class="flex items-center justify-center w-full py-1.5 \
+                                   rounded-lg text-text-primary \
+                                   hover:bg-bg-tertiary transition-colors"
+                            on:click=move |_| set_popover_open.update(|o| *o = !*o)
+                            title="Filters"
+                        >
+                            <Icon kind=IconKind::Filter class="w-4 h-4 flex-shrink-0"/>
+                        </button>
+                    }.into_any()
+                })
+            >
+                <div class="p-2 w-[220px] max-h-[320px] overflow-y-auto">
+                    <div class="flex items-center justify-between px-2 mb-1">
                         <Text variant=TextVariant::LabelMd color=TextColor::Secondary>
                             "Filters"
                         </Text>
@@ -129,22 +397,25 @@ pub fn SidebarView(
                             class="p-0.5 rounded text-text-tertiary \
                                    hover:text-text-secondary \
                                    hover:bg-bg-tertiary transition-colors"
+                            on:click=move |_| set_popover_open.set(false)
                         >
                             <Icon kind=IconKind::Plus class="w-3.5 h-3.5"/>
                         </a>
                     </div>
 
-                    <div class="mt-1 space-y-0.5">
+                    <div class="space-y-0.5">
                         {move || {
                             saved_filters
                                 .get()
                                 .into_iter()
                                 .map(|f| {
                                     let href = format!("/filters/{}", f.id);
+                                    let set_open = set_popover_open;
                                     view! {
                                         <FilterNavItem
                                             href=href
                                             title=f.title
+                                            on_click=Callback::new(move |_: ()| set_open.set(false))
                                         />
                                     }
                                 })
@@ -152,18 +423,7 @@ pub fn SidebarView(
                         }}
                     </div>
                 </div>
-
-                <div class="pt-4">
-                    <NavItem href="/review" label="Review" icon=IconKind::Review/>
-                    <NavItem href="/stats" label="Stats" icon=IconKind::Stats/>
-                </div>
-            </nav>
-
-            <div class="p-2 border-t border-(--border-muted) space-y-0.5">
-                <NavItem href="/settings" label="Settings" icon=IconKind::Settings/>
-                <ThemeToggle/>
-            </div>
-        </aside>
+            </Popover>
     }
 }
 
@@ -399,7 +659,11 @@ fn ProjectItem(
 }
 
 #[component]
-fn FilterNavItem(href: String, title: String) -> impl IntoView {
+fn FilterNavItem(
+    href: String,
+    title: String,
+    #[prop(optional)] on_click: Option<Callback<()>>,
+) -> impl IntoView {
     let location = use_location();
     let href_cmp = href.clone();
 
@@ -415,7 +679,15 @@ fn FilterNavItem(href: String, title: String) -> impl IntoView {
     });
 
     view! {
-        <a href=href class=class>
+        <a
+            href=href
+            class=class
+            on:click=move |_| {
+                if let Some(cb) = on_click {
+                    cb.run(());
+                }
+            }
+        >
             <Icon kind=IconKind::Filter class="w-3.5 h-3.5 text-text-tertiary"/>
             <span class="truncate">{title}</span>
         </a>
@@ -423,25 +695,45 @@ fn FilterNavItem(href: String, title: String) -> impl IntoView {
 }
 
 #[component]
-fn NavItem(href: &'static str, label: &'static str, icon: IconKind) -> impl IntoView {
+fn NavItem(
+    href: &'static str,
+    label: &'static str,
+    icon: IconKind,
+    collapsed: Signal<bool>,
+) -> impl IntoView {
     let location = use_location();
 
     let is_active = move || location.pathname.get() == href;
 
     let class = move || {
-        let base = "flex items-center gap-2 px-3 py-0.5 rounded-lg text-sm \
-                    text-text-primary hover:bg-bg-tertiary transition-colors";
-        if is_active() {
-            format!("{base} bg-bg-tertiary font-medium")
+        let is_collapsed = collapsed.get();
+        let active = is_active();
+
+        if is_collapsed {
+            let base = "flex items-center justify-center py-1.5 rounded-lg text-sm \
+                        text-text-primary hover:bg-bg-tertiary transition-colors";
+            if active {
+                format!("{base} bg-bg-tertiary font-medium")
+            } else {
+                base.to_string()
+            }
         } else {
-            base.to_string()
+            let base = "flex items-center gap-2 px-3 py-0.5 rounded-lg text-sm \
+                        text-text-primary hover:bg-bg-tertiary transition-colors";
+            if active {
+                format!("{base} bg-bg-tertiary font-medium")
+            } else {
+                base.to_string()
+            }
         }
     };
 
     view! {
-        <a href=href class=class>
+        <a href=href class=class title=label>
             <Icon kind=icon class="w-4 h-4 flex-shrink-0"/>
-            {label}
+            <Show when=move || !collapsed.get()>
+                {label}
+            </Show>
         </a>
     }
 }

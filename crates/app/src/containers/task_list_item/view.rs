@@ -179,9 +179,9 @@ pub fn TaskListItemView(
                     } else {
                         None
                     }}
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-start gap-2">
                         <div
-                            class="flex items-center"
+                            class="flex items-center mt-1"
                             on:click=move |ev| ev.stop_propagation()
                         >
                             <TaskCheckbox task_id=task_id/>

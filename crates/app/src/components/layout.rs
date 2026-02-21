@@ -1,7 +1,10 @@
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
+use north_repositories::ErrorNotifier;
+use north_stores::status_bar_store::StatusBarVariant;
 use north_stores::AppStore;
 
+use crate::components::connectivity_monitor::ConnectivityMonitor;
 use crate::components::status_bar::StatusBar;
 use crate::containers::sidebar::Sidebar;
 use crate::containers::task_detail_modal::TaskDetailModal;
@@ -16,6 +19,11 @@ pub fn AppLayout(children: Children) -> impl IntoView {
     provide_context(app_store);
     provide_context(app_store.modal);
     provide_context(app_store.task_detail_modal);
+
+    let status_bar = app_store.status_bar;
+    provide_context(ErrorNotifier(Callback::new(move |msg: String| {
+        status_bar.notify(StatusBarVariant::Danger, msg);
+    })));
 
     Effect::new(move || {
         if let Some(Err(_)) = auth_check.get() {
@@ -35,6 +43,7 @@ pub fn AppLayout(children: Children) -> impl IntoView {
             </main>
         </div>
         <TaskDetailModal/>
+        <ConnectivityMonitor/>
         <StatusBar/>
     }
 }

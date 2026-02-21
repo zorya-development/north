@@ -99,6 +99,7 @@ diesel::table! {
         sort_key -> Varchar,
         recurrence_type -> Nullable<RecurrenceType>,
         recurrence_rule -> Nullable<Varchar>,
+        is_url_fetching -> Nullable<Timestamptz>,
     }
 }
 

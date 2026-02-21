@@ -16,6 +16,8 @@ pub struct UserSettings {
     pub default_sequential_limit: i16,
     #[serde(default = "default_timezone")]
     pub timezone: String,
+    #[serde(default)]
+    pub sidebar_collapsed: bool,
 }
 
 impl Default for UserSettings {
@@ -24,6 +26,7 @@ impl Default for UserSettings {
             review_interval_days: default_review_interval(),
             default_sequential_limit: default_sequential_limit(),
             timezone: default_timezone(),
+            sidebar_collapsed: false,
         }
     }
 }
@@ -70,6 +73,7 @@ pub struct UpdateSettings {
     pub review_interval_days: Option<i16>,
     pub default_sequential_limit: Option<i16>,
     pub timezone: Option<String>,
+    pub sidebar_collapsed: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]

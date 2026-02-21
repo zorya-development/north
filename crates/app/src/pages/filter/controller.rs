@@ -20,6 +20,7 @@ impl FilterController {
     pub fn new(
         app_store: AppStore,
         filter_id: Memo<Option<i64>>,
+        initial_query: Memo<Option<String>>,
         navigate: Callback<String>,
     ) -> Self {
         let task_detail_modal_store = app_store.task_detail_modal;
@@ -47,6 +48,12 @@ impl FilterController {
                     original_query.1.set(f.query);
                     is_editing_title.1.set(false);
                 }
+            } else if let Some(q) = initial_query.get() {
+                title_text.1.set("Untitled Filter".to_string());
+                original_title.1.set(String::new());
+                original_query.1.set(String::new());
+                filter_dsl.load_query(q);
+                filter_dsl.execute();
             } else {
                 filter_dsl.reset();
                 title_text.1.set("Untitled Filter".to_string());

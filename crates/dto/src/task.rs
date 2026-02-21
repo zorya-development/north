@@ -22,6 +22,8 @@ pub struct Task {
     pub recurrence_type: Option<RecurrenceType>,
     pub recurrence_rule: Option<String>,
     #[serde(default)]
+    pub is_url_fetching: Option<DateTime<Utc>>,
+    #[serde(default)]
     pub project_title: Option<String>,
     #[serde(default)]
     pub tags: Vec<crate::TagInfo>,
@@ -111,6 +113,13 @@ pub struct UpdateTask {
         with = "crate::serde_helpers::double_option"
     )]
     pub recurrence_rule: Option<Option<String>>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "crate::serde_helpers::is_none_outer",
+        with = "crate::serde_helpers::double_option"
+    )]
+    pub is_url_fetching: Option<Option<DateTime<Utc>>>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]

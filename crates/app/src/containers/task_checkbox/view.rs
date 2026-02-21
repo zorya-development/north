@@ -27,7 +27,7 @@ pub fn TaskCheckboxView(
     view! {
         <button
             on:click=move |_| on_toggle.run(())
-            class="flex-shrink-0 group"
+            class="flex-shrink-0 group cursor-pointer"
             aria-label=move || {
                 if is_completed.get() {
                     "Mark task incomplete"

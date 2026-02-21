@@ -51,7 +51,13 @@ impl StatusBarStore {
 
     /// Show a toast notification that auto-dismisses after a duration.
     /// The actual timeout is handled by the StatusBar component.
+    /// Does not override persistent spinner messages (e.g. connectivity warning).
     pub fn notify(&self, variant: StatusBarVariant, text: impl Into<String>) {
+        if let Some(current) = self.message.get_untracked() {
+            if current.style == StatusBarStyle::Spinner {
+                return;
+            }
+        }
         self.message.set(Some(StatusBarMessage {
             text: text.into(),
             variant,

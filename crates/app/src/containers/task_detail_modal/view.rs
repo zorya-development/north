@@ -2,10 +2,14 @@ use leptos::prelude::*;
 
 use north_stores::Recurrence;
 
+use std::sync::Arc;
+
 use super::controller::TaskDetailModalController;
 use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::date_picker::DateTimePicker;
+use crate::components::enriched_markdown::EnrichedMarkdownView;
 use crate::components::recurrence_modal::RecurrenceModal;
+use crate::containers::autocomplete::{AutocompleteInput, AutocompleteTextarea};
 use crate::containers::inline_task_input::InlineTaskInput;
 use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
@@ -198,64 +202,37 @@ pub fn TaskDetailModalView(
                                     <div class="pt-1">
                                         <TaskCheckbox task_id=task_id/>
                                     </div>
-                                    <input
-                                        type="text"
-                                        node_ref=title_input_ref
-                                        class="text-lg font-semibold \
-                                               text-text-primary \
-                                               bg-transparent \
-                                               border-none \
-                                               px-1 -mx-1 flex-1 \
-                                               w-full \
-                                               focus:outline-none \
-                                               no-focus-ring"
-                                        prop:value=move || {
-                                            ctrl.title_draft.get()
-                                        }
-                                        on:input=move |ev| {
-                                            ctrl.title_draft
-                                                .set(event_target_value(&ev));
-                                        }
-                                        on:keydown=move |ev| {
+                                    {
+                                        let title_read = ctrl.title_draft.read_only();
+                                        let title_write = ctrl.title_draft.write_only();
+                                        let title_keydown = Arc::new(move |ev: leptos::ev::KeyboardEvent| {
                                             if ev.key() == "Enter" {
                                                 ev.prevent_default();
                                                 ctrl.save();
                                             }
+                                        }) as Arc<dyn Fn(leptos::ev::KeyboardEvent) + Send + Sync>;
+                                        view! {
+                                            <AutocompleteInput
+                                                value=title_read
+                                                set_value=title_write
+                                                class="text-lg font-semibold \
+                                                       text-text-primary \
+                                                       bg-transparent \
+                                                       border-none \
+                                                       px-1 -mx-1 flex-1 \
+                                                       w-full \
+                                                       focus:outline-none \
+                                                       no-focus-ring"
+                                                on_keydown=title_keydown
+                                                on_blur=Callback::new(move |()| ctrl.save())
+                                                node_ref=title_input_ref
+                                            />
                                         }
-                                        on:blur=move |_| {
-                                            ctrl.save();
-                                        }
-                                    />
+                                    }
                                 </div>
 
-                                // Body
-                                <div class="ml-6">
-                                    <textarea
-                                        class="w-full text-sm \
-                                               text-text-primary \
-                                               bg-transparent \
-                                               border-none \
-                                               p-1 -m-1 \
-                                               focus:outline-none \
-                                               no-focus-ring \
-                                               resize-none \
-                                               min-h-[2rem] \
-                                               placeholder:text-text-tertiary \
-                                               placeholder:italic"
-                                        placeholder="Add description..."
-                                        prop:value=move || {
-                                            ctrl.body_draft.get()
-                                        }
-                                        on:input=move |ev| {
-                                            ctrl.body_draft.set(
-                                                event_target_value(&ev),
-                                            );
-                                        }
-                                        on:blur=move |_| {
-                                            ctrl.save();
-                                        }
-                                    />
-                                </div>
+                                // Body (edit/view toggle)
+                                <BodySection ctrl=ctrl/>
 
                                 // Subtask area
                                 <div class="ml-6">
@@ -533,6 +510,77 @@ fn RecurrenceSidebarButton(
             <Icon kind=IconKind::Recurrence class="w-3.5 h-3.5"/>
             {label}
         </button>
+    }
+}
+
+/// Body section with edit/view toggle:
+/// - View mode (default): rendered markdown or placeholder. Click to edit.
+/// - Edit mode: AutocompleteTextarea. On blur: save and switch to view mode.
+#[component]
+fn BodySection(ctrl: TaskDetailModalController) -> impl IntoView {
+    let (editing, set_editing) = signal(false);
+
+    view! {
+        <div class="ml-6">
+            <Show
+                when=move || editing.get()
+                fallback=move || {
+                    let body = ctrl.body_draft.get();
+                    if body.trim().is_empty() {
+                        view! {
+                            <div
+                                class="text-sm text-text-tertiary italic \
+                                       cursor-pointer p-1 -m-1 \
+                                       hover:bg-hover-overlay rounded \
+                                       transition-colors"
+                                on:click=move |_| set_editing.set(true)
+                            >
+                                "Add description..."
+                            </div>
+                        }.into_any()
+                    } else {
+                        view! {
+                            <div
+                                class="cursor-pointer p-1 -m-1 \
+                                       hover:bg-hover-overlay rounded \
+                                       transition-colors"
+                                on:click=move |_| set_editing.set(true)
+                            >
+                                <EnrichedMarkdownView content=body/>
+                            </div>
+                        }.into_any()
+                    }
+                }
+            >
+                {
+                    let body_read = ctrl.body_draft.read_only();
+                    let body_write = ctrl.body_draft.write_only();
+                    view! {
+                        <AutocompleteTextarea
+                            value=body_read
+                            set_value=body_write
+                            placeholder="Add description..."
+                            class="w-full text-sm \
+                                   text-text-primary \
+                                   bg-transparent \
+                                   border-none \
+                                   p-1 -m-1 \
+                                   focus:outline-none \
+                                   no-focus-ring \
+                                   resize-none \
+                                   min-h-[2rem] \
+                                   placeholder:text-text-tertiary \
+                                   placeholder:italic"
+                            on_blur=Callback::new(move |()| {
+                                ctrl.save();
+                                set_editing.set(false);
+                            })
+                            autofocus=true
+                        />
+                    }
+                }
+            </Show>
+        </div>
     }
 }
 
