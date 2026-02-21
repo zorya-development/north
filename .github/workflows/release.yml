@@ -117,19 +117,18 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:v${{ needs.resolve.outputs.app_version }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-      - name: Generate changelog
-        uses: orhun/git-cliff-action@v4
-        id: changelog
-        with:
-          config: cliff.toml
-          args: --latest --strip header
+      - name: Generate release notes
+        id: notes
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          bash scripts/generate-release-notes.sh "${{ needs.resolve.outputs.app_version }}"
 
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CHANGELOG: ${{ steps.changelog.outputs.content }}
         run: |
           gh release create "v${{ needs.resolve.outputs.app_version }}" \
             --title "v${{ needs.resolve.outputs.app_version }}" \
-            --notes "$CHANGELOG" \
+            --notes "${{ steps.notes.outputs.notes }}" \
             --target "${{ github.event.workflow_run.head_sha }}"

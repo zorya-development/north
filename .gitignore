@@ -8,3 +8,4 @@ uploads/
 .playwright-mcp/
 .docs/
 chart/charts/
+tmp*.md
