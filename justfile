@@ -45,8 +45,8 @@ compose-test := "-p north-test -f docker-compose.test.yml"
 e2e-up:
     docker compose {{ compose-test }} up db app
 
-e2e-shell:
-    docker compose {{ compose-test }} run --rm --service-ports playwright bash
+playwright *args='test --ui-port=8080 --ui-host=0.0.0.0':
+    docker compose {{ compose-test }} run --rm --service-ports playwright npx playwright {{ args }}
 
 e2e:
     docker compose {{ compose-test }} up -d --wait db app
