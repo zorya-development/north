@@ -17,7 +17,9 @@ test.describe("Login", () => {
     await loginViaUI(page);
 
     await expect(page).toHaveURL(/\/inbox/);
-    await expect(page.locator("body")).toContainText("Inbox");
+    await expect(
+      page.locator('[data-testid="empty-task-list"]'),
+    ).toBeVisible();
   });
 
   test("failed login with wrong email shows error", async ({ page }) => {

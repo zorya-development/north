@@ -19,6 +19,9 @@ export async function loginViaUI(
   await page.locator('[data-testid="login-password"]').fill(user.password);
   await page.locator('[data-testid="login-submit"]').click();
   await page.waitForURL("**/inbox");
+  await page
+    .locator('[data-testid="empty-task-list"]')
+    .waitFor({ state: "visible" });
 }
 
 type AuthFixtures = {

@@ -112,14 +112,16 @@ pub fn TraversableTaskListView(
                         <Show when=move || {
                             !matches!(inline_mode.get(), InlineMode::CreateTop)
                         }>
-                            <Text
-                                variant=TextVariant::BodyMd
-                                color=TextColor::Secondary
-                                tag=TextTag::P
-                                class="py-8 text-center"
-                            >
-                                {empty_message}
-                            </Text>
+                            <div data-testid="empty-task-list">
+                                <Text
+                                    variant=TextVariant::BodyMd
+                                    color=TextColor::Secondary
+                                    tag=TextTag::P
+                                    class="py-8 text-center"
+                                >
+                                    {empty_message}
+                                </Text>
+                            </div>
                         </Show>
                     }
                     .into_any();
