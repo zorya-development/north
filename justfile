@@ -39,6 +39,23 @@ seed:
 
 check: fmt-check lint test
 
+# E2E testing
+compose-test := "-p north-test -f docker-compose.test.yml"
+
+e2e-up:
+    docker compose {{ compose-test }} up db app
+
+e2e-shell:
+    docker compose {{ compose-test }} run --rm --service-ports playwright bash
+
+e2e:
+    docker compose {{ compose-test }} up -d --wait db app
+    docker compose {{ compose-test }} run --rm playwright sh -c "npm install && npx playwright test"
+    docker compose {{ compose-test }} down -v
+
+e2e-down:
+    docker compose {{ compose-test }} down -v
+
 # Bump base image version: just bump-base {major,minor,patch}
 bump-base part:
     #!/usr/bin/env bash

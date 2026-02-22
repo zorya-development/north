@@ -1,0 +1,68 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: north_test
+      POSTGRES_USER: north
+      POSTGRES_PASSWORD: north
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U north -d north_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/dev/Dockerfile
+      args:
+        BASE_VERSION: "1.0.0"
+    dns:
+      - 8.8.8.8
+    volumes:
+      - .:/app
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+      - rustup-cache:/usr/local/rustup
+      - target-cache:/app/target
+    environment:
+      DATABASE_URL: postgres://north:north@db:5432/north_test
+      JWT_SECRET: dev-secret-change-in-production
+      UPLOAD_DIR: /app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      bash -c "
+        diesel migration run &&
+        cargo run --bin north-server --features ssr -- --seed &&
+        cargo leptos watch
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5000/login"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 120s
+
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.50.0-noble
+    working_dir: /e2e
+    volumes:
+      - ./e2e:/e2e
+    ports:
+      - "5002:8080"
+    environment:
+      BASE_URL: http://app:5000
+    depends_on:
+      - app
+    profiles:
+      - test
+
+volumes:
+  cargo-registry:
+  cargo-git:
+  rustup-cache:
+  target-cache:
