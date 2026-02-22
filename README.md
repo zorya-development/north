@@ -34,7 +34,6 @@ North is a full-stack Rust application — no JavaScript runtime, no Node.js, no
 | Backend | [Axum](https://github.com/tokio-rs/axum) |
 | Database | PostgreSQL 17 via [Diesel](https://diesel.rs/) (async) |
 | Styling | TailwindCSS 4 |
-| Cache | Redis 7 (reserved for future use) |
 | Auth | JWT (httpOnly cookies) with Argon2 password hashing |
 
 ## Quick Start
@@ -160,8 +159,8 @@ Full values reference: [`chart/values.yaml`](chart/values.yaml)
 # Build the base and dev images
 docker compose build
 
-# Start the database and Redis
-docker compose up -d db redis
+# Start the database
+docker compose up -d db
 
 # Enter the app container
 docker compose run --rm -ti --service-ports app bash
@@ -192,6 +191,22 @@ All commands run inside the app container via [just](https://github.com/casey/ju
 | `just seed` | Seed admin account |
 
 For CI or non-interactive use: `docker compose exec app just <command>`
+
+### End-to-End Tests
+
+E2E tests use [Playwright](https://playwright.dev/) and run against the full app in Docker.
+
+```bash
+# Run all e2e tests (starts services, runs tests, tears down)
+just e2e
+
+# Interactive mode — start services, then run Playwright UI
+just e2e-up             # Terminal 1: start db + app
+just playwright         # Terminal 2: opens Playwright UI at localhost:8080
+
+# Tear down test environment
+just e2e-down
+```
 
 ### Project Structure
 

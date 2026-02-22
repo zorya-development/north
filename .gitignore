@@ -8,4 +8,7 @@ uploads/
 .playwright-mcp/
 .docs/
 chart/charts/
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
 tmp*.md

@@ -108,8 +108,11 @@ pub fn LoginPage() -> impl IntoView {
                 {move || {
                     error_message().map(|msg| {
                         view! {
-                            <div class="mb-4 p-3 bg-danger/10 border border-danger/30 \
-                                        rounded-md text-danger text-sm">
+                            <div
+                                data-testid="login-error"
+                                class="mb-4 p-3 bg-danger/10 border border-danger/30 \
+                                        rounded-md text-danger text-sm"
+                            >
                                 {msg}
                             </div>
                         }
@@ -128,6 +131,7 @@ pub fn LoginPage() -> impl IntoView {
                             id="email"
                             type="email"
                             required=true
+                            data-testid="login-email"
                             prop:value=email
                             on:input=move |ev| {
                                 set_email.set(event_target_value(&ev));
@@ -151,6 +155,7 @@ pub fn LoginPage() -> impl IntoView {
                             id="password"
                             type="password"
                             required=true
+                            data-testid="login-password"
                             prop:value=password
                             on:input=move |ev| {
                                 set_password.set(event_target_value(&ev));
@@ -165,6 +170,7 @@ pub fn LoginPage() -> impl IntoView {
 
                     <button
                         type="submit"
+                        data-testid="login-submit"
                         disabled=pending
                         class="w-full py-2.5 px-4 text-sm font-medium rounded-lg \
                                bg-accent text-on-accent hover:bg-accent-hover \
