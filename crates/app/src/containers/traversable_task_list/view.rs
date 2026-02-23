@@ -207,6 +207,7 @@ pub fn TraversableTaskListView(
                                     <div
                                         data-testid="task-row"
                                         data-task-id=task_id
+                                        data-focused=move || is_selected.get().to_string()
                                         style=move || {
                                             format!(
                                                 "padding-left: {}rem",

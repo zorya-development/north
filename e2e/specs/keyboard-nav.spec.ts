@@ -27,19 +27,19 @@ test.describe("Keyboard Navigation", () => {
     // No selection initially — press Down to select first task
     await page.keyboard.press("ArrowDown");
     await expect(
-      page.locator('[data-testid="task-row"].trash-polka-focus'),
+      page.locator('[data-testid="task-row"][data-focused="true"]'),
     ).toContainText("Task A");
 
     // Down again — Task B selected
     await page.keyboard.press("ArrowDown");
     await expect(
-      page.locator('[data-testid="task-row"].trash-polka-focus'),
+      page.locator('[data-testid="task-row"][data-focused="true"]'),
     ).toContainText("Task B");
 
     // Up — back to Task A
     await page.keyboard.press("ArrowUp");
     await expect(
-      page.locator('[data-testid="task-row"].trash-polka-focus'),
+      page.locator('[data-testid="task-row"][data-focused="true"]'),
     ).toContainText("Task A");
   });
 
@@ -57,19 +57,19 @@ test.describe("Keyboard Navigation", () => {
     // Select parent
     await page.keyboard.press("ArrowDown");
     await expect(
-      page.locator('[data-testid="task-row"].trash-polka-focus'),
+      page.locator('[data-testid="task-row"][data-focused="true"]'),
     ).toContainText("Parent");
 
     // Right — move to first child
     await page.keyboard.press("ArrowRight");
     await expect(
-      page.locator('[data-testid="task-row"].trash-polka-focus'),
+      page.locator('[data-testid="task-row"][data-focused="true"]'),
     ).toContainText("Child");
 
     // Left — back to parent
     await page.keyboard.press("ArrowLeft");
     await expect(
-      page.locator('[data-testid="task-row"].trash-polka-focus'),
+      page.locator('[data-testid="task-row"][data-focused="true"]'),
     ).toContainText("Parent");
   });
 
@@ -246,7 +246,7 @@ test.describe("Keyboard Navigation", () => {
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("ArrowDown");
     await expect(
-      page.locator('[data-testid="task-row"].trash-polka-focus'),
+      page.locator('[data-testid="task-row"][data-focused="true"]'),
     ).toContainText("Task B");
 
     // Shift+Right: indent Task B under Task A
@@ -255,13 +255,13 @@ test.describe("Keyboard Navigation", () => {
     // Navigating Left from Task B should move to its parent (Task A)
     await page.keyboard.press("ArrowLeft");
     await expect(
-      page.locator('[data-testid="task-row"].trash-polka-focus'),
+      page.locator('[data-testid="task-row"][data-focused="true"]'),
     ).toContainText("Task A");
 
     // Navigate back to Task B (Right = first child)
     await page.keyboard.press("ArrowRight");
     await expect(
-      page.locator('[data-testid="task-row"].trash-polka-focus'),
+      page.locator('[data-testid="task-row"][data-focused="true"]'),
     ).toContainText("Task B");
 
     // Shift+Left: unindent Task B back to root
@@ -270,7 +270,7 @@ test.describe("Keyboard Navigation", () => {
     // Up from Task B should now reach Task A (they are siblings; B lands below A after unindent)
     await page.keyboard.press("ArrowUp");
     await expect(
-      page.locator('[data-testid="task-row"].trash-polka-focus'),
+      page.locator('[data-testid="task-row"][data-focused="true"]'),
     ).toContainText("Task A");
   });
 
