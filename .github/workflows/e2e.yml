@@ -1,4 +1,4 @@
-name: test
+name: e2e
 
 on:
   push:
@@ -55,8 +55,8 @@ jobs:
           provenance: false
           tags: ${{ env.BASE_IMAGE }}:${{ needs.resolve.outputs.version }}
 
-  check:
-    name: Check
+  e2e:
+    name: E2E
     needs: [resolve, build-base]
     if: always() && needs.resolve.result == 'success' && needs.build-base.result != 'failure'
     runs-on: ubuntu-latest
@@ -89,14 +89,50 @@ jobs:
           cache-on-failure: "true"
           shared-key: north-cargo
 
-      - name: Run migrations
-        run: diesel migration run
+      - name: Install tailwindcss
+        run: |
+          curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64
+          chmod +x tailwindcss-linux-x64
+          mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
 
-      - name: Format check
-        run: cargo fmt --check
+      - name: Install Node.js
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+          apt-get install -y nodejs
 
-      - name: Clippy
-        run: cargo clippy -- -D warnings
+      - name: Run migrations & seed
+        run: |
+          diesel migration run
+          cargo run --bin north-server --features ssr -- --seed
 
-      - name: Test
-        run: cargo test
+      - name: Build app
+        run: cargo leptos build
+
+      - name: Install Playwright
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Start server
+        run: |
+          cargo leptos serve &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:5000/login && break
+            sleep 2
+          done
+
+      - name: Run e2e tests
+        working-directory: e2e
+        run: npx playwright test
+        env:
+          BASE_URL: http://localhost:5000
+          CI: "true"
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 7
