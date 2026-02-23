@@ -38,6 +38,7 @@ pub fn TaskDetailModalView(
             />
             <div
                 role="dialog"
+                data-testid="task-detail-modal"
                 class="relative border border-(--border-muted) \
                        rounded-2xl shadow-2xl max-w-3xl w-full mx-4 \
                        max-h-[85vh] flex flex-col"

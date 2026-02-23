@@ -69,17 +69,17 @@ Human-driven pre-release checklist. Tick each box during a testing session befor
 
 ---
 
-## 6. Keyboard Navigation
+## 6. Keyboard Navigation _(covered by `e2e/specs/keyboard-nav.spec.ts`)_
 
-- [ ] `Down`/`Up` arrows move cursor between tasks in list
-- [ ] `Right` arrow on a parent task expands / moves into first child
-- [ ] `Left` arrow on a child task moves to parent
-- [ ] `Enter` on selected task opens inline editor; `Enter` saves; `Escape` cancels
-- [ ] `Space` toggles completion on selected task
-- [ ] `E` opens Task Detail Modal for selected task
-- [ ] `Delete` / `Backspace` on selected task triggers delete flow
-- [ ] `Shift+Down` / `Shift+Up` reorders task within siblings
-- [ ] `Tab` indents task (creates subtask); `Shift+Tab` unindents
+- [x] `Down`/`Up` arrows move cursor between tasks in list
+- [x] `Right` arrow on a parent task expands / moves into first child
+- [x] `Left` arrow on a child task moves to parent
+- [x] `Enter` on selected task opens inline editor; `Enter` saves; `Escape` cancels
+- [x] `Space` toggles completion on selected task
+- [x] `E` opens Task Detail Modal for selected task
+- [x] `Delete` / `Backspace` on selected task triggers delete flow
+- [x] `Shift+Down` / `Shift+Up` reorders task within siblings
+- [x] `Shift+Right` indents task (makes subtask of previous sibling); `Shift+Left` unindents
 - [ ] Keyboard shortcuts are suppressed when any modal is open
 
 ---

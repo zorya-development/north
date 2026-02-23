@@ -16,9 +16,9 @@ test.describe("Inbox", () => {
 
   test("page loads with task list", async ({ authenticatedPage: page }) => {
     // Create 3 tasks via API
-    await api.createTask({ title: "Task A", sort_key: "a" });
-    await api.createTask({ title: "Task B", sort_key: "b" });
-    await api.createTask({ title: "Task C", sort_key: "c" });
+    await api.createTask({ title: "Task A" });
+    await api.createTask({ title: "Task B" });
+    await api.createTask({ title: "Task C" });
 
     await page.goto("/inbox");
     await page
@@ -174,27 +174,12 @@ test.describe("Inbox", () => {
     authenticatedPage: page,
   }) => {
     // Create a parent task with sequential_limit and 3 subtasks
-    const parent = await api.createTask({
-      title: "Sequential Parent",
-      sort_key: "a",
-    });
+    const parent = await api.createTask({ title: "Sequential Parent" });
     await api.updateTask(parent.id, { sequential_limit: 1 });
 
-    await api.createTask({
-      title: "Sub 1",
-      parent_id: parent.id,
-      sort_key: "a",
-    });
-    await api.createTask({
-      title: "Sub 2",
-      parent_id: parent.id,
-      sort_key: "b",
-    });
-    await api.createTask({
-      title: "Sub 3",
-      parent_id: parent.id,
-      sort_key: "c",
-    });
+    await api.createTask({ title: "Sub 1", parent_id: parent.id });
+    await api.createTask({ title: "Sub 2", parent_id: parent.id });
+    await api.createTask({ title: "Sub 3", parent_id: parent.id });
 
     await page.goto("/inbox");
     await page
@@ -223,31 +208,41 @@ test.describe("Inbox", () => {
     await expect(page.locator('[data-testid="task-row"]')).toHaveCount(4);
   });
 
+  test("Ctrl+Shift+Enter creates subtask", async ({
+    authenticatedPage: page,
+  }) => {
+    await api.createTask({ title: "Parent Task" });
+
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    // Select the parent task
+    await page.keyboard.press("ArrowDown");
+
+    // Ctrl+Shift+Enter creates a subtask
+    await page.keyboard.press("Control+Shift+Enter");
+
+    const createInput = page.locator('[data-testid="inline-create-input"]');
+    await expect(createInput).toBeVisible();
+    await createInput.fill("Subtask");
+    await createInput.press("Enter");
+
+    // Parent + child = 2 rows
+    await expect(page.locator('[data-testid="task-row"]')).toHaveCount(2);
+  });
+
   test("sequential limit shows only first N subtasks as actionable", async ({
     authenticatedPage: page,
   }) => {
     // Create a parent with sequential_limit=2 and 3 subtasks
-    const parent = await api.createTask({
-      title: "Sequential Parent",
-      sort_key: "a",
-    });
+    const parent = await api.createTask({ title: "Sequential Parent" });
     await api.updateTask(parent.id, { sequential_limit: 2 });
 
-    await api.createTask({
-      title: "Sub A",
-      parent_id: parent.id,
-      sort_key: "a",
-    });
-    await api.createTask({
-      title: "Sub B",
-      parent_id: parent.id,
-      sort_key: "b",
-    });
-    await api.createTask({
-      title: "Sub C",
-      parent_id: parent.id,
-      sort_key: "c",
-    });
+    await api.createTask({ title: "Sub A", parent_id: parent.id });
+    await api.createTask({ title: "Sub B", parent_id: parent.id });
+    await api.createTask({ title: "Sub C", parent_id: parent.id });
 
     await page.goto("/inbox");
     await page
