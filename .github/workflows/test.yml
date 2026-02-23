@@ -100,3 +100,85 @@ jobs:
 
       - name: Test
         run: cargo test
+
+  e2e:
+    name: E2E
+    needs: [resolve, check]
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/zorya-development/north/base:${{ needs.resolve.outputs.version }}
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: north_test
+          POSTGRES_USER: north
+          POSTGRES_PASSWORD: north
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://north:north@postgres:5432/north_test
+      JWT_SECRET: test-secret
+      UPLOAD_DIR: /tmp/north-uploads
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: "true"
+          shared-key: north-cargo
+
+      - name: Install tailwindcss
+        run: |
+          curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64
+          chmod +x tailwindcss-linux-x64
+          mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
+
+      - name: Install Node.js
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+          apt-get install -y nodejs
+
+      - name: Run migrations & seed
+        run: |
+          diesel migration run
+          cargo run --bin north-server --features ssr -- --seed
+
+      - name: Build app
+        run: cargo leptos build
+
+      - name: Install Playwright
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Start server
+        run: |
+          cargo leptos serve &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:5000/login && break
+            sleep 2
+          done
+
+      - name: Run e2e tests
+        working-directory: e2e
+        run: npx playwright test
+        env:
+          BASE_URL: http://localhost:5000
+          CI: "true"
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 7
