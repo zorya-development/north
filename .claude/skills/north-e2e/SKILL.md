@@ -8,6 +8,14 @@ trigger: When editing files in e2e/ — specs or fixtures.
 
 Read `e2e/specs/inbox.spec.ts` and `e2e/specs/keyboard-nav.spec.ts` as reference implementations.
 
+## Running Tests
+
+The e2e stack uses `docker-compose.test.yml` with separate test containers.
+
+- **Interactive (human):** `just playwright` — starts all test containers and opens Playwright UI mode on port 8080.
+- **Headless (Claude Code):** `just playwright-exec` — runs tests inside already-running containers. The user must have started the stack first with `just playwright`.
+- **Cleanup:** `just playwright-down` — tears down all test containers and volumes.
+
 ## Auth & Setup
 
 Import `test` from `../fixtures/auth` (not `@playwright/test`) to get the `authenticatedPage` fixture pre-logged-in. Use `ApiHelper` to set up and tear down data:

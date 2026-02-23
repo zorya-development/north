@@ -42,18 +42,13 @@ check: fmt-check lint test
 # E2E testing
 compose-test := "-p north-test -f docker-compose.test.yml"
 
-e2e-up:
-    docker compose {{ compose-test }} up db app
-
 playwright *args='test --ui-port=8080 --ui-host=0.0.0.0':
     docker compose {{ compose-test }} run --rm --service-ports playwright npx playwright {{ args }}
 
-e2e:
-    docker compose {{ compose-test }} up -d --wait db app
-    docker compose {{ compose-test }} run --rm playwright sh -c "npm install && npx playwright test"
-    docker compose {{ compose-test }} down -v
+playwright-exec *args='':
+    docker compose {{ compose-test }} exec playwright npx playwright test {{ args }}
 
-e2e-down:
+playwright-down:
     docker compose {{ compose-test }} down -v
 
 # Bump base image version: just bump-base {major,minor,patch}

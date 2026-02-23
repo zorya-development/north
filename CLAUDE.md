@@ -32,6 +32,14 @@ just seed              # Seed admin account
 just check             # fmt + lint + test
 ```
 
+E2E tests (Playwright, run from host — not inside app container):
+
+```bash
+just playwright              # Launch Playwright UI mode (port 8080)
+just playwright-exec         # Run tests in already-running containers (used by Claude Code)
+just playwright-down         # Tear down test containers
+```
+
 For non-interactive / CI use: `docker compose exec app just <command>`
 
 ## Architecture Overview

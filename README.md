@@ -194,18 +194,12 @@ For CI or non-interactive use: `docker compose exec app just <command>`
 
 ### End-to-End Tests
 
-E2E tests use [Playwright](https://playwright.dev/) and run against the full app in Docker.
+E2E tests use [Playwright](https://playwright.dev/) and run against the full app in Docker. Commands run from the host (not inside the app container):
 
 ```bash
-# Run all e2e tests (starts services, runs tests, tears down)
-just e2e
-
-# Interactive mode — start services, then run Playwright UI
-just e2e-up             # Terminal 1: start db + app
-just playwright         # Terminal 2: opens Playwright UI at localhost:8080
-
-# Tear down test environment
-just e2e-down
+just playwright              # Start test stack + Playwright UI mode (port 8080)
+just playwright-exec         # Run tests headless in already-running containers
+just playwright-down         # Tear down test containers and volumes
 ```
 
 ### Project Structure
