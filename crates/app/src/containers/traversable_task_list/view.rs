@@ -136,6 +136,7 @@ pub fn TraversableTaskListView(
                             ctrl=ctrl
                         />
                     </Show>
+                    <div data-testid="task-list">
                     <For
                         each=move || flat_nodes.get()
                         key=|node| node.task_id
@@ -204,6 +205,8 @@ pub fn TraversableTaskListView(
 
                                 <Show when=move || !is_editing.get()>
                                     <div
+                                        data-testid="task-row"
+                                        data-task-id=task_id
                                         style=move || {
                                             format!(
                                                 "padding-left: {}rem",
@@ -247,6 +250,7 @@ pub fn TraversableTaskListView(
                             }
                         }
                     />
+                    </div>
                 }
                 .into_any()
             }}
@@ -384,6 +388,7 @@ fn InlineEditInput(
                 </div>
                 <input
                     type="text"
+                    data-testid="inline-edit-input"
                     node_ref=input_ref
                     class="flex-1 pt-0.5 bg-transparent border-none \
                            text-sm text-text-primary \
@@ -460,6 +465,7 @@ fn InlineCreateInput(
                 </div>
                 <input
                     type="text"
+                    data-testid="inline-create-input"
                     node_ref=input_ref
                     class="flex-1 pt-0.5 bg-transparent border-none \
                            text-sm text-text-primary \

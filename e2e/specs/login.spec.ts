@@ -17,6 +17,7 @@ test.describe("Login", () => {
     await loginViaUI(page);
 
     await expect(page).toHaveURL(/\/inbox/);
+    // After a fresh login the inbox should be empty
     await expect(
       page.locator('[data-testid="empty-task-list"]'),
     ).toBeVisible();

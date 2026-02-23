@@ -45,6 +45,7 @@ pub fn InboxView(
                 </div>
                 <div class="flex items-center gap-3 mt-2">
                     <button
+                        data-testid="inbox-add-task"
                         on:click=move |_| {
                             if let Some(h) = ttl_handle.get_untracked() {
                                 h.start_create_top();
@@ -61,6 +62,7 @@ pub fn InboxView(
                             Some(
                                 view! {
                                     <button
+                                        data-testid="inbox-toggle-completed"
                                         on:click=move |_| {
                                             show_completed.update(|v| *v = !*v)
                                         }
@@ -87,6 +89,7 @@ pub fn InboxView(
                         }
                     }}
                     <button
+                        data-testid="inbox-toggle-actionable"
                         on:click=move |_| on_toggle_visibility.run(())
                         class="text-xs text-text-secondary \
                                hover:text-text-primary transition-colors \

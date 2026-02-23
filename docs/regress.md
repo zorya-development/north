@@ -4,11 +4,11 @@ Human-driven pre-release checklist. Tick each box during a testing session befor
 
 ---
 
-## 1. Auth
+## 1. Auth _(covered by `e2e/specs/login.spec.ts`)_
 
-- [ ] Navigate to `/login` — login form renders
-- [ ] Submit with wrong credentials — error message shown, no redirect
-- [ ] Submit with correct credentials — redirect to Inbox
+- [x] Navigate to `/login` — login form renders
+- [x] Submit with wrong credentials — error message shown, no redirect
+- [x] Submit with correct credentials — redirect to Inbox
 - [ ] Reload page — session persists (stays logged in)
 - [ ] Click Logout — redirect to `/login`, session cleared, back-button does not restore session
 
@@ -28,16 +28,16 @@ Human-driven pre-release checklist. Tick each box during a testing session befor
 
 ---
 
-## 3. Inbox
+## 3. Inbox _(covered by `e2e/specs/inbox.spec.ts`)_
 
-- [ ] Page loads with task list
-- [ ] Type in inline input at top, press `Enter` — task created, appears in list
-- [ ] Press `Ctrl+Enter` after a task — new task inserted below; `Shift+Enter` inserts above
-- [ ] Click checkbox on a task — task marked complete, moves to completed section (or disappears per toggle)
-- [ ] Click checkbox again — task uncompleted
-- [ ] Press `Delete` on selected task — confirmation prompt, then task deleted
-- [ ] Toggle "Hide non-actionable" — non-actionable tasks hide/show; state persists on reload
-- [ ] Sequential project: only first N tasks shown as actionable when limit is set
+- [x] Page loads with task list
+- [x] Type in inline input at top, press `Enter` — task created, appears in list
+- [x] Press `Ctrl+Enter` after a task — new task inserted below; `Shift+Enter` inserts above
+- [x] Click checkbox on a task — task marked complete, moves to completed section (or disappears per toggle)
+- [x] Click checkbox again — task uncompleted
+- [x] Press `Delete` on selected task — confirmation prompt, then task deleted
+- [x] Toggle "Hide non-actionable" — non-actionable tasks hide/show; state persists on reload
+- [x] Sequential project: only first N tasks shown as actionable when limit is set
 
 ---
 

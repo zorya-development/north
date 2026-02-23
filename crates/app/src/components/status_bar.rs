@@ -64,7 +64,9 @@ pub fn StatusBar() -> impl IntoView {
 
     view! {
         <Show when=move || message.get().is_some()>
-            <div class=move || {
+            <div
+                data-testid="status-bar"
+                class=move || {
                 format!(
                     "status-bar fixed bottom-0 left-0 right-0 z-50 \
                      flex items-center px-4 py-1.5 \

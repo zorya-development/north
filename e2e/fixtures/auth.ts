@@ -10,6 +10,18 @@ export const ADMIN_USER: TestUser = {
   password: "admin",
 };
 
+/**
+ * Wait for the inbox page to be fully loaded (either empty or with tasks).
+ */
+export async function waitForInboxLoaded(page: Page): Promise<void> {
+  await page
+    .locator(
+      '[data-testid="empty-task-list"], [data-testid="task-list"]',
+    )
+    .first()
+    .waitFor({ state: "visible" });
+}
+
 export async function loginViaUI(
   page: Page,
   user: TestUser = ADMIN_USER,
@@ -19,9 +31,7 @@ export async function loginViaUI(
   await page.locator('[data-testid="login-password"]').fill(user.password);
   await page.locator('[data-testid="login-submit"]').click();
   await page.waitForURL("**/inbox");
-  await page
-    .locator('[data-testid="empty-task-list"]')
-    .waitFor({ state: "visible" });
+  await waitForInboxLoaded(page);
 }
 
 type AuthFixtures = {
