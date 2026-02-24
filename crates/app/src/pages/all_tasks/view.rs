@@ -22,6 +22,7 @@ pub fn AllTasksView(
     let (help_read, help_write) = show_keybindings_help.split();
     let ttl_handle = RwSignal::new(None::<TtlHandle>);
     let item_config = ItemConfig {
+        show_inline_project: true,
         draggable: true,
         ..Default::default()
     };

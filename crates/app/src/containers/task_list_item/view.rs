@@ -1,14 +1,14 @@
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
 
-use crate::atoms::{Text, TextColor, TextVariant};
+use crate::atoms::{TextColor, TextVariant};
 use crate::components::date_picker::DateTimePicker;
 use crate::components::drag_drop::{DragDropContext, DropZone};
 use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
 use crate::containers::task_checkbox::TaskCheckbox;
 use crate::containers::task_meta::TaskMeta;
-use north_stores::TaskModel;
+use north_stores::{use_app_store, TaskModel};
 use north_ui::{DropdownItem, DropdownMenu, Icon, IconKind};
 
 #[component]
@@ -16,6 +16,8 @@ pub fn TaskListItemView(
     task: Memo<Option<TaskModel>>,
     #[prop(default = false)] show_review: bool,
     #[prop(default = true)] show_project: bool,
+    #[prop(default = false)] show_inline_project: bool,
+    #[prop(default = true)] show_inline_tags: bool,
     #[prop(default = false)] draggable: bool,
     on_delete: Callback<()>,
     on_review: Callback<()>,
@@ -25,7 +27,8 @@ pub fn TaskListItemView(
     on_clear_project: Callback<()>,
     on_set_tags: Callback<Vec<String>>,
 ) -> impl IntoView {
-    let _ = show_project; // Reserved for future use (e.g. hiding project in TaskMeta)
+    let _ = show_project; // Used by ItemConfig for future TaskMeta project display
+    let app_store = use_app_store();
     let drag_ctx = use_context::<DragDropContext>();
     let (hovered, set_hovered) = signal(false);
     let (menu_open, set_menu_open) = signal(false);
@@ -186,24 +189,80 @@ pub fn TaskListItemView(
                         >
                             <TaskCheckbox task_id=task_id/>
                         </div>
-                        {move || {
+                        {
+                        let inline_tags = tags.clone();
+                        move || {
                             let completed = is_completed.get();
                             let t = title.clone();
+
+                            // Project prefix: @ProjectName:
+                            let project_prefix = if show_inline_project {
+                                project_id.and_then(|pid| {
+                                    let projects = app_store.projects.get();
+                                    let project = projects.iter().find(|p| p.id == pid)?;
+                                    let color = project.color.clone();
+                                    let title = project.title.clone();
+                                    let href = format!("/projects/{pid}");
+                                    Some(view! {
+                                        <a
+                                            href=href
+                                            class="font-medium hover:underline mr-1"
+                                            style=format!("color: {color}")
+                                            on:click=move |ev: leptos::ev::MouseEvent| {
+                                                ev.stop_propagation();
+                                            }
+                                        >
+                                            {format!("@{title}:")}
+                                        </a>
+                                    })
+                                })
+                            } else {
+                                None
+                            };
+
+                            // Tag suffix: #tag1 #tag2
+                            let tag_suffix = if show_inline_tags && !inline_tags.is_empty() {
+                                let tag_views = inline_tags.iter().map(|tag| {
+                                    let query = format!("tags=\"{}\"", tag.name);
+                                    let encoded = urlencoding::encode(&query).into_owned();
+                                    let href = format!("/filters/new?q={encoded}");
+                                    let name = format!("#{}", tag.name);
+                                    view! {
+                                        <a
+                                            href=href
+                                            class="text-text-tertiary text-xs \
+                                                   hover:underline ml-1.5"
+                                            on:click=move |ev: leptos::ev::MouseEvent| {
+                                                ev.stop_propagation();
+                                            }
+                                        >
+                                            {name}
+                                        </a>
+                                    }
+                                }).collect::<Vec<_>>();
+                                Some(tag_views)
+                            } else {
+                                None
+                            };
+
                             view! {
-                                <Text
-                                    variant=TextVariant::BodyMd
-                                    color={if completed {
-                                        TextColor::Tertiary
+                                <span class=format!(
+                                    "flex-1 pt-0.5 flex items-baseline flex-wrap {} {}{}",
+                                    TextVariant::BodyMd.classes(),
+                                    if completed {
+                                        TextColor::Tertiary.classes()
                                     } else {
-                                        TextColor::Primary
-                                    }}
-                                    line_through=completed
-                                    class="flex-1 pt-0.5"
-                                >
+                                        TextColor::Primary.classes()
+                                    },
+                                    if completed { " line-through" } else { "" },
+                                )>
+                                    {project_prefix}
                                     {t}
-                                </Text>
+                                    {tag_suffix}
+                                </span>
                             }
-                        }}
+                        }
+                        }
                         <div
                             class=move || format!(
                                 "{} transition-opacity \
@@ -299,6 +358,7 @@ pub fn TaskListItemView(
                         tags=tags
                         reviewed_at=reviewed_at
                         show_review=show_review
+                        show_tags=!show_inline_tags
                         on_review=on_review
                         recurrence=recurrence
                         class="pl-6"

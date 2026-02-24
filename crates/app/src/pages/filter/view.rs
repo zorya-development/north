@@ -48,7 +48,10 @@ pub fn FilterView(
         }
     });
 
-    let item_config = ItemConfig::default();
+    let item_config = ItemConfig {
+        show_inline_project: true,
+        ..Default::default()
+    };
 
     view! {
         <div class="space-y-4">

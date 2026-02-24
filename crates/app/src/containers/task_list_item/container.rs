@@ -8,6 +8,8 @@ use super::view::TaskListItemView;
 pub struct ItemConfig {
     pub show_review: bool,
     pub show_project: bool,
+    pub show_inline_project: bool,
+    pub show_inline_tags: bool,
     pub draggable: bool,
 }
 
@@ -16,6 +18,8 @@ impl Default for ItemConfig {
         Self {
             show_review: false,
             show_project: true,
+            show_inline_project: false,
+            show_inline_tags: true,
             draggable: false,
         }
     }
@@ -34,6 +38,8 @@ pub fn TaskListItem(
             task=ctrl.task
             show_review=config.show_review
             show_project=config.show_project
+            show_inline_project=config.show_inline_project
+            show_inline_tags=config.show_inline_tags
             draggable=config.draggable
             on_delete=Callback::new(move |()| ctrl.delete())
             on_review=Callback::new(move |()| ctrl.review())

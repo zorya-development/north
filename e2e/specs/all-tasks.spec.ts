@@ -14,7 +14,7 @@ test.describe("All Tasks Page", () => {
     await api.deleteAllTasks();
   });
 
-  test("shows tasks from all projects", async ({
+  test("shows tasks from all projects with inline project prefix", async ({
     authenticatedPage: page,
   }) => {
     // Create a project and tasks in it
@@ -32,8 +32,72 @@ test.describe("All Tasks Page", () => {
     const rows = page.locator('[data-testid="task-row"]');
     await expect(rows).toHaveCount(2);
 
+    // Project task should have @Project Alpha: prefix
+    const projectRow = rows.filter({ hasText: "Project Task" });
+    await expect(projectRow).toContainText("@Project Alpha:");
+
+    // Inbox task should NOT have a project prefix
+    const inboxRow = rows.filter({ hasText: "Inbox Task" });
+    await expect(inboxRow).not.toContainText("@");
+
     // Clean up project
     await api.updateProject(project.id, { status: "archived" });
+  });
+
+  test("project prefix links to project page", async ({
+    authenticatedPage: page,
+  }) => {
+    const project = await api.createProject({ title: "Link Target" });
+    await api.createTask({ title: "Linked Task", project_id: project.id });
+
+    await page.goto("/tasks");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    // Click the project prefix link
+    const projectLink = page.locator(
+      `[data-testid="task-row"] a[href="/projects/${project.id}"]`,
+    );
+    await expect(projectLink).toBeVisible();
+    await projectLink.click();
+
+    // Should navigate to the project page
+    await expect(page).toHaveURL(new RegExp(`/projects/${project.id}`));
+
+    // Clean up project
+    await api.updateProject(project.id, { status: "archived" });
+  });
+
+  test("inline tags appear after task title and link to filter", async ({
+    authenticatedPage: page,
+  }) => {
+    // Create a task with a tag via inline input (triggers token parsing)
+    await page.goto("/tasks");
+    await page
+      .locator(
+        '[data-testid="task-list"], [data-testid="empty-task-list"]',
+      )
+      .first()
+      .waitFor({ state: "visible" });
+
+    await page.locator('[data-testid="all-tasks-add-task"]').click();
+    const input = page.locator('[data-testid="inline-create-input"]');
+    await expect(input).toBeVisible();
+    await input.fill("Tagged Task #urgent");
+    await input.press("Enter");
+
+    // Wait for the task row to appear
+    const row = page.locator('[data-testid="task-row"]').first();
+    await expect(row).toBeVisible();
+
+    // The tag should appear as a link after the title
+    const tagLink = row.locator("a", { hasText: "#urgent" });
+    await expect(tagLink).toBeVisible();
+    await tagLink.click();
+
+    // Should navigate to filter page with query param
+    await expect(page).toHaveURL(/\/filters\/new\?q=/);
   });
 
   test("creating a task here without project lands in inbox", async ({
