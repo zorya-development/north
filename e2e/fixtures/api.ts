@@ -158,18 +158,19 @@ export class ApiHelper {
     return res.json();
   }
 
+  async deleteProject(id: number): Promise<void> {
+    const token = await this.getToken();
+    await fetch(`${BASE_URL}/api/projects/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
   async deleteAllProjects(): Promise<void> {
-    const projects = await this.listProjects();
-    for (const project of projects) {
-      // Archive first, then tasks will be cleaned up by deleteAllTasks
-      if (project.status !== "archived") {
-        await this.updateProject(project.id, { status: "archived" });
-      }
-    }
-    // Also clean archived projects
+    const active = await this.listProjects();
     const archived = await this.listProjects({ status: "archived" });
-    for (const project of archived) {
-      await this.updateProject(project.id, { status: "archived" });
+    for (const project of [...active, ...archived]) {
+      await this.deleteProject(project.id);
     }
   }
 }

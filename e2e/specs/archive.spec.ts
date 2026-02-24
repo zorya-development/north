@@ -8,10 +8,12 @@ test.describe("Archive Page", () => {
   test.beforeEach(async ({ authenticatedPage }) => {
     api = new ApiHelper(authenticatedPage.context());
     await api.deleteAllTasks();
+    await api.deleteAllProjects();
   });
 
   test.afterEach(async () => {
     await api.deleteAllTasks();
+    await api.deleteAllProjects();
   });
 
   test("archived projects appear in list", async ({
@@ -52,8 +54,6 @@ test.describe("Archive Page", () => {
     await expect(sidebarProject).toHaveCount(1);
     await expect(sidebarProject.first()).toContainText("Restore Me");
 
-    // Clean up: re-archive
-    await api.updateProject(project.id, { status: "archived" });
   });
 
   test("delete archived project removes it", async ({

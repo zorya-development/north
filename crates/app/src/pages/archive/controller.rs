@@ -17,14 +17,16 @@ impl ArchiveController {
         let projects = RwSignal::new(Vec::<Project>::new());
         let loaded = RwSignal::new(false);
 
-        spawn_local(async move {
-            let filter = ProjectFilter {
-                status: Some(ProjectStatus::Archived),
-            };
-            if let Ok(list) = ProjectRepository::list(filter).await {
-                projects.set(list);
-            }
-            loaded.set(true);
+        Effect::new(move |_| {
+            spawn_local(async move {
+                let filter = ProjectFilter {
+                    status: Some(ProjectStatus::Archived),
+                };
+                if let Ok(list) = ProjectRepository::list(filter).await {
+                    projects.set(list);
+                }
+                loaded.set(true);
+            });
         });
 
         let archived_projects = Memo::new(move |_| projects.get());
