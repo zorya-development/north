@@ -8,10 +8,12 @@ test.describe("Filter Page", () => {
   test.beforeEach(async ({ authenticatedPage }) => {
     api = new ApiHelper(authenticatedPage.context());
     await api.deleteAllTasks();
+    await api.deleteAllFilters();
   });
 
   test.afterEach(async () => {
     await api.deleteAllTasks();
+    await api.deleteAllFilters();
   });
 
   test("valid DSL query shows matching tasks", async ({

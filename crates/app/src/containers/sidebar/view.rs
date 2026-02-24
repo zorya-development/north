@@ -5,7 +5,7 @@ use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::drag_drop::DragDropContext;
 use crate::components::theme_toggle::ThemeToggle;
 use north_dto::{Project, SavedFilter};
-use north_ui::{Icon, IconKind, Popover};
+use north_ui::{DropdownItem, DropdownMenu, Icon, IconKind, Popover};
 
 const PRESET_COLORS: &[&str] = &[
     "#ff8969", "#d9b857", "#81d8ff", "#3d85c6", "#00557e", "#f44336", "#76a164",
@@ -21,6 +21,7 @@ pub fn SidebarView(
     on_archive_project: Callback<i64>,
     on_edit_project: Callback<(i64, String, String)>,
     on_drop_task_to_project: Callback<(i64, i64)>,
+    on_delete_filter: Callback<i64>,
 ) -> impl IntoView {
     let (creating, set_creating) = signal(false);
     let (new_title, set_new_title) = signal(String::new());
@@ -184,11 +185,15 @@ pub fn SidebarView(
                                     .get()
                                     .into_iter()
                                     .map(|f| {
+                                        let fid = f.id;
                                         let href = format!("/filters/{}", f.id);
                                         view! {
                                             <FilterNavItem
                                                 href=href
                                                 title=f.title
+                                                on_delete=Callback::new(move |_: ()| {
+                                                    on_delete_filter.run(fid);
+                                                })
                                             />
                                         }
                                     })
@@ -666,12 +671,15 @@ fn FilterNavItem(
     href: String,
     title: String,
     #[prop(optional)] on_click: Option<Callback<()>>,
+    #[prop(optional)] on_delete: Option<Callback<()>>,
 ) -> impl IntoView {
     let location = use_location();
     let href_cmp = href.clone();
+    let (hover, set_hover) = signal(false);
+    let (menu_open, set_menu_open) = signal(false);
 
     let class = Memo::new(move |_| {
-        let base = "flex items-center gap-2 px-3 py-1.5 rounded-lg \
+        let base = "group flex items-center gap-2 px-3 py-1.5 rounded-lg \
                     text-sm text-text-primary hover:bg-bg-tertiary \
                     transition-colors";
         if location.pathname.get() == href_cmp {
@@ -686,6 +694,12 @@ fn FilterNavItem(
             href=href
             data-testid="sidebar-filter-item"
             class=class
+            on:mouseenter=move |_| set_hover.set(true)
+            on:mouseleave=move |_| {
+                if !menu_open.get_untracked() {
+                    set_hover.set(false);
+                }
+            }
             on:click=move |_| {
                 if let Some(cb) = on_click {
                     cb.run(());
@@ -693,7 +707,44 @@ fn FilterNavItem(
             }
         >
             <Icon kind=IconKind::Filter class="w-3.5 h-3.5 text-text-tertiary"/>
-            <span class="truncate">{title}</span>
+            <span class="flex-1 truncate">{title}</span>
+            <Show when=move || on_delete.is_some() && (hover.get() || menu_open.get())>
+                <DropdownMenu
+                    open=menu_open
+                    set_open=set_menu_open
+                    trigger=Box::new(move || {
+                        view! {
+                            <button
+                                on:click=move |ev| {
+                                    ev.prevent_default();
+                                    ev.stop_propagation();
+                                    set_menu_open.update(|o| *o = !*o);
+                                }
+                                class="p-0.5 rounded \
+                                       hover:bg-bg-input \
+                                       text-text-tertiary \
+                                       hover:text-text-secondary \
+                                       transition-colors"
+                                aria-label="Filter actions"
+                            >
+                                <Icon kind=IconKind::KebabMenu class="w-3.5 h-3.5"/>
+                            </button>
+                        }.into_any()
+                    })
+                >
+                    <DropdownItem
+                        label="Delete"
+                        on_click=move || {
+                            set_menu_open.set(false);
+                            set_hover.set(false);
+                            if let Some(cb) = on_delete {
+                                cb.run(());
+                            }
+                        }
+                        danger=true
+                    />
+                </DropdownMenu>
+            </Show>
         </a>
     }
 }

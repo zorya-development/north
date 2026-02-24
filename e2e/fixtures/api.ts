@@ -54,6 +54,13 @@ interface Project {
   [key: string]: unknown;
 }
 
+interface SavedFilter {
+  id: number;
+  title: string;
+  query: string;
+  [key: string]: unknown;
+}
+
 /**
  * REST API helper that uses the auth cookie from a Playwright browser context.
  */
@@ -171,6 +178,24 @@ export class ApiHelper {
     const archived = await this.listProjects({ status: "archived" });
     for (const project of [...active, ...archived]) {
       await this.deleteProject(project.id);
+    }
+  }
+
+  // --- Filters ---
+
+  async listFilters(): Promise<SavedFilter[]> {
+    const res = await this.request("GET", "/filters");
+    return res.json();
+  }
+
+  async deleteFilter(id: number): Promise<void> {
+    await this.request("DELETE", `/filters/${id}`);
+  }
+
+  async deleteAllFilters(): Promise<void> {
+    const filters = await this.listFilters();
+    for (const filter of filters) {
+      await this.deleteFilter(filter.id);
     }
   }
 }
