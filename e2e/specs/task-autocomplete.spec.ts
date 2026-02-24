@@ -20,7 +20,7 @@ test.describe("Task Inline Autocomplete", () => {
     await api.updateProject(projectId, { status: "archived" });
   });
 
-  test("@project token assigns project and removes token from title", async ({
+  test("@project token keeps task visible on inbox after creation", async ({
     authenticatedPage: page,
   }) => {
     await page.goto("/inbox");
@@ -38,15 +38,50 @@ test.describe("Task Inline Autocomplete", () => {
     await input.fill("Buy supplies @Work");
     await input.press("Enter");
 
-    // Task should appear without the @Work token in title
+    // Task should remain visible on inbox (extra_show_ids keeps it)
     const rows = page.locator('[data-testid="task-row"]');
     await expect(rows).toHaveCount(1);
     await expect(rows.first()).toContainText("Buy supplies");
+  });
+
+  test("@project token assigns project visible from project page", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/inbox");
+    await page
+      .locator(
+        '[data-testid="task-list"], [data-testid="empty-task-list"]',
+      )
+      .first()
+      .waitFor({ state: "visible" });
+
+    // Create task with @project token
+    await page.locator('[data-testid="inbox-add-task"]').click();
+    const input = page.locator('[data-testid="inline-create-input"]');
+    await expect(input).toBeVisible();
+    await input.fill("Buy supplies @Work");
+    await input.press("Enter");
+
+    // Wait for the task to appear (confirms server round-trip completed)
+    const rows = page.locator('[data-testid="task-row"]');
+    await expect(rows).toHaveCount(1);
 
     // Verify project assigned via API
     const tasks = await api.listTasks();
-    const task = tasks.find((t) => t.title.includes("Buy supplies"));
+    const task = tasks.find((t: any) => t.title.includes("Buy supplies"));
     expect(task).toBeDefined();
     expect(task!.project_id).toBe(projectId);
+
+    // Navigate to project page and verify task is there
+    await page.locator('[data-testid="sidebar-project-item"]').filter({ hasText: "Work" }).click();
+    await page
+      .locator(
+        '[data-testid="task-list"], [data-testid="empty-task-list"]',
+      )
+      .first()
+      .waitFor({ state: "visible" });
+    const projectRows = page.locator('[data-testid="task-row"]');
+    await expect(projectRows).toHaveCount(1);
+    await expect(projectRows.first()).toContainText("Buy supplies");
   });
 });

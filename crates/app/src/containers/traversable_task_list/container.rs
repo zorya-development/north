@@ -39,6 +39,7 @@ pub fn TraversableTaskList(
     #[prop(optional)] cursor_task_id: Option<RwSignal<Option<i64>>>,
     #[prop(optional)] handle: Option<RwSignal<Option<TtlHandle>>>,
     #[prop(optional)] node_filter: Option<Signal<Callback<north_stores::TaskModel, bool>>>,
+    #[prop(optional)] on_keep_visible: Option<Callback<i64>>,
 ) -> impl IntoView {
     let app_store = use_app_store();
     if item_config.draggable {
@@ -63,6 +64,7 @@ pub fn TraversableTaskList(
         scoped,
         cursor_task_id,
         node_filter,
+        on_keep_visible,
     );
 
     if let Some(handle) = handle {

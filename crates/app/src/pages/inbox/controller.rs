@@ -14,6 +14,7 @@ pub struct InboxController {
     pub is_loaded: Signal<bool>,
     pub hide_non_actionable: Signal<bool>,
     pub node_filter: Signal<Callback<north_stores::TaskModel, bool>>,
+    pub extra_show_ids: RwSignal<Vec<i64>>,
     app_store: AppStore,
 }
 
@@ -32,7 +33,47 @@ impl InboxController {
             is_completed: None,
         });
 
-        let root_task_ids = Memo::new(move |_| root_tasks.get().iter().map(|t| t.id).collect());
+        // IDs of tasks that should stay visible even if they no longer match
+        // the inbox filter (e.g. assigned to a project via @token or detail modal).
+        let extra_show_ids: RwSignal<Vec<i64>> = RwSignal::new(vec![]);
+
+        // Track tasks that disappear from the base filter (updated via detail
+        // modal, action bar pickers, etc.) and keep them visible.
+        let prev_filtered_ids: RwSignal<Vec<i64>> = RwSignal::new(vec![]);
+        Effect::new(move |_| {
+            let current: Vec<i64> = root_tasks.get().iter().map(|t| t.id).collect();
+            let prev = prev_filtered_ids.get_untracked();
+            for &id in &prev {
+                if !current.contains(&id) {
+                    extra_show_ids.update(|ids| {
+                        if !ids.contains(&id) {
+                            ids.push(id);
+                        }
+                    });
+                }
+            }
+            prev_filtered_ids.set(current);
+        });
+
+        let all_root_tasks = app_store.tasks.filtered(TaskStoreFilter {
+            project_id: IdFilter::Any,
+            parent_id: IdFilter::IsNull,
+            is_completed: None,
+        });
+
+        let root_task_ids = Memo::new(move |_| {
+            let mut ids: Vec<i64> = root_tasks.get().iter().map(|t| t.id).collect();
+            let extras = extra_show_ids.get();
+            if !extras.is_empty() {
+                let all = all_root_tasks.get();
+                for &eid in &extras {
+                    if !ids.contains(&eid) && all.iter().any(|t| t.id == eid) {
+                        ids.push(eid);
+                    }
+                }
+            }
+            ids
+        });
 
         let completed_tasks = app_store.tasks.filtered(TaskStoreFilter {
             project_id: IdFilter::IsNull,
@@ -72,6 +113,7 @@ impl InboxController {
             is_loaded,
             hide_non_actionable,
             node_filter,
+            extra_show_ids,
             app_store,
         }
     }
@@ -85,6 +127,14 @@ impl InboxController {
         self.app_store
             .tasks
             .reorder_task(task_id, sort_key, parent_id);
+    }
+
+    pub fn keep_visible(&self, id: i64) {
+        self.extra_show_ids.update(|ids| {
+            if !ids.contains(&id) {
+                ids.push(id);
+            }
+        });
     }
 
     pub fn toggle_actionable_visibility(&self) {

@@ -20,6 +20,7 @@ pub fn ProjectView(
     on_task_click: Callback<i64>,
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
     on_toggle_visibility: Callback<()>,
+    on_keep_visible: Callback<i64>,
 ) -> impl IntoView {
     let show_keybindings_help = RwSignal::new(false);
     let (help_read, help_write) = show_keybindings_help.split();
@@ -127,6 +128,7 @@ pub fn ProjectView(
                 show_keybindings_help=show_keybindings_help
                 default_project_id=default_project_id
                 handle=ttl_handle
+                on_keep_visible=on_keep_visible
                 empty_message="No tasks in this project. Add one above."
             />
 
