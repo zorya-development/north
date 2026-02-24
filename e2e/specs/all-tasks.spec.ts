@@ -34,7 +34,7 @@ test.describe("All Tasks Page", () => {
 
     // Project task should have @Project Alpha: prefix
     const projectRow = rows.filter({ hasText: "Project Task" });
-    await expect(projectRow).toContainText("@Project Alpha:");
+    await expect(projectRow).toContainText("@Project Alpha");
 
     // Inbox task should NOT have a project prefix
     const inboxRow = rows.filter({ hasText: "Inbox Task" });
@@ -91,8 +91,8 @@ test.describe("All Tasks Page", () => {
     const row = page.locator('[data-testid="task-row"]').first();
     await expect(row).toBeVisible();
 
-    // The tag should appear as a link after the title
-    const tagLink = row.locator("a", { hasText: "#urgent" });
+    // The tag should appear after the title — # is outside the link
+    const tagLink = row.locator("a", { hasText: "urgent" });
     await expect(tagLink).toBeVisible();
     await tagLink.click();
 
