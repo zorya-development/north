@@ -8,8 +8,7 @@ use north_dto::{Project, SavedFilter};
 use north_ui::{Icon, IconKind, Popover};
 
 const PRESET_COLORS: &[&str] = &[
-    "#6b7280", "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6",
-    "#ec4899",
+    "#ff8969", "#d9b857", "#81d8ff", "#3d85c6", "#00557e", "#f44336", "#76a164",
 ];
 
 #[component]

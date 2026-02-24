@@ -4,6 +4,7 @@ use wasm_bindgen::JsCast;
 use crate::atoms::{TextColor, TextVariant};
 use crate::components::date_picker::DateTimePicker;
 use crate::components::drag_drop::{DragDropContext, DropZone};
+use crate::components::rich_title::RichTitle;
 use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
 use crate::containers::task_checkbox::TaskCheckbox;
@@ -195,7 +196,7 @@ pub fn TaskListItemView(
                             let completed = is_completed.get();
                             let t = title.clone();
 
-                            // Project prefix: @ProjectName:
+                            // Project prefix: @ProjectName
                             let project_prefix = if show_inline_project {
                                 project_id.and_then(|pid| {
                                     let projects = app_store.projects.get();
@@ -204,16 +205,21 @@ pub fn TaskListItemView(
                                     let title = project.title.clone();
                                     let href = format!("/projects/{pid}");
                                     Some(view! {
-                                        <a
-                                            href=href
-                                            class="font-medium hover:underline mr-1"
+                                        <span
+                                            class="text-sm font-medium mr-1"
                                             style=format!("color: {color}")
-                                            on:click=move |ev: leptos::ev::MouseEvent| {
-                                                ev.stop_propagation();
-                                            }
                                         >
-                                            {format!("@{title}:")}
-                                        </a>
+                                            "@"
+                                            <a
+                                                href=href
+                                                class="hover:underline"
+                                                on:click=move |ev: leptos::ev::MouseEvent| {
+                                                    ev.stop_propagation();
+                                                }
+                                            >
+                                                {title}
+                                            </a>
+                                        </span>
                                     })
                                 })
                             } else {
@@ -226,18 +232,20 @@ pub fn TaskListItemView(
                                     let query = format!("tags=\"{}\"", tag.name);
                                     let encoded = urlencoding::encode(&query).into_owned();
                                     let href = format!("/filters/new?q={encoded}");
-                                    let name = format!("#{}", tag.name);
+                                    let name = tag.name.clone();
                                     view! {
-                                        <a
-                                            href=href
-                                            class="text-text-tertiary text-xs \
-                                                   hover:underline ml-1.5"
-                                            on:click=move |ev: leptos::ev::MouseEvent| {
-                                                ev.stop_propagation();
-                                            }
-                                        >
-                                            {name}
-                                        </a>
+                                        <span class="text-text-secondary text-sm ml-1.5">
+                                            "#"
+                                            <a
+                                                href=href
+                                                class="hover:underline"
+                                                on:click=move |ev: leptos::ev::MouseEvent| {
+                                                    ev.stop_propagation();
+                                                }
+                                            >
+                                                {name}
+                                            </a>
+                                        </span>
                                     }
                                 }).collect::<Vec<_>>();
                                 Some(tag_views)
@@ -245,19 +253,21 @@ pub fn TaskListItemView(
                                 None
                             };
 
+                            let color = if completed {
+                                TextColor::Tertiary
+                            } else {
+                                TextColor::Primary
+                            };
+
                             view! {
-                                <span class=format!(
-                                    "flex-1 pt-0.5 flex items-baseline flex-wrap {} {}{}",
-                                    TextVariant::BodyMd.classes(),
-                                    if completed {
-                                        TextColor::Tertiary.classes()
-                                    } else {
-                                        TextColor::Primary.classes()
-                                    },
-                                    if completed { " line-through" } else { "" },
-                                )>
+                                <span class="flex-1 pt-0.5 flex items-baseline flex-wrap">
                                     {project_prefix}
-                                    {t}
+                                    <RichTitle
+                                        title=t
+                                        variant=TextVariant::BodyMd
+                                        color=color
+                                        line_through=completed
+                                    />
                                     {tag_suffix}
                                 </span>
                             }
