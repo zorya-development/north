@@ -14,6 +14,7 @@ pub struct TaskDetailModalController {
     extra_visible_ids: RwSignal<Vec<i64>>,
     pub title_draft: RwSignal<String>,
     pub body_draft: RwSignal<String>,
+    pub body_editing: RwSignal<bool>,
     pub focused_task_id: RwSignal<Option<i64>>,
     pub subtask_show_completed: RwSignal<bool>,
     pub subtask_filter: Signal<Callback<TaskModel, bool>>,
@@ -35,6 +36,7 @@ impl TaskDetailModalController {
             extra_visible_ids,
             title_draft: RwSignal::new(String::new()),
             body_draft: RwSignal::new(String::new()),
+            body_editing: RwSignal::new(false),
             focused_task_id: RwSignal::new(None),
             subtask_show_completed,
             subtask_filter,
@@ -175,8 +177,13 @@ impl TaskDetailModalController {
     }
 
     pub fn sync_drafts(&self, title: String, body: Option<String>) {
-        self.title_draft.set(title);
-        self.body_draft.set(body.unwrap_or_default());
+        let body = body.unwrap_or_default();
+        if self.title_draft.get_untracked() != title {
+            self.title_draft.set(title);
+        }
+        if self.body_draft.get_untracked() != body {
+            self.body_draft.set(body);
+        }
     }
 
     pub fn focus_if_new_task(&self, task_id: i64) -> bool {

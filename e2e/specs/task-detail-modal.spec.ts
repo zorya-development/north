@@ -220,9 +220,11 @@ test.describe("Task Detail Modal", () => {
     const modal = page.locator('[data-testid="task-detail-modal"]');
     await expect(modal).toBeVisible();
 
-    // Click on the body area to enter edit mode
+    // Click on the body placeholder to enter edit mode
     const bodyArea = modal.locator('[data-testid="task-detail-body"]');
-    await bodyArea.click();
+    const placeholder = bodyArea.getByText("Add description...");
+    await expect(placeholder).toBeVisible();
+    await placeholder.click();
 
     // Type in the textarea
     const textarea = bodyArea.locator("textarea");

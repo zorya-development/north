@@ -526,7 +526,7 @@ fn RecurrenceSidebarButton(
 /// - Edit mode: AutocompleteTextarea. On blur: save and switch to view mode.
 #[component]
 fn BodySection(ctrl: TaskDetailModalController) -> impl IntoView {
-    let (editing, set_editing) = signal(false);
+    let editing = ctrl.body_editing;
 
     view! {
         <div data-testid="task-detail-body" class="ml-6">
@@ -541,7 +541,7 @@ fn BodySection(ctrl: TaskDetailModalController) -> impl IntoView {
                                        cursor-pointer p-1 -m-1 \
                                        hover:bg-hover-overlay rounded \
                                        transition-colors"
-                                on:click=move |_| set_editing.set(true)
+                                on:click=move |_| editing.set(true)
                             >
                                 "Add description..."
                             </div>
@@ -552,7 +552,7 @@ fn BodySection(ctrl: TaskDetailModalController) -> impl IntoView {
                                 class="cursor-pointer p-1 -m-1 \
                                        hover:bg-hover-overlay rounded \
                                        transition-colors"
-                                on:click=move |_| set_editing.set(true)
+                                on:click=move |_| editing.set(true)
                             >
                                 <EnrichedMarkdownView content=body/>
                             </div>
@@ -581,7 +581,7 @@ fn BodySection(ctrl: TaskDetailModalController) -> impl IntoView {
                                    placeholder:italic"
                             on_blur=Callback::new(move |()| {
                                 ctrl.save();
-                                set_editing.set(false);
+                                editing.set(false);
                             })
                             autofocus=true
                         />
