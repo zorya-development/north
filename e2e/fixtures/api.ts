@@ -7,6 +7,8 @@ interface CreateTaskParams {
   parent_id?: number;
   project_id?: number;
   sort_key?: string;
+  start_at?: string;
+  due_date?: string;
 }
 
 interface UpdateTaskParams {
@@ -14,6 +16,9 @@ interface UpdateTaskParams {
   sequential_limit?: number;
   completed_at?: string | null;
   sort_key?: string;
+  start_at?: string | null;
+  due_date?: string | null;
+  body?: string | null;
 }
 
 interface Task {
@@ -24,6 +29,28 @@ interface Task {
   sort_key: string;
   sequential_limit: number;
   completed_at: string | null;
+  reviewed_at: string | null;
+  start_at: string | null;
+  due_date: string | null;
+  [key: string]: unknown;
+}
+
+interface CreateProjectParams {
+  title: string;
+  color?: string;
+}
+
+interface UpdateProjectParams {
+  title?: string;
+  status?: string;
+  color?: string;
+}
+
+interface Project {
+  id: number;
+  title: string;
+  status: string;
+  color: string;
   [key: string]: unknown;
 }
 
@@ -69,6 +96,8 @@ export class ApiHelper {
     return res;
   }
 
+  // --- Tasks ---
+
   async createTask(params: CreateTaskParams): Promise<Task> {
     const res = await this.request("POST", "/tasks", params);
     return res.json();
@@ -88,6 +117,11 @@ export class ApiHelper {
     return res.json();
   }
 
+  async reviewTask(id: number): Promise<Task> {
+    const res = await this.request("PATCH", `/tasks/${id}/review`);
+    return res.json();
+  }
+
   async deleteAllTasks(): Promise<void> {
     const tasks = await this.listTasks();
     // Delete children first (tasks with parent_id), then roots
@@ -95,6 +129,47 @@ export class ApiHelper {
     const roots = tasks.filter((t) => t.parent_id === null);
     for (const task of [...children, ...roots]) {
       await this.deleteTask(task.id);
+    }
+  }
+
+  // --- Projects ---
+
+  async createProject(params: CreateProjectParams): Promise<Project> {
+    const res = await this.request("POST", "/projects", params);
+    return res.json();
+  }
+
+  async updateProject(
+    id: number,
+    params: UpdateProjectParams,
+  ): Promise<Project> {
+    const res = await this.request("PATCH", `/projects/${id}`, params);
+    return res.json();
+  }
+
+  async listProjects(params?: {
+    status?: string;
+  }): Promise<Project[]> {
+    let path = "/projects";
+    if (params?.status) {
+      path += `?status=${params.status}`;
+    }
+    const res = await this.request("GET", path);
+    return res.json();
+  }
+
+  async deleteAllProjects(): Promise<void> {
+    const projects = await this.listProjects();
+    for (const project of projects) {
+      // Archive first, then tasks will be cleaned up by deleteAllTasks
+      if (project.status !== "archived") {
+        await this.updateProject(project.id, { status: "archived" });
+      }
+    }
+    // Also clean archived projects
+    const archived = await this.listProjects({ status: "archived" });
+    for (const project of archived) {
+      await this.updateProject(project.id, { status: "archived" });
     }
   }
 }

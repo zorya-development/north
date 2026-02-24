@@ -300,4 +300,37 @@ test.describe("Keyboard Navigation", () => {
     // Task should be gone
     await expect(page.locator('[data-testid="task-row"]')).toHaveCount(0);
   });
+
+  test("keyboard shortcuts are suppressed when modal is open", async ({
+    authenticatedPage: page,
+  }) => {
+    await api.createTask({ title: "Task A" });
+    await api.createTask({ title: "Task B" });
+
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    // Select first task
+    await page.keyboard.press("ArrowDown");
+    await expect(
+      page.locator('[data-testid="task-row"][data-focused="true"]'),
+    ).toContainText("Task A");
+
+    // Open detail modal
+    await page.keyboard.press("e");
+    const modal = page.locator('[data-testid="task-detail-modal"]');
+    await expect(modal).toBeVisible();
+
+    // Press Space — should NOT toggle completion while modal is open
+    await page.keyboard.press("Space");
+
+    // Close modal
+    await page.keyboard.press("Escape");
+    await expect(modal).not.toBeVisible();
+
+    // Both tasks should still be present (Space didn't complete the task)
+    await expect(page.locator('[data-testid="task-row"]')).toHaveCount(2);
+  });
 });

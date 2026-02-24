@@ -45,6 +45,7 @@ pub fn AllTasksView(
                 </div>
                 <div class="flex items-center gap-3 mt-2">
                     <button
+                        data-testid="all-tasks-add-task"
                         on:click=move |_| {
                             if let Some(h) = ttl_handle.get_untracked() {
                                 h.start_create_top();

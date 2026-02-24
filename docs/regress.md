@@ -4,27 +4,27 @@ Human-driven pre-release checklist. Tick each box during a testing session befor
 
 ---
 
-## 1. Auth _(covered by `e2e/specs/login.spec.ts`)_
+## 1. Auth _(covered by `e2e/specs/login.spec.ts` + `e2e/specs/auth-session.spec.ts`)_
 
 - [x] Navigate to `/login` — login form renders
 - [x] Submit with wrong credentials — error message shown, no redirect
 - [x] Submit with correct credentials — redirect to Inbox
-- [ ] Reload page — session persists (stays logged in)
-- [ ] Click Logout — redirect to `/login`, session cleared, back-button does not restore session
+- [x] Reload page — session persists (stays logged in)
+- [x] Click Logout — redirect to `/login`, session cleared, back-button does not restore session
 
 ---
 
-## 2. Sidebar
+## 2. Sidebar _(covered by `e2e/specs/sidebar.spec.ts`)_
 
-- [ ] Sidebar is visible on first load
-- [ ] Press `Ctrl+B` — sidebar collapses; press again — expands
-- [ ] Click collapse icon — same toggle behavior
-- [ ] **Projects section:** Create project — appears in sidebar
+- [x] Sidebar is visible on first load
+- [x] Press `Ctrl+B` — sidebar collapses; press again — expands
+- [x] Click collapse icon — same toggle behavior
+- [x] **Projects section:** Create project — appears in sidebar
 - [ ] Rename project via sidebar — title updates in sidebar and page header
 - [ ] Archive project via sidebar — disappears from sidebar, appears on Archive page
 - [ ] **Saved Filters section:** Saved filters appear; clicking one navigates to Filter page with query pre-filled
-- [ ] Theme toggle switches between light and dark; preference persists on reload
-- [ ] Nav links (Inbox, Today, All Tasks, Review, Archive, Settings) all navigate to correct pages
+- [x] Theme toggle switches between light and dark; preference persists on reload
+- [x] Nav links (Inbox, Today, All Tasks, Review, Archive, Settings) all navigate to correct pages
 
 ---
 
@@ -41,11 +41,11 @@ Human-driven pre-release checklist. Tick each box during a testing session befor
 
 ---
 
-## 4. Task Detail Modal
+## 4. Task Detail Modal _(covered by `e2e/specs/task-detail-modal.spec.ts`)_
 
-- [ ] Click a task title — modal opens with correct task data
-- [ ] Edit title inline — change persists on close and reopen
-- [ ] Edit body (Markdown) — change persists; Markdown preview renders correctly
+- [x] Click a task title — modal opens with correct task data
+- [x] Edit title inline — change persists on close and reopen
+- [x] Edit body (Markdown) — change persists; Markdown preview renders correctly
 - [ ] Add a tag via tag picker — tag appears in task meta
 - [ ] Remove a tag — tag disappears
 - [ ] Assign a project via project picker — project shown in modal header and task meta
@@ -53,17 +53,17 @@ Human-driven pre-release checklist. Tick each box during a testing session befor
 - [ ] Set start date — date appears in task meta
 - [ ] Set recurrence — recurrence summary shown; completing task creates next occurrence
 - [ ] Clear recurrence — recurrence summary disappears
-- [ ] Create subtask via inline input — subtask appears under parent; parent shows progress indicator
+- [x] Create subtask via inline input — subtask appears under parent; parent shows progress indicator
 - [ ] Complete subtask — parent progress updates
-- [ ] Navigate between tasks with arrow buttons (or keyboard `J`/`K`) — modal content updates without close/reopen
-- [ ] Press `Escape` — modal closes
+- [x] Navigate between tasks with arrow buttons (or keyboard `J`/`K`) — modal content updates without close/reopen
+- [x] Press `Escape` — modal closes
 
 ---
 
-## 5. Task Inline Autocomplete
+## 5. Task Inline Autocomplete _(covered by `e2e/specs/task-autocomplete.spec.ts`)_
 
 - [ ] In task title input, type `#` — tag suggestions appear; selecting one appends tag and removes `#tag` token from title
-- [ ] Type `@` — project suggestions appear; selecting one assigns project and removes `@project` token
+- [x] Type `@` — project suggestions appear; selecting one assigns project and removes `@project` token
 - [ ] Tag/project tokens in body field are also extracted on save
 - [ ] Autocomplete dropdown dismisses on `Escape`
 
@@ -80,7 +80,7 @@ Human-driven pre-release checklist. Tick each box during a testing session befor
 - [x] `Delete` / `Backspace` on selected task triggers delete flow
 - [x] `Shift+Down` / `Shift+Up` reorders task within siblings
 - [x] `Shift+Right` indents task (makes subtask of previous sibling); `Shift+Left` unindents
-- [ ] Keyboard shortcuts are suppressed when any modal is open
+- [x] Keyboard shortcuts are suppressed when any modal is open
 
 ---
 
@@ -95,69 +95,69 @@ Human-driven pre-release checklist. Tick each box during a testing session befor
 
 ---
 
-## 8. Today Page
+## 8. Today Page _(covered by `e2e/specs/today.spec.ts`)_
 
-- [ ] Tasks with `start_at` ≤ now appear on Today page
-- [ ] Tasks with future `start_at` do not appear
-- [ ] Completing a task on Today page removes it from the list (or moves to completed section)
+- [x] Tasks with `start_at` ≤ now appear on Today page
+- [x] Tasks with future `start_at` do not appear
+- [x] Completing a task on Today page removes it from the list (or moves to completed section)
 - [ ] "Hide non-actionable" toggle works independently of Inbox toggle
 
 ---
 
-## 9. All Tasks Page
+## 9. All Tasks Page _(covered by `e2e/specs/all-tasks.spec.ts`)_
 
-- [ ] Tasks from all projects are shown
+- [x] Tasks from all projects are shown
 - [ ] Filter by project using DSL (`project = "Name"`) — list narrows
-- [ ] Creating a task here without a project lands in Inbox (no project assigned)
+- [x] Creating a task here without a project lands in Inbox (no project assigned)
 - [ ] Task detail modal opens and works as in Inbox
 
 ---
 
-## 10. Project Page
+## 10. Project Page _(covered by `e2e/specs/project.spec.ts`)_
 
-- [ ] Navigating to a project shows only that project's tasks
-- [ ] Creating a task on the project page assigns it to that project automatically
-- [ ] Project title shown in page header
-- [ ] Completing / deleting tasks works same as Inbox
-
----
-
-## 11. Review Page
-
-- [ ] Overdue-for-review tasks appear (based on `review_interval_days` from settings)
-- [ ] Press `R` on a selected task — task marked as reviewed, removed from list
-- [ ] Click "Mark All Reviewed" — all visible tasks marked reviewed, list empties
-- [ ] "Recently Reviewed" toggle shows tasks reviewed within the interval
-- [ ] Reviewed tasks no longer appear after toggling Recently Reviewed off
+- [x] Navigating to a project shows only that project's tasks
+- [x] Creating a task on the project page assigns it to that project automatically
+- [x] Project title shown in page header
+- [x] Completing / deleting tasks works same as Inbox
 
 ---
 
-## 12. Archive Page
+## 11. Review Page _(covered by `e2e/specs/review.spec.ts`)_
 
-- [ ] Archived projects appear in list
-- [ ] Click Unarchive — project moves back to sidebar active projects
-- [ ] Delete archived project — project and its tasks removed; confirm prompt shown first
+- [x] Overdue-for-review tasks appear (based on `review_interval_days` from settings)
+- [x] Press `R` on a selected task — task marked as reviewed, removed from list
+- [x] Click "Mark All Reviewed" — all visible tasks marked reviewed, list empties
+- [x] "Recently Reviewed" toggle shows tasks reviewed within the interval
+- [x] Reviewed tasks no longer appear after toggling Recently Reviewed off
 
 ---
 
-## 13. Filter Page
+## 12. Archive Page _(covered by `e2e/specs/archive.spec.ts`)_
 
-- [ ] Free-text DSL input accepts queries (e.g. `status = active`)
+- [x] Archived projects appear in list
+- [x] Click Unarchive — project moves back to sidebar active projects
+- [x] Delete archived project — project and its tasks removed; confirm prompt shown first
+
+---
+
+## 13. Filter Page _(covered by `e2e/specs/filter.spec.ts`)_
+
+- [x] Free-text DSL input accepts queries (e.g. `status = active`)
 - [ ] Autocomplete suggestions appear as you type field names, operators, and values
 - [ ] Selecting a suggestion inserts it into the query
-- [ ] Valid query executed — matching tasks listed below
-- [ ] Invalid DSL — syntax error message shown, no crash
-- [ ] Click "Save Filter" — modal prompts for name; saved filter appears in sidebar
-- [ ] Navigate away and back via saved filter — query pre-filled, results shown
+- [x] Valid query executed — matching tasks listed below
+- [x] Invalid DSL — syntax error message shown, no crash
+- [x] Click "Save Filter" — modal prompts for name; saved filter appears in sidebar
+- [x] Navigate away and back via saved filter — query pre-filled, results shown
 - [ ] Delete saved filter from sidebar — disappears from sidebar and Saved Filters list
 - [ ] `ORDER BY` clause sorts results correctly (e.g. `ORDER BY due_date ASC`)
 
 ---
 
-## 14. Settings Page
+## 14. Settings Page _(covered by `e2e/specs/settings.spec.ts`)_
 
-- [ ] Current `review_interval_days` value pre-filled
-- [ ] Current timezone pre-filled
-- [ ] Change review interval, save — toast "Saved" appears; value persists on reload
-- [ ] Change timezone, save — value persists on reload
+- [x] Current `review_interval_days` value pre-filled
+- [x] Current timezone pre-filled
+- [x] Change review interval, save — toast "Saved" appears; value persists on reload
+- [x] Change timezone, save — value persists on reload
 - [ ] Invalid review interval (e.g. `0` or non-numeric) — validation error shown, no save

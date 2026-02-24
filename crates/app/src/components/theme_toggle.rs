@@ -73,6 +73,7 @@ pub fn ThemeToggle(#[prop(optional)] collapsed: Option<Signal<bool>>) -> impl In
         <button
             on:click=toggle
             class=btn_class
+            data-testid="theme-toggle"
             aria-label="Toggle theme"
             title=title
         >

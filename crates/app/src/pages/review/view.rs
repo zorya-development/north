@@ -47,6 +47,7 @@ pub fn ReviewView(
                 </div>
                 <div class="flex items-center gap-3 mt-2">
                     <button
+                        data-testid="review-mark-all"
                         on:click=move |_| on_review_all.run(())
                         class="text-sm text-text-secondary hover:text-accent \
                                transition-colors cursor-pointer"
@@ -84,6 +85,7 @@ pub fn ReviewView(
 
             <div class="border-t border-border pt-4">
                 <button
+                    data-testid="review-toggle-recent"
                     on:click=move |_| {
                         set_show_reviewed.update(|v| *v = !*v);
                     }

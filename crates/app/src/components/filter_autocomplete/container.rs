@@ -52,6 +52,7 @@ pub fn FilterAutocompleteTextarea(
     view! {
         <div class="relative flex flex-col">
             <textarea
+                data-testid="filter-query-input"
                 node_ref=textarea_ref
                 placeholder=placeholder
                 prop:value=move || filter_dsl.query().get()

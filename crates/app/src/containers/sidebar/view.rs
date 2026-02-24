@@ -37,7 +37,7 @@ pub fn SidebarView(
     };
 
     view! {
-        <aside class=aside_class>
+        <aside class=aside_class data-testid="sidebar">
             // Logo area
             <Show
                 when=move || !collapsed.get()
@@ -77,6 +77,7 @@ pub fn SidebarView(
                                 class="p-0.5 rounded text-text-tertiary \
                                        hover:text-text-secondary \
                                        hover:bg-bg-tertiary transition-colors"
+                                data-testid="sidebar-create-project-btn"
                                 on:click=move |_| {
                                     set_creating.update(|v| *v = !*v);
                                 }
@@ -102,6 +103,7 @@ pub fn SidebarView(
                             >
                                 <input
                                     type="text"
+                                    data-testid="sidebar-create-project-input"
                                     class="w-full bg-bg-input border border-border \
                                            rounded px-2 py-1.5 text-sm \
                                            text-text-primary placeholder:text-text-tertiary \
@@ -220,6 +222,7 @@ pub fn SidebarView(
                         }
                     }
                     on:click=move |_| on_toggle_collapsed.run(())
+                    data-testid="sidebar-collapse-btn"
                     aria-expanded=move || (!collapsed.get()).to_string()
                     aria-label="Toggle sidebar"
                     title=move || if collapsed.get() { "Expand sidebar (Ctrl+B)" } else { "Collapse sidebar (Ctrl+B)" }
@@ -476,6 +479,7 @@ fn ProjectItem(
                     view! {
                         <a
                             href=href.clone()
+                            data-testid="sidebar-project-item"
                             class=class
                             on:mouseenter=move |_| set_hover.set(true)
                             on:mouseleave=move |_| set_hover.set(false)
@@ -681,6 +685,7 @@ fn FilterNavItem(
     view! {
         <a
             href=href
+            data-testid="sidebar-filter-item"
             class=class
             on:click=move |_| {
                 if let Some(cb) = on_click {
@@ -729,7 +734,7 @@ fn NavItem(
     };
 
     view! {
-        <a href=href class=class title=label>
+        <a href=href class=class title=label data-testid="sidebar-nav-item" data-href=href>
             <Icon kind=icon class="w-4 h-4 flex-shrink-0"/>
             <Show when=move || !collapsed.get()>
                 {label}

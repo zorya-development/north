@@ -38,6 +38,7 @@ pub fn SettingsView(
                         <input
                             type="number"
                             min="1"
+                            data-testid="settings-review-interval"
                             prop:value=move || interval.get()
                             on:input=move |ev| {
                                 set_interval.set(event_target_value(&ev));
@@ -57,6 +58,7 @@ pub fn SettingsView(
                             "Used for scheduling recurring tasks."
                         </Text>
                         <select
+                            data-testid="settings-timezone"
                             on:change=move |ev| {
                                 set_timezone.set(event_target_value(&ev));
                             }
@@ -93,6 +95,7 @@ pub fn SettingsView(
                     </div>
 
                     <button
+                        data-testid="settings-save"
                         on:click=move |_| on_save.run(())
                         class="px-4 py-1.5 text-sm bg-accent \
                                text-on-accent rounded \

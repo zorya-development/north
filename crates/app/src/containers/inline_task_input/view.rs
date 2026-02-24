@@ -24,6 +24,7 @@ pub fn InlineTaskInputView(
                 </div>
                 <input
                     type="text"
+                    data-testid="task-detail-subtask-input"
                     class="flex-1 pt-0.5 bg-transparent border-none \
                            text-sm text-text-primary \
                            placeholder-text-tertiary \

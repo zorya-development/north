@@ -34,14 +34,16 @@ pub fn ProjectView(
         <div class="space-y-4">
             <div>
                 <div class="flex items-center justify-between">
-                    <Text variant=TextVariant::HeadingLg>
-                        {move || {
-                            project
-                                .get()
-                                .map(|p| p.title)
-                                .unwrap_or_else(|| "Project".to_string())
-                        }}
-                    </Text>
+                    <div data-testid="project-title">
+                        <Text variant=TextVariant::HeadingLg>
+                            {move || {
+                                project
+                                    .get()
+                                    .map(|p| p.title)
+                                    .unwrap_or_else(|| "Project".to_string())
+                            }}
+                        </Text>
+                    </div>
                     <button
                         on:click=move |_| show_keybindings_help.set(true)
                         class="flex items-center gap-1.5 text-xs \
@@ -56,6 +58,7 @@ pub fn ProjectView(
                 </div>
                 <div class="flex items-center gap-3 mt-2">
                     <button
+                        data-testid="project-add-task"
                         on:click=move |_| {
                             if let Some(h) = ttl_handle.get_untracked() {
                                 h.start_create_top();

@@ -99,6 +99,7 @@ pub fn TaskDetailModalView(
                             </div>
                             <div class="flex items-center gap-1">
                                 <button
+                                    data-testid="task-detail-prev"
                                     class="p-1 rounded text-text-tertiary \
                                            hover:text-text-primary \
                                            hover:bg-bg-tertiary \
@@ -114,6 +115,7 @@ pub fn TaskDetailModalView(
                                     />
                                 </button>
                                 <button
+                                    data-testid="task-detail-next"
                                     class="p-1 rounded text-text-tertiary \
                                            hover:text-text-primary \
                                            hover:bg-bg-tertiary \
@@ -129,6 +131,7 @@ pub fn TaskDetailModalView(
                                     />
                                 </button>
                                 <button
+                                    data-testid="task-detail-delete"
                                     class="p-1 rounded text-danger \
                                            hover:text-danger-hover \
                                            hover:bg-bg-tertiary \
@@ -142,6 +145,7 @@ pub fn TaskDetailModalView(
                                     />
                                 </button>
                                 <button
+                                    data-testid="task-detail-close"
                                     class="p-1 rounded text-text-tertiary \
                                            hover:text-text-primary \
                                            hover:bg-bg-tertiary \
@@ -213,21 +217,23 @@ pub fn TaskDetailModalView(
                                             }
                                         }) as Arc<dyn Fn(leptos::ev::KeyboardEvent) + Send + Sync>;
                                         view! {
-                                            <AutocompleteInput
-                                                value=title_read
-                                                set_value=title_write
-                                                class="text-lg font-semibold \
-                                                       text-text-primary \
-                                                       bg-transparent \
-                                                       border-none \
-                                                       px-1 -mx-1 flex-1 \
-                                                       w-full \
-                                                       focus:outline-none \
-                                                       no-focus-ring"
-                                                on_keydown=title_keydown
-                                                on_blur=Callback::new(move |()| ctrl.save())
-                                                node_ref=title_input_ref
-                                            />
+                                            <div data-testid="task-detail-title" class="flex-1 w-full">
+                                                <AutocompleteInput
+                                                    value=title_read
+                                                    set_value=title_write
+                                                    class="text-lg font-semibold \
+                                                           text-text-primary \
+                                                           bg-transparent \
+                                                           border-none \
+                                                           px-1 -mx-1 flex-1 \
+                                                           w-full \
+                                                           focus:outline-none \
+                                                           no-focus-ring"
+                                                    on_keydown=title_keydown
+                                                    on_blur=Callback::new(move |()| ctrl.save())
+                                                    node_ref=title_input_ref
+                                                />
+                                            </div>
                                         }
                                     }
                                 </div>
@@ -277,6 +283,7 @@ pub fn TaskDetailModalView(
                                     </Show>
                                     <Show when=move || !show_inline_input.get()>
                                         <button
+                                            data-testid="task-detail-subtask-btn"
                                             class="my-3 text-xs text-accent \
                                                    hover:text-accent-hover \
                                                    hover:underline cursor-pointer \
@@ -522,7 +529,7 @@ fn BodySection(ctrl: TaskDetailModalController) -> impl IntoView {
     let (editing, set_editing) = signal(false);
 
     view! {
-        <div class="ml-6">
+        <div data-testid="task-detail-body" class="ml-6">
             <Show
                 when=move || editing.get()
                 fallback=move || {
