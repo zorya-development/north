@@ -176,6 +176,7 @@ jobs:
       DATABASE_URL: postgres://north:north@postgres:5432/north_test
       JWT_SECRET: test-secret
       UPLOAD_DIR: /tmp/north-uploads
+      LEPTOS_SITE_ADDR: 0.0.0.0:5000
 
     steps:
       - uses: actions/checkout@v4
@@ -184,7 +185,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
-          path: .
+          path: target
 
       - name: Make server executable
         run: chmod +x target/debug/north-server
@@ -215,9 +216,10 @@ jobs:
         run: |
           ./target/debug/north-server &
           for i in $(seq 1 30); do
-            curl -sf http://localhost:5000/login && break
+            curl -sf http://localhost:5000/login && exit 0
             sleep 2
           done
+          echo "Server failed to start" && exit 1
 
       - name: Run e2e tests
         working-directory: e2e
