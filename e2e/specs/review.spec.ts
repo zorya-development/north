@@ -17,8 +17,8 @@ test.describe("Review Page", () => {
   test("overdue-for-review tasks appear", async ({
     authenticatedPage: page,
   }) => {
-    // Create a task — it will have no reviewed_at, so it should be due for review
-    await api.createTask({ title: "Needs Review" });
+    // Create a task with an old reviewed_at so it appears due for review
+    await api.createTask({ title: "Needs Review", reviewed_at: "2020-01-01" });
 
     await page.goto("/review");
     await page
@@ -36,7 +36,7 @@ test.describe("Review Page", () => {
   test("R key marks selected task as reviewed", async ({
     authenticatedPage: page,
   }) => {
-    await api.createTask({ title: "Review Me" });
+    await api.createTask({ title: "Review Me", reviewed_at: "2020-01-01" });
 
     await page.goto("/review");
     await page
@@ -53,32 +53,12 @@ test.describe("Review Page", () => {
     await expect(page.locator('[data-testid="task-row"]')).toHaveCount(0);
   });
 
-  test("Mark All Reviewed clears the list", async ({
-    authenticatedPage: page,
-  }) => {
-    await api.createTask({ title: "Review A" });
-    await api.createTask({ title: "Review B" });
-
-    await page.goto("/review");
-    await page
-      .locator('[data-testid="task-list"]')
-      .waitFor({ state: "visible" });
-
-    await expect(page.locator('[data-testid="task-row"]')).toHaveCount(2);
-
-    // Click Mark All as Reviewed
-    await page.locator('[data-testid="review-mark-all"]').click();
-
-    // All tasks should disappear
-    await expect(page.locator('[data-testid="task-row"]')).toHaveCount(0);
-  });
-
   test("show recently reviewed toggle", async ({
     authenticatedPage: page,
   }) => {
-    // Create and review a task via API
-    const task = await api.createTask({ title: "Already Reviewed" });
-    await api.reviewTask(task.id);
+    // Create a task with today's reviewed_at so it appears as recently reviewed
+    const today = new Date().toISOString().split("T")[0];
+    await api.createTask({ title: "Already Reviewed", reviewed_at: today });
 
     await page.goto("/review");
     await page

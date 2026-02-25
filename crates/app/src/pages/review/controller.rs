@@ -1,8 +1,6 @@
 use chrono::Utc;
 use leptos::prelude::*;
-use leptos::task::spawn_local;
 use north_dto::ProjectStatus;
-use north_repositories::TaskRepository;
 use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskModel, TaskStoreFilter};
 
 use crate::libs::is_actionable;
@@ -136,15 +134,6 @@ impl ReviewController {
             pending_filter,
             reviewed_filter,
         }
-    }
-
-    pub fn review_all(&self) {
-        let app_store = self.app_store;
-        spawn_local(async move {
-            if TaskRepository::review_all().await.is_ok() {
-                app_store.tasks.refetch();
-            }
-        });
     }
 
     pub fn open_detail(&self, task_id: i64) {

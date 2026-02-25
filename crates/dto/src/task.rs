@@ -42,6 +42,7 @@ pub struct CreateTask {
     pub sort_key: Option<String>,
     pub start_at: Option<DateTime<Utc>>,
     pub due_date: Option<NaiveDate>,
+    pub reviewed_at: Option<NaiveDate>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

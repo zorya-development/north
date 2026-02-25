@@ -52,12 +52,3 @@ pub async fn delete_task(
     TaskService::delete(&state.pool, auth_user.id, id).await?;
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
-
-pub async fn review_task(
-    auth_user: axum::Extension<AuthUser>,
-    State(state): State<AppState>,
-    Path(id): Path<i64>,
-) -> Result<Json<Task>, AppError> {
-    let task = TaskService::review(&state.pool, auth_user.id, id).await?;
-    Ok(Json(task))
-}

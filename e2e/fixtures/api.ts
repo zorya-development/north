@@ -9,6 +9,7 @@ interface CreateTaskParams {
   sort_key?: string;
   start_at?: string;
   due_date?: string;
+  reviewed_at?: string;
 }
 
 interface UpdateTaskParams {
@@ -19,6 +20,7 @@ interface UpdateTaskParams {
   start_at?: string | null;
   due_date?: string | null;
   body?: string | null;
+  reviewed_at?: string | null;
 }
 
 interface Task {
@@ -125,8 +127,8 @@ export class ApiHelper {
   }
 
   async reviewTask(id: number): Promise<Task> {
-    const res = await this.request("PATCH", `/tasks/${id}/review`);
-    return res.json();
+    const today = new Date().toISOString().split("T")[0];
+    return this.updateTask(id, { reviewed_at: today });
   }
 
   async deleteAllTasks(): Promise<void> {

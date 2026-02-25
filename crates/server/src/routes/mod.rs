@@ -4,7 +4,7 @@ mod projects;
 mod stats;
 mod tasks;
 
-use axum::routing::{delete, get, patch, post};
+use axum::routing::{delete, get, post};
 use axum::{middleware, Router};
 
 use crate::auth::middleware::auth_middleware;
@@ -26,7 +26,6 @@ pub fn protected_api_router(state: AppState) -> Router<AppState> {
                 .patch(tasks::update_task)
                 .delete(tasks::delete_task),
         )
-        .route("/tasks/:id/review", patch(tasks::review_task))
         // Project routes
         .route(
             "/projects",

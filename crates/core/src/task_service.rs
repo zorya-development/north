@@ -196,6 +196,7 @@ impl TaskService {
                 sort_key: &sort_key,
                 start_at: input.start_at,
                 due_date: input.due_date,
+                reviewed_at: input.reviewed_at,
                 recurrence_type: None,
                 recurrence_rule: None,
                 is_url_fetching: None,
@@ -576,23 +577,6 @@ impl TaskService {
         Ok(())
     }
 
-    pub async fn review(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<Task> {
-        let today = Utc::now().date_naive();
-        let mut conn = pool.get().await?;
-        let row = diesel::update(
-            tasks::table
-                .filter(tasks::id.eq(id))
-                .filter(tasks::user_id.eq(user_id)),
-        )
-        .set(tasks::reviewed_at.eq(Some(today)))
-        .returning(TaskRow::as_returning())
-        .get_result(&mut conn)
-        .await
-        .optional()?
-        .ok_or_else(|| ServiceError::NotFound("Task not found".into()))?;
-        Ok(Task::from(row))
-    }
-
     // ── Recurrence ─────────────────────────────────────────────────
 
     async fn spawn_next_recurring(
@@ -687,6 +671,7 @@ impl TaskService {
                 sort_key: &sort_key,
                 start_at: Some(next_start),
                 due_date: next_due,
+                reviewed_at: None,
                 recurrence_type: completed_task.recurrence_type,
                 recurrence_rule: completed_task.recurrence_rule.as_deref(),
                 is_url_fetching: None,
@@ -716,6 +701,7 @@ impl TaskService {
                     sort_key: &child_sort_key,
                     start_at: None,
                     due_date: None,
+                    reviewed_at: None,
                     recurrence_type: None,
                     recurrence_rule: None,
                     is_url_fetching: None,
@@ -951,37 +937,6 @@ impl TaskService {
                 task
             })
             .collect())
-    }
-
-    pub async fn review_all(pool: &DbPool, user_id: i64) -> ServiceResult<()> {
-        let mut conn = pool.get().await?;
-        let today = Utc::now().date_naive();
-
-        let settings_val: serde_json::Value = users::table
-            .filter(users::id.eq(user_id))
-            .select(users::settings)
-            .first(&mut conn)
-            .await?;
-        let settings: UserSettings = serde_json::from_value(settings_val).unwrap_or_default();
-        let cutoff =
-            Utc::now().date_naive() - chrono::Duration::days(settings.review_interval_days as i64);
-
-        diesel::update(
-            tasks::table
-                .filter(tasks::user_id.eq(user_id))
-                .filter(tasks::parent_id.is_null())
-                .filter(tasks::completed_at.is_null())
-                .filter(
-                    tasks::reviewed_at
-                        .is_null()
-                        .or(tasks::reviewed_at.le(cutoff)),
-                ),
-        )
-        .set(tasks::reviewed_at.eq(Some(today)))
-        .execute(&mut conn)
-        .await?;
-
-        Ok(())
     }
 
     pub async fn execute_dsl_filter(

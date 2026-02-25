@@ -19,7 +19,6 @@ pub fn ReviewPage() -> impl IntoView {
             reviewed_filter=ctrl.reviewed_filter
             show_reviewed=ctrl.show_reviewed.0
             set_show_reviewed=ctrl.show_reviewed.1
-            on_review_all=Callback::new(move |()| ctrl.review_all())
             on_task_click=Callback::new(move |id| ctrl.open_detail(id))
             on_toggle_visibility=Callback::new(move |()| {
                 ctrl.toggle_actionable_visibility()

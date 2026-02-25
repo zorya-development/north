@@ -72,8 +72,4 @@ impl TaskRepository {
     pub async fn set_tags(task_id: i64, tag_names: Vec<String>) -> Result<(), ServerFnError> {
         notify_on_error(north_server_fns::tasks::set_task_tags(task_id, tag_names).await)
     }
-
-    pub async fn review_all() -> Result<(), ServerFnError> {
-        notify_on_error(north_server_fns::tasks::review_all_tasks().await)
-    }
 }

@@ -38,6 +38,7 @@ pub struct NewTask<'a> {
     pub sort_key: &'a str,
     pub start_at: Option<DateTime<Utc>>,
     pub due_date: Option<NaiveDate>,
+    pub reviewed_at: Option<NaiveDate>,
     pub recurrence_type: Option<RecurrenceTypeMapping>,
     pub recurrence_rule: Option<&'a str>,
     pub is_url_fetching: Option<DateTime<Utc>>,
