@@ -17,3 +17,8 @@ RUN cargo install diesel_cli --no-default-features --features postgres
 # WASM target for Leptos client-side
 RUN rustup target add wasm32-unknown-unknown
 RUN rustup component add clippy rustfmt
+
+# Tailwind CSS v4 standalone
+RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 \
+    && chmod +x tailwindcss-linux-x64 \
+    && mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss

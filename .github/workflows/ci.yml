@@ -1,8 +1,6 @@
-name: e2e
+name: ci
 
 on:
-  push:
-    branches: [master]
   pull_request:
 
 env:
@@ -55,8 +53,8 @@ jobs:
           provenance: false
           tags: ${{ env.BASE_IMAGE }}:${{ needs.resolve.outputs.version }}
 
-  e2e:
-    name: E2E
+  build:
+    name: Build
     needs: [resolve, build-base]
     if: always() && needs.resolve.result == 'success' && needs.build-base.result != 'failure'
     runs-on: ubuntu-latest
@@ -89,24 +87,123 @@ jobs:
           cache-on-failure: "true"
           shared-key: north-cargo
 
-      - name: Install tailwindcss
+      - name: Run migrations
+        run: diesel migration run
+
+      - name: Build app
+        run: cargo leptos build
+
+      - name: Seed test data
+        run: ./target/debug/north-server --seed
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          retention-days: 1
+          path: |
+            target/debug/north-server
+            target/site
+
+  check:
+    name: Check
+    needs: [resolve, build-base, build]
+    if: always() && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/zorya-development/north/base:${{ needs.resolve.outputs.version }}
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: north_test
+          POSTGRES_USER: north
+          POSTGRES_PASSWORD: north
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://north:north@postgres:5432/north_test
+      JWT_SECRET: test-secret
+      UPLOAD_DIR: /tmp/north-uploads
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: "true"
+          shared-key: north-cargo
+
+      - name: Run migrations
+        run: diesel migration run
+
+      - name: Format check
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Test
+        run: cargo test
+
+  e2e:
+    name: E2E
+    needs: [resolve, build-base, build]
+    if: always() && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/zorya-development/north/base:${{ needs.resolve.outputs.version }}
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: north_test
+          POSTGRES_USER: north
+          POSTGRES_PASSWORD: north
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://north:north@postgres:5432/north_test
+      JWT_SECRET: test-secret
+      UPLOAD_DIR: /tmp/north-uploads
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: target
+
+      - name: Make server executable
+        run: chmod +x target/debug/north-server
+
+      - name: Run migrations & seed
         run: |
-          curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64
-          chmod +x tailwindcss-linux-x64
-          mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
+          diesel migration run
+          ./target/debug/north-server --seed
 
       - name: Install Node.js
         run: |
           curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
           apt-get install -y nodejs
 
-      - name: Run migrations & seed
-        run: |
-          diesel migration run
-          cargo run --bin north-server --features ssr -- --seed
-
-      - name: Build app
-        run: cargo leptos build
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('e2e/package-lock.json') }}
 
       - name: Install Playwright
         working-directory: e2e
@@ -116,7 +213,7 @@ jobs:
 
       - name: Start server
         run: |
-          cargo leptos serve &
+          ./target/debug/north-server &
           for i in $(seq 1 30); do
             curl -sf http://localhost:5000/login && break
             sleep 2

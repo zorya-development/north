@@ -50,21 +50,8 @@ await api.createTask({ title: "Task A", sort_key: "a" });
 
 ## Selectors
 
-Always use `data-testid`. Never select by CSS class or tag name — they are styling concerns, not test contracts. If a needed `data-testid` doesn't exist in the app, add it to the relevant Rust component in `crates/app/` before writing the test.
+Always use `data-testid` attributes. Never select by CSS class, tag name, or other non-test-selector attributes — they are styling concerns, not test contracts.
 
-Key testids currently in the app:
-
-| `data-testid` | Element |
-|---|---|
-| `task-list` / `empty-task-list` | Task list (non-empty / empty) |
-| `task-row` | Individual task row |
-| `inline-edit-input` | Title editor (Enter to open) |
-| `inline-create-input` | New task input |
-| `task-detail-modal` | Detail modal panel |
-| `keybindings-modal` | `?` help modal content |
-| `status-bar` | Bottom bar (delete confirmation, toasts) |
-
-The focused (cursor-on) task row also has `data-focused="true"`:
-```ts
-page.locator('[data-testid="task-row"][data-focused="true"]')
-```
+- **Search first:** Before writing a test, grep for existing `data-testid` values in `crates/app/` to find selectors you can reuse.
+- **Add when missing:** If a needed `data-testid` doesn't exist, add it to the relevant Rust component in `crates/app/` before writing the test.
+- **Data attributes for state:** Use `data-*` attributes (e.g. `data-focused="true"`) to assert element state, not CSS classes.

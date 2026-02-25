@@ -1,9 +1,7 @@
 name: release
 
 on:
-  workflow_run:
-    workflows: [test, e2e]
-    types: [completed]
+  push:
     branches: [master]
 
 env:
@@ -14,7 +12,6 @@ env:
 jobs:
   resolve:
     name: Resolve versions
-    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     outputs:
       app_version: ${{ steps.app.outputs.version }}
@@ -24,7 +21,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Read app version
         id: app
@@ -57,8 +53,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -92,7 +86,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -137,5 +130,4 @@ jobs:
         run: |
           gh release create "v${{ needs.resolve.outputs.app_version }}" \
             --title "v${{ needs.resolve.outputs.app_version }}" \
-            --notes-file release-notes.md \
-            --target "${{ github.event.workflow_run.head_sha }}"
+            --notes-file release-notes.md
