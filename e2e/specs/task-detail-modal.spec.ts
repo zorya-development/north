@@ -486,17 +486,18 @@ test.describe("Task Detail Modal", () => {
     const modal = page.locator('[data-testid="task-detail-modal"]');
     await expect(modal).toBeVisible();
 
-    // Verify tag "urgent" is displayed — retry click if background
-    // refetch re-renders modal content and detaches the element
+    // Verify tag "urgent" is displayed, then click remove.
+    // Use retry loop — background refetch may re-render modal content,
+    // detaching the element or reverting the optimistic removal.
     await expect(modal).toContainText("urgent");
-    const tagRemove = modal.locator('[data-testid="tag-remove"]').first();
+    const tagRemove = modal.locator('[data-testid="tag-remove"]');
     for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        await tagRemove.click({ force: true, timeout: 3000 });
-        break;
-      } catch {
-        // Re-render detached element, retry
-      }
+      await tagRemove.click({ timeout: 3000 });
+      const gone = await tagRemove
+        .waitFor({ state: "detached", timeout: 3000 })
+        .then(() => true)
+        .catch(() => false);
+      if (gone) break;
     }
 
     // Wait for store round-trip to complete — the tag remove button should disappear
