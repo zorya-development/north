@@ -29,7 +29,12 @@ pub fn parse_tokens(text: &str) -> ParsedText {
             let trigger = ch;
             let mut token = String::new();
             while let Some(&next) = chars.peek() {
-                if next.is_alphanumeric() || next == '_' || next == '-' {
+                if next.is_alphanumeric()
+                    || next == '_'
+                    || next == '-'
+                    || next == ':'
+                    || next == '.'
+                {
                     token.push(chars.next().unwrap());
                 } else {
                     break;
@@ -141,6 +146,27 @@ mod tests {
         let result = parse_tokens("Task #my-tag #my_tag");
         assert_eq!(result.cleaned, "Task");
         assert_eq!(result.tags, vec!["my-tag", "my_tag"]);
+    }
+
+    #[test]
+    fn test_hash_with_colons() {
+        let result = parse_tokens("Task #column:separated:tag");
+        assert_eq!(result.cleaned, "Task");
+        assert_eq!(result.tags, vec!["column:separated:tag"]);
+    }
+
+    #[test]
+    fn test_hash_with_dots() {
+        let result = parse_tokens("Task #dot.separated.tag");
+        assert_eq!(result.cleaned, "Task");
+        assert_eq!(result.tags, vec!["dot.separated.tag"]);
+    }
+
+    #[test]
+    fn test_hash_with_mixed_separators() {
+        let result = parse_tokens("Task #my-tag:v2.0_final");
+        assert_eq!(result.cleaned, "Task");
+        assert_eq!(result.tags, vec!["my-tag:v2.0_final"]);
     }
 
     #[test]

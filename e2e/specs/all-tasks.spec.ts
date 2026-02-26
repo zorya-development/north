@@ -100,6 +100,44 @@ test.describe("All Tasks Page", () => {
     await expect(page).toHaveURL(/\/filters\/new\?q=/);
   });
 
+  test("tags with special separators are parsed correctly", async ({
+    authenticatedPage: page,
+  }) => {
+    // Create tasks with tags using different separators via API (triggers token parsing)
+    await api.createTask({ title: "Colon task #colon:separated:tag" });
+    await api.createTask({ title: "Dot task #dot.separated.tag" });
+    await api.createTask({ title: "Dash task #dash-separated-tag" });
+    await api.createTask({ title: "Underscore task #under_score_tag" });
+
+    await page.goto("/tasks");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    const rows = page.locator('[data-testid="task-row"]');
+    await expect(rows).toHaveCount(4);
+
+    // Each tag should appear as an inline link with correct full name
+    const colonRow = rows.filter({ hasText: "Colon task" });
+    await expect(colonRow.locator("a", { hasText: "colon:separated:tag" })).toBeVisible();
+
+    const dotRow = rows.filter({ hasText: "Dot task" });
+    await expect(dotRow.locator("a", { hasText: "dot.separated.tag" })).toBeVisible();
+
+    const dashRow = rows.filter({ hasText: "Dash task" });
+    await expect(dashRow.locator("a", { hasText: "dash-separated-tag" })).toBeVisible();
+
+    const underscoreRow = rows.filter({ hasText: "Underscore task" });
+    await expect(underscoreRow.locator("a", { hasText: "under_score_tag" })).toBeVisible();
+
+    // Open modal for colon task to verify tag in detail view too
+    await colonRow.click();
+    await page.keyboard.press("e");
+    const modal = page.locator('[data-testid="task-detail-modal"]');
+    await expect(modal).toBeVisible();
+    await expect(modal).toContainText("colon:separated:tag");
+  });
+
   test("creating a task here without project lands in inbox", async ({
     authenticatedPage: page,
   }) => {
