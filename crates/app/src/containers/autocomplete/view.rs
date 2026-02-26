@@ -217,6 +217,8 @@ pub fn AutocompleteTextareaView(
     #[prop(optional, default = 3)] rows: u32,
     on_keydown: Option<std::sync::Arc<dyn Fn(KeyboardEvent) + Send + Sync>>,
     on_blur: Option<Callback<()>>,
+    #[prop(optional)] on_input: Option<Callback<leptos::ev::Event>>,
+    #[prop(optional)] node_ref: Option<NodeRef<html::Textarea>>,
     autofocus: bool,
     tags: Signal<Vec<Tag>>,
     projects: Signal<Vec<Project>>,
@@ -224,7 +226,7 @@ pub fn AutocompleteTextareaView(
     let (trigger_state, set_trigger_state) = signal(None::<TriggerState>);
     let (highlighted, set_highlighted) = signal(0_usize);
     let (suggestions, set_suggestions) = signal(Vec::<SuggestionItem>::new());
-    let textarea_ref = NodeRef::<html::Textarea>::new();
+    let textarea_ref = node_ref.unwrap_or_default();
 
     if autofocus {
         Effect::new(move || {
@@ -275,6 +277,9 @@ pub fn AutocompleteTextareaView(
                             val.len() as u32,
                         ) as usize;
                         update_suggestions(&val, cursor);
+                    }
+                    if let Some(cb) = on_input {
+                        cb.run(ev);
                     }
                 }
                 on:keydown=move |ev| {

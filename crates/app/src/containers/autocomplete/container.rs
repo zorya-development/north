@@ -46,6 +46,8 @@ pub fn AutocompleteTextarea(
     #[prop(optional, default = 3)] rows: u32,
     #[prop(optional)] on_keydown: Option<std::sync::Arc<dyn Fn(KeyboardEvent) + Send + Sync>>,
     #[prop(optional)] on_blur: Option<Callback<()>>,
+    #[prop(optional)] on_input: Option<Callback<leptos::ev::Event>>,
+    #[prop(optional)] node_ref: Option<NodeRef<html::Textarea>>,
     #[prop(optional)] autofocus: bool,
 ) -> impl IntoView {
     let app_store = use_context::<AppStore>();
@@ -61,6 +63,8 @@ pub fn AutocompleteTextarea(
             rows=rows
             on_keydown=on_keydown
             on_blur=on_blur
+            on_input=on_input
+            node_ref=node_ref
             autofocus=autofocus
             tags=tags
             projects=projects

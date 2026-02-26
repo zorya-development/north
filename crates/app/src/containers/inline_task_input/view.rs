@@ -3,15 +3,23 @@ use leptos::prelude::*;
 #[component]
 pub fn InlineTaskInputView(
     value: RwSignal<String>,
-    input_ref: NodeRef<leptos::html::Input>,
-    on_submit: Callback<String>,
+    input_ref: NodeRef<leptos::html::Textarea>,
+    on_submit: Callback<(String, Option<String>)>,
     on_close: Callback<()>,
     #[prop(default = "")] class: &'static str,
 ) -> impl IntoView {
+    let auto_resize = move || {
+        if let Some(el) = input_ref.get_untracked() {
+            el.style().set_property("height", "auto").ok();
+            let scroll_h = el.scroll_height();
+            el.style().set_property("height", &format!("{scroll_h}px")).ok();
+        }
+    };
+
     view! {
         <div class=format!("{class} pr-4 py-1")>
-            <div class="flex items-center gap-2">
-                <div class="flex-shrink-0">
+            <div class="flex items-start gap-2">
+                <div class="flex-shrink-0 pt-1">
                     <svg width="16" height="16" viewBox="0 0 16 16">
                         <circle
                             cx="8" cy="8" r="6.5"
@@ -22,29 +30,40 @@ pub fn InlineTaskInputView(
                         />
                     </svg>
                 </div>
-                <input
-                    type="text"
+                <textarea
                     data-testid="task-detail-subtask-input"
                     class="flex-1 pt-0.5 bg-transparent border-none \
                            text-sm text-text-primary \
                            placeholder-text-tertiary \
                            focus:outline-none focus-visible:outline-none \
-                           no-focus-ring"
+                           no-focus-ring resize-none overflow-hidden"
                     placeholder="Task title..."
+                    rows=1
                     node_ref=input_ref
                     prop:value=move || value.get()
                     on:input=move |ev| {
                         value.set(event_target_value(&ev));
+                        auto_resize();
                     }
                     on:keydown=move |ev| {
                         if ev.key() == "Enter" {
+                            if ev.ctrl_key() || ev.meta_key() {
+                                // Ctrl+Enter: insert line break (default textarea behavior)
+                                return;
+                            }
+                            // Plain Enter: submit
+                            ev.prevent_default();
                             ev.stop_propagation();
-                            let title =
-                                value.get_untracked().trim().to_string();
+                            let raw = value.get_untracked();
+                            let mut lines = raw.splitn(2, '\n');
+                            let title = lines.next().unwrap_or("").trim().to_string();
                             if title.is_empty() {
                                 return;
                             }
-                            on_submit.run(title);
+                            let body = lines.next()
+                                .map(|b| b.trim().to_string())
+                                .filter(|b| !b.is_empty());
+                            on_submit.run((title, body));
                         } else if ev.key() == "Escape" {
                             ev.stop_propagation();
                             on_close.run(());

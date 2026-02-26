@@ -9,7 +9,7 @@ use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::date_picker::DateTimePicker;
 use crate::components::enriched_markdown::EnrichedMarkdownView;
 use crate::components::recurrence_modal::RecurrenceModal;
-use crate::containers::autocomplete::{AutocompleteInput, AutocompleteTextarea};
+use crate::containers::autocomplete::AutocompleteTextarea;
 use crate::containers::inline_task_input::InlineTaskInput;
 use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
@@ -27,7 +27,7 @@ pub fn TaskDetailModalView(
     let subtask_filter = ctrl.subtask_filter;
     let (show_inline_input, set_show_inline_input) = signal(false);
     let input_value = RwSignal::new(String::new());
-    let title_input_ref = NodeRef::<leptos::html::Input>::new();
+    let title_input_ref = NodeRef::<leptos::html::Textarea>::new();
     let subtask_cursor = RwSignal::new(None::<i64>);
 
     view! {
@@ -216,9 +216,35 @@ pub fn TaskDetailModalView(
                                                 ctrl.save();
                                             }
                                         }) as Arc<dyn Fn(leptos::ev::KeyboardEvent) + Send + Sync>;
+
+                                        // Strip line breaks from title and auto-resize
+                                        let on_title_input = Callback::new(move |_ev: leptos::ev::Event| {
+                                            let val = ctrl.title_draft.get_untracked();
+                                            let cleaned = val.replace('\n', " ").replace('\r', "");
+                                            if cleaned != val {
+                                                ctrl.title_draft.set(cleaned);
+                                            }
+                                            // Auto-resize textarea to content
+                                            if let Some(el) = title_input_ref.get_untracked() {
+                                                el.style().set_property("height", "auto").ok();
+                                                let scroll_h = el.scroll_height();
+                                                el.style().set_property("height", &format!("{scroll_h}px")).ok();
+                                            }
+                                        });
+
+                                        // Auto-resize on initial render
+                                        Effect::new(move || {
+                                            let _ = title_read.get();
+                                            if let Some(el) = title_input_ref.get() {
+                                                el.style().set_property("height", "auto").ok();
+                                                let scroll_h = el.scroll_height();
+                                                el.style().set_property("height", &format!("{scroll_h}px")).ok();
+                                            }
+                                        });
+
                                         view! {
                                             <div data-testid="task-detail-title" class="flex-1 w-full">
-                                                <AutocompleteInput
+                                                <AutocompleteTextarea
                                                     value=title_read
                                                     set_value=title_write
                                                     class="text-lg font-semibold \
@@ -228,9 +254,13 @@ pub fn TaskDetailModalView(
                                                            px-1 -mx-1 flex-1 \
                                                            w-full \
                                                            focus:outline-none \
-                                                           no-focus-ring"
+                                                           no-focus-ring \
+                                                           resize-none \
+                                                           overflow-hidden"
+                                                    rows=1
                                                     on_keydown=title_keydown
                                                     on_blur=Callback::new(move |()| ctrl.save())
+                                                    on_input=on_title_input
                                                     node_ref=title_input_ref
                                                 />
                                             </div>

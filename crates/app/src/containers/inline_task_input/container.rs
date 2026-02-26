@@ -15,7 +15,7 @@ pub fn InlineTaskInput(
 ) -> impl IntoView {
     let app_store = use_app_store();
     let parent_task = app_store.tasks.get_by_id(parent_id);
-    let input_ref = NodeRef::<leptos::html::Input>::new();
+    let input_ref = NodeRef::<leptos::html::Textarea>::new();
 
     Effect::new(move || {
         if let Some(el) = input_ref.get() {
@@ -29,12 +29,13 @@ pub fn InlineTaskInput(
         <InlineTaskInputView
             value=value
             input_ref=input_ref
-            on_submit=Callback::new(move |title: String| {
+            on_submit=Callback::new(move |(title, body): (String, Option<String>)| {
                 let project_id = parent_task
                     .get_untracked()
                     .and_then(|t| t.project_id);
                 let input = CreateTask {
                     title,
+                    body,
                     parent_id: Some(parent_id),
                     project_id,
                     ..Default::default()
@@ -49,6 +50,8 @@ pub fn InlineTaskInput(
                     }
                     if let Some(el) = input_ref.get() {
                         let _ = el.focus();
+                        // Reset height after clearing
+                        el.style().set_property("height", "auto").ok();
                     }
                 });
             })
