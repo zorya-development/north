@@ -25,7 +25,6 @@ pub struct TraversableTaskListController {
     default_project_id: Option<Signal<Option<i64>>>,
     on_task_click: Option<Callback<i64>>,
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
-    on_keep_visible: Option<Callback<i64>>,
 }
 
 impl TraversableTaskListController {
@@ -45,7 +44,6 @@ impl TraversableTaskListController {
         scoped: bool,
         cursor_task_id: Option<RwSignal<Option<i64>>>,
         node_filter: Option<Signal<Callback<TaskModel, bool>>>,
-        on_keep_visible: Option<Callback<i64>>,
     ) -> Self {
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
 
@@ -90,7 +88,6 @@ impl TraversableTaskListController {
             default_project_id,
             on_task_click,
             on_reorder,
-            on_keep_visible,
         }
     }
 
@@ -273,12 +270,8 @@ impl TraversableTaskListController {
 
         let store = self.app_store.tasks;
         let inline_mode = self.inline_mode;
-        let on_created = self.on_keep_visible;
         spawn_local(async move {
             if let Some(task) = store.create_task_async(input).await {
-                if let Some(cb) = on_created {
-                    cb.run(task.id);
-                }
                 // For After placement, chain: next create goes after the
                 // newly created task. For Before, anchor stays the same.
                 if placement == Placement::After {
@@ -325,12 +318,8 @@ impl TraversableTaskListController {
 
         let store = self.app_store.tasks;
         let inline_mode = self.inline_mode;
-        let on_created = self.on_keep_visible;
         spawn_local(async move {
             if let Some(task) = store.create_task_async(input).await {
-                if let Some(cb) = on_created {
-                    cb.run(task.id);
-                }
                 // Chain: next create goes after the newly created task.
                 inline_mode.set(InlineMode::Create {
                     anchor_task_id: task.id,

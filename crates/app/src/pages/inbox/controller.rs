@@ -1,5 +1,7 @@
 use leptos::prelude::*;
-use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskModel, TaskStoreFilter};
+use north_stores::{
+    AppStore, IdFilter, TaskDetailModalStore, TaskEvent, TaskModel, TaskStoreFilter,
+};
 
 use crate::libs::is_actionable;
 
@@ -14,7 +16,6 @@ pub struct InboxController {
     pub is_loaded: Signal<bool>,
     pub hide_non_actionable: Signal<bool>,
     pub node_filter: Signal<Callback<north_stores::TaskModel, bool>>,
-    pub extra_show_ids: RwSignal<Vec<i64>>,
     app_store: AppStore,
 }
 
@@ -53,6 +54,23 @@ impl InboxController {
                 }
             }
             prev_filtered_ids.set(current);
+        });
+
+        // Subscribe to task creation events so inline-created tasks stay visible
+        // even if they don't match the inbox filter (e.g. assigned to a project via @token).
+        let emitter = app_store.tasks.events();
+        Effect::new(move |_| {
+            for event in emitter.drain() {
+                match event {
+                    TaskEvent::Created(id) => {
+                        extra_show_ids.update(|ids| {
+                            if !ids.contains(&id) {
+                                ids.push(id);
+                            }
+                        });
+                    }
+                }
+            }
         });
 
         let all_root_tasks = app_store.tasks.filtered(TaskStoreFilter {
@@ -113,7 +131,6 @@ impl InboxController {
             is_loaded,
             hide_non_actionable,
             node_filter,
-            extra_show_ids,
             app_store,
         }
     }
@@ -127,14 +144,6 @@ impl InboxController {
         self.app_store
             .tasks
             .reorder_task(task_id, sort_key, parent_id);
-    }
-
-    pub fn keep_visible(&self, id: i64) {
-        self.extra_show_ids.update(|ids| {
-            if !ids.contains(&id) {
-                ids.push(id);
-            }
-        });
     }
 
     pub fn toggle_actionable_visibility(&self) {

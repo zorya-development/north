@@ -9,12 +9,16 @@ use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
 use crate::containers::task_checkbox::TaskCheckbox;
 use crate::containers::task_meta::TaskMeta;
-use north_stores::{use_app_store, TaskModel};
+use north_dto::Project;
+use north_stores::TaskModel;
 use north_ui::{DropdownItem, DropdownMenu, Icon, IconKind};
+
+use super::components::ProjectPrefix;
 
 #[component]
 pub fn TaskListItemView(
     task: Memo<Option<TaskModel>>,
+    projects: Signal<Vec<Project>>,
     #[prop(default = false)] show_review: bool,
     #[prop(default = true)] show_project: bool,
     #[prop(default = false)] show_inline_project: bool,
@@ -29,7 +33,6 @@ pub fn TaskListItemView(
     on_set_tags: Callback<Vec<String>>,
 ) -> impl IntoView {
     let _ = show_project; // Used by ItemConfig for future TaskMeta project display
-    let app_store = use_app_store();
     let drag_ctx = use_context::<DragDropContext>();
     let (hovered, set_hovered) = signal(false);
     let (menu_open, set_menu_open) = signal(false);
@@ -196,48 +199,10 @@ pub fn TaskListItemView(
                             let completed = is_completed.get();
                             let t = title.clone();
 
-                            // Project prefix: @ProjectName or @Inbox
                             let project_prefix = if show_inline_project {
-                                if let Some(pid) = project_id {
-                                    let projects = app_store.projects.get();
-                                    projects.iter().find(|p| p.id == pid).map(|project| {
-                                        let color = project.color.clone();
-                                        let title = project.title.clone();
-                                        let href = format!("/projects/{pid}");
-                                        view! {
-                                            <span
-                                                class="text-sm font-medium mr-1"
-                                                style=format!("color: {color}")
-                                            >
-                                                "@"
-                                                <a
-                                                    href=href
-                                                    class="hover:underline"
-                                                    on:click=move |ev: leptos::ev::MouseEvent| {
-                                                        ev.stop_propagation();
-                                                    }
-                                                >
-                                                    {title}
-                                                </a>
-                                            </span>
-                                        }.into_any()
-                                    })
-                                } else {
-                                    Some(view! {
-                                        <span class="text-sm font-medium mr-1 text-text-tertiary">
-                                            "@"
-                                            <a
-                                                href="/inbox"
-                                                class="hover:underline"
-                                                on:click=move |ev: leptos::ev::MouseEvent| {
-                                                    ev.stop_propagation();
-                                                }
-                                            >
-                                                "Inbox"
-                                            </a>
-                                        </span>
-                                    }.into_any())
-                                }
+                                Some(view! {
+                                    <ProjectPrefix project_id=project_id projects=projects />
+                                }.into_any())
                             } else {
                                 None
                             };

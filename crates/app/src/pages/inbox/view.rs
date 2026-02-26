@@ -17,7 +17,6 @@ pub fn InboxView(
     on_task_click: Callback<i64>,
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
     on_toggle_visibility: Callback<()>,
-    on_keep_visible: Callback<i64>,
 ) -> impl IntoView {
     let show_keybindings_help = RwSignal::new(false);
     let (help_read, help_write) = show_keybindings_help.split();
@@ -116,7 +115,6 @@ pub fn InboxView(
                 on_task_click=on_task_click
                 show_keybindings_help=show_keybindings_help
                 handle=ttl_handle
-                on_keep_visible=on_keep_visible
                 empty_message="No tasks in your inbox. Add one above."
             />
 

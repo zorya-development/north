@@ -39,9 +39,6 @@ pub fn ProjectPage() -> impl IntoView {
             on_toggle_visibility=Callback::new(move |()| {
                 ctrl.toggle_actionable_visibility()
             })
-            on_keep_visible=Callback::new(move |id| {
-                ctrl.keep_visible(id)
-            })
         />
     }
 }

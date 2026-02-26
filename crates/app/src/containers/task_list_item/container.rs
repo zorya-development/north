@@ -36,6 +36,7 @@ pub fn TaskListItem(
     view! {
         <TaskListItemView
             task=ctrl.task
+            projects=ctrl.projects
             show_review=config.show_review
             show_project=config.show_project
             show_inline_project=config.show_inline_project
