@@ -25,7 +25,7 @@ pub fn FilterAutocompleteTextarea(
             .map(|s| SuggestionItem {
                 name: s.label,
                 color: if s.color.is_empty() {
-                    "#6b7280".into()
+                    north_dto::DEFAULT_COLOR.into()
                 } else {
                     s.color
                 },

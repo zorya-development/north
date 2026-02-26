@@ -42,7 +42,7 @@ pub fn TagPickerView(
                 let mut tags = display_tags.get_untracked();
                 tags.push(TagInfo {
                     name,
-                    color: "#6b7280".to_string(),
+                    color: north_dto::DEFAULT_COLOR.to_string(),
                 });
                 set_display_tags.set(tags);
 

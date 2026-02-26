@@ -36,7 +36,7 @@ impl TagService {
                 .values(&NewTag {
                     user_id,
                     name,
-                    color: "#6b7280",
+                    color: north_dto::DEFAULT_COLOR,
                 })
                 .on_conflict((tags::user_id, tags::name))
                 .do_nothing()
@@ -108,7 +108,7 @@ impl TagService {
                 .values(&NewTag {
                     user_id,
                     name,
-                    color: "#6b7280",
+                    color: north_dto::DEFAULT_COLOR,
                 })
                 .on_conflict((tags::user_id, tags::name))
                 .do_nothing()

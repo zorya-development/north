@@ -1,3 +1,7 @@
+pub const PRESET_COLORS: &[&str] = &[
+    "#ff8969", "#d9b857", "#81d8ff", "#3d85c6", "#00557e", "#f44336", "#76a164",
+];
+
 pub const TIMEZONE_GROUPS: &[(&str, &[&str])] = &[
     (
         "Americas",

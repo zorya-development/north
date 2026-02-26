@@ -7,9 +7,7 @@ use crate::components::theme_toggle::ThemeToggle;
 use north_dto::{Project, SavedFilter};
 use north_ui::{DropdownItem, DropdownMenu, Icon, IconKind, Popover};
 
-const PRESET_COLORS: &[&str] = &[
-    "#ff8969", "#d9b857", "#81d8ff", "#3d85c6", "#00557e", "#f44336", "#76a164",
-];
+use crate::constants::PRESET_COLORS;
 
 #[component]
 pub fn SidebarView(

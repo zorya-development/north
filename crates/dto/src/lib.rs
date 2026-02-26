@@ -1,3 +1,4 @@
+pub mod colors;
 pub mod dsl_suggestion;
 pub mod project;
 pub mod recurrence;
@@ -8,6 +9,7 @@ pub mod tag;
 pub mod task;
 pub mod user;
 
+pub use colors::*;
 pub use dsl_suggestion::*;
 pub use project::*;
 pub use recurrence::*;

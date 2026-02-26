@@ -307,7 +307,7 @@ impl TaskStore {
                         .iter()
                         .find(|ti| ti.name == *name)
                         .map(|ti| ti.color.clone())
-                        .unwrap_or_else(|| "#6b7280".to_string());
+                        .unwrap_or_else(|| north_dto::DEFAULT_COLOR.to_string());
                     TagInfo {
                         name: name.clone(),
                         color,
