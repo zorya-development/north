@@ -7,6 +7,7 @@ use super::controller::TraversableTaskListController;
 use super::tree::*;
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
 use crate::components::drag_drop::{DragDropContext, DropZone};
+use crate::components::mirror_overlay::MirrorOverlay;
 use crate::containers::task_list_item::{ItemConfig, TaskListItem};
 
 #[component]
@@ -478,47 +479,49 @@ fn InlineCreateInput(
                         />
                     </svg>
                 </div>
-                <textarea
-                    data-testid="inline-create-input"
-                    node_ref=input_ref
-                    class="flex-1 pt-0.5 bg-transparent border-none \
-                           text-sm text-text-primary \
-                           placeholder-text-tertiary \
-                           focus:outline-none focus-visible:outline-none \
-                           no-focus-ring resize-none overflow-hidden"
-                    placeholder="Task title..."
-                    rows=1
-                    prop:value=move || value.get()
-                    on:input=move |ev| {
-                        value.set(event_target_value(&ev));
-                        auto_resize();
-                    }
-                    on:keydown=move |ev| {
-                        ev.stop_propagation();
-                        if ev.key() == "Enter" {
-                            if ev.ctrl_key() || ev.meta_key() {
-                                // Ctrl/Cmd+Enter: insert line break
-                                ev.prevent_default();
-                                if let Some(el) = input_ref.get_untracked() {
-                                    let ta: &web_sys::HtmlTextAreaElement = &el;
-                                    crate::libs::insert_newline_at_cursor(ta);
+                <div class="relative flex-1">
+                    <MirrorOverlay value=Signal::derive(move || value.get()) />
+                    <textarea
+                        data-testid="inline-create-input"
+                        node_ref=input_ref
+                        class="w-full pt-0.5 bg-transparent border-none \
+                               text-sm textarea-mirror \
+                               focus:outline-none focus-visible:outline-none \
+                               no-focus-ring resize-none overflow-hidden"
+                        placeholder="Task title..."
+                        rows=1
+                        prop:value=move || value.get()
+                        on:input=move |ev| {
+                            value.set(event_target_value(&ev));
+                            auto_resize();
+                        }
+                        on:keydown=move |ev| {
+                            ev.stop_propagation();
+                            if ev.key() == "Enter" {
+                                if ev.ctrl_key() || ev.meta_key() {
+                                    // Ctrl/Cmd+Enter: insert line break
+                                    ev.prevent_default();
+                                    if let Some(el) = input_ref.get_untracked() {
+                                        let ta: &web_sys::HtmlTextAreaElement = &el;
+                                        crate::libs::insert_newline_at_cursor(ta);
+                                    }
+                                    return;
                                 }
-                                return;
+                                // Plain Enter: submit
+                                ev.prevent_default();
+                                ctrl.create_task();
+                            } else if ev.key() == "Escape" {
+                                ev.prevent_default();
+                                ctrl.close_inline();
                             }
-                            // Plain Enter: submit
-                            ev.prevent_default();
-                            ctrl.create_task();
-                        } else if ev.key() == "Escape" {
-                            ev.prevent_default();
-                            ctrl.close_inline();
                         }
-                    }
-                    on:blur=move |_| {
-                        if ctrl.inline_mode.get_untracked() == created_mode {
-                            ctrl.close_inline();
+                        on:blur=move |_| {
+                            if ctrl.inline_mode.get_untracked() == created_mode {
+                                ctrl.close_inline();
+                            }
                         }
-                    }
-                />
+                    />
+                </div>
             </div>
         </div>
     }

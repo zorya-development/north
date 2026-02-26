@@ -32,3 +32,11 @@
 @utility bg-backdrop {
   background-color: var(--backdrop);
 }
+
+@utility textarea-mirror {
+  color: transparent;
+  caret-color: var(--text-primary);
+  &::placeholder {
+    color: var(--text-tertiary);
+  }
+}

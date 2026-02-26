@@ -30,6 +30,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
                     rel="stylesheet"
                 />
+                <link rel="icon" href="/public/favicon.ico"/>
                 <link rel="stylesheet" id="leptos" href="/pkg/north.css"/>
             </head>
             <body class="bg-bg-primary text-text-primary font-sans antialiased">
