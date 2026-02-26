@@ -1,10 +1,8 @@
 use leptos::prelude::*;
 use north_dto::Project;
-use north_stores::{
-    AppStore, IdFilter, TaskDetailModalStore, TaskEvent, TaskModel, TaskStoreFilter,
-};
+use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskModel, TaskStoreFilter};
 
-use crate::libs::is_actionable;
+use crate::libs::{is_actionable, KeepTaskVisible};
 
 const HIDE_NON_ACTIONABLE_KEY: &str = "north:hide-non-actionable:project";
 
@@ -49,6 +47,7 @@ impl ProjectController {
         // IDs of tasks that should stay visible even if they no longer match
         // the project filter (e.g. moved to another project via detail modal).
         let extra_show_ids: RwSignal<Vec<i64>> = RwSignal::new(vec![]);
+        provide_context(KeepTaskVisible::new(extra_show_ids));
 
         // Track tasks that disappear from the base filter and keep them visible.
         let prev_filtered_ids: RwSignal<Vec<i64>> = RwSignal::new(vec![]);
@@ -65,23 +64,6 @@ impl ProjectController {
                 }
             }
             prev_filtered_ids.set(current);
-        });
-
-        // Subscribe to task creation events so inline-created tasks stay visible
-        // even if they don't match the project filter (e.g. moved to another project).
-        let emitter = app_store.tasks.events();
-        Effect::new(move |_| {
-            for event in emitter.drain() {
-                match event {
-                    TaskEvent::Created(id) => {
-                        extra_show_ids.update(|ids| {
-                            if !ids.contains(&id) {
-                                ids.push(id);
-                            }
-                        });
-                    }
-                }
-            }
         });
 
         let all_root_tasks = app_store.tasks.filtered(TaskStoreFilter {

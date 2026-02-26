@@ -1,9 +1,7 @@
 use leptos::prelude::*;
-use north_stores::{
-    AppStore, IdFilter, TaskDetailModalStore, TaskEvent, TaskModel, TaskStoreFilter,
-};
+use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskModel, TaskStoreFilter};
 
-use crate::libs::is_actionable;
+use crate::libs::{is_actionable, KeepTaskVisible};
 
 const HIDE_NON_ACTIONABLE_KEY: &str = "north:hide-non-actionable:inbox";
 
@@ -37,6 +35,7 @@ impl InboxController {
         // IDs of tasks that should stay visible even if they no longer match
         // the inbox filter (e.g. assigned to a project via @token or detail modal).
         let extra_show_ids: RwSignal<Vec<i64>> = RwSignal::new(vec![]);
+        provide_context(KeepTaskVisible::new(extra_show_ids));
 
         // Track tasks that disappear from the base filter (updated via detail
         // modal, action bar pickers, etc.) and keep them visible.
@@ -54,23 +53,6 @@ impl InboxController {
                 }
             }
             prev_filtered_ids.set(current);
-        });
-
-        // Subscribe to task creation events so inline-created tasks stay visible
-        // even if they don't match the inbox filter (e.g. assigned to a project via @token).
-        let emitter = app_store.tasks.events();
-        Effect::new(move |_| {
-            for event in emitter.drain() {
-                match event {
-                    TaskEvent::Created(id) => {
-                        extra_show_ids.update(|ids| {
-                            if !ids.contains(&id) {
-                                ids.push(id);
-                            }
-                        });
-                    }
-                }
-            }
         });
 
         let all_root_tasks = app_store.tasks.filtered(TaskStoreFilter {

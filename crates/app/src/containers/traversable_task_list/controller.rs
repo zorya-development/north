@@ -5,6 +5,7 @@ use north_stores::{AppStore, ModalStore, StatusBarVariant, TaskModel, TaskStoreF
 
 use super::tree::*;
 use crate::containers::task_list_item::ItemConfig;
+use crate::libs::KeepTaskVisible;
 
 #[derive(Clone, Copy)]
 #[allow(dead_code)]
@@ -23,6 +24,7 @@ pub struct TraversableTaskListController {
     allow_reorder: bool,
     scoped: bool,
     default_project_id: Option<Signal<Option<i64>>>,
+    keep_visible: Option<KeepTaskVisible>,
     on_task_click: Option<Callback<i64>>,
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
 }
@@ -70,6 +72,7 @@ impl TraversableTaskListController {
         let inline_mode = RwSignal::new(InlineMode::None);
         let create_input_value = RwSignal::new(String::new());
         let pending_delete = RwSignal::new(false);
+        let keep_visible = use_context::<KeepTaskVisible>();
 
         Self {
             flat_nodes,
@@ -86,6 +89,7 @@ impl TraversableTaskListController {
             allow_reorder,
             scoped,
             default_project_id,
+            keep_visible,
             on_task_click,
             on_reorder,
         }
@@ -270,8 +274,12 @@ impl TraversableTaskListController {
 
         let store = self.app_store.tasks;
         let inline_mode = self.inline_mode;
+        let keep_visible = self.keep_visible;
         spawn_local(async move {
             if let Some(task) = store.create_task_async(input).await {
+                if let Some(kv) = keep_visible {
+                    kv.keep(task.id);
+                }
                 // For After placement, chain: next create goes after the
                 // newly created task. For Before, anchor stays the same.
                 if placement == Placement::After {
@@ -318,8 +326,12 @@ impl TraversableTaskListController {
 
         let store = self.app_store.tasks;
         let inline_mode = self.inline_mode;
+        let keep_visible = self.keep_visible;
         spawn_local(async move {
             if let Some(task) = store.create_task_async(input).await {
+                if let Some(kv) = keep_visible {
+                    kv.keep(task.id);
+                }
                 // Chain: next create goes after the newly created task.
                 inline_mode.set(InlineMode::Create {
                     anchor_task_id: task.id,
