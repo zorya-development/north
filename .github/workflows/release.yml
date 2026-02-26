@@ -51,16 +51,32 @@ jobs:
     container:
       image: ghcr.io/zorya-development/north/base:${{ needs.resolve.outputs.base_version }}
 
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+
     steps:
       - uses: actions/checkout@v4
 
-      - uses: Swatinem/rust-cache@v2
+      - name: Export GHA cache env vars
+        uses: actions/github-script@v7
         with:
-          cache-on-failure: "true"
-          shared-key: north-cargo
+          script: |
+            core.exportVariable('ACTIONS_RESULTS_URL', process.env.ACTIONS_RESULTS_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Install sccache
+        run: cargo binstall -y sccache
+
+      - name: Start sccache server
+        run: sccache --start-server
 
       - name: Build release
         run: cargo leptos build --release
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

@@ -78,14 +78,24 @@ jobs:
       DATABASE_URL: postgres://north:north@postgres:5432/north_test
       JWT_SECRET: test-secret
       UPLOAD_DIR: /tmp/north-uploads
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: Swatinem/rust-cache@v2
+      - name: Export GHA cache env vars
+        uses: actions/github-script@v7
         with:
-          cache-on-failure: "true"
-          shared-key: north-cargo
+          script: |
+            core.exportVariable('ACTIONS_RESULTS_URL', process.env.ACTIONS_RESULTS_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Install sccache
+        run: cargo binstall -y sccache
+
+      - name: Start sccache server
+        run: sccache --start-server
 
       - name: Run migrations
         run: diesel migration run
@@ -95,6 +105,10 @@ jobs:
 
       - name: Seed test data
         run: ./target/release/north-server --seed
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -130,14 +144,24 @@ jobs:
       DATABASE_URL: postgres://north:north@postgres:5432/north_test
       JWT_SECRET: test-secret
       UPLOAD_DIR: /tmp/north-uploads
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: Swatinem/rust-cache@v2
+      - name: Export GHA cache env vars
+        uses: actions/github-script@v7
         with:
-          cache-on-failure: "true"
-          shared-key: north-cargo
+          script: |
+            core.exportVariable('ACTIONS_RESULTS_URL', process.env.ACTIONS_RESULTS_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Install sccache
+        run: cargo binstall -y sccache
+
+      - name: Start sccache server
+        run: sccache --start-server
 
       - name: Run migrations
         run: diesel migration run
@@ -150,6 +174,10 @@ jobs:
 
       - name: Test
         run: cargo test
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
 
   e2e:
     name: E2E
