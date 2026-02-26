@@ -94,6 +94,22 @@ These are non-obvious conventions. Violating them causes bugs or inconsistency.
 - **Logging:** `tracing` crate, never `println!`.
 - **Atoms:** Prefer `<Text variant=TextVariant::HeadingLg>` over raw Tailwind for typography. See `docs/UI_KIT.md`.
 
+### Reactive Safety (avoiding disposed-signal panics)
+
+Signals created inside a `<Show>` or conditional scope are disposed when that scope is torn down. Accessing them after disposal panics in WASM. Follow these rules:
+
+1. **Never wrap `<For>` in a `{move || { ... }}` reactive closure.** The closure re-runs on signal changes, destroying and recreating the entire `<For>` and all child components. Instead, use stable `<Show>` components for loading/empty states and let `<For>` always be mounted (hide with `style:display`). The `<For>` handles its own keyed diffing.
+
+2. **Blur before disposing focused elements.** When closing a modal/panel that may contain a focused input, call `html_el.blur()` on the active element *before* triggering the close signal. Otherwise the browser fires `blur` events into handlers with disposed signals. See `TaskDetailModal` container for the pattern.
+
+3. **Use `try_get`/`try_set` in code that may run during disposal.** Any signal `.get()` or `.set()` that could execute during scope teardown (blur handlers, effects tracking external signals, fallback closures) must use `try_get()`/`try_set()` instead. Common hot spots:
+   - `on:blur` handlers on inputs inside `<Show>` scopes
+   - `prop:value` closures reading signals from a parent scope
+   - Effect closures that track signals from both inside and outside the scope
+   - `<Show when=...>` and `fallback=...` closures reading scoped signals
+
+4. **Store-level signals are safe.** Signals on `AppStore`, `TaskStore`, `ModalStore`, etc. (created at app startup) are never disposed. Only signals created inside `<Show>`, `<For>` children, or component bodies inside conditional scopes are at risk.
+
 ## Common Workflows
 
 ### Add New DTO Type
