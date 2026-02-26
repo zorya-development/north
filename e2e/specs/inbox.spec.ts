@@ -233,6 +233,47 @@ test.describe("Inbox", () => {
     await expect(page.locator('[data-testid="task-row"]')).toHaveCount(2);
   });
 
+  test("task stays visible on inbox after changing project in detail modal", async ({
+    authenticatedPage: page,
+  }) => {
+    const project = await api.createProject({ title: "Work" });
+    await api.createTask({ title: "My Task" });
+
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    // Open detail modal
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("e");
+
+    const modal = page.locator('[data-testid="task-detail-modal"]');
+    await expect(modal).toBeVisible();
+
+    // Change project to "Work"
+    await modal.locator('[data-testid="project-picker-trigger"]').click();
+    await modal
+      .locator('[data-testid="project-picker-option"]')
+      .filter({ hasText: "Work" })
+      .click();
+
+    // Verify project shows in modal
+    await expect(modal).toContainText("Work");
+
+    // Close modal
+    await page.locator('[data-testid="task-detail-close"]').click();
+    await expect(modal).not.toBeVisible();
+
+    // Task should still be visible on inbox (extra_show_ids keeps it)
+    const rows = page.locator('[data-testid="task-row"]');
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText("My Task");
+
+    // Cleanup
+    await api.updateProject(project.id, { status: "archived" });
+  });
+
   test("sequential limit shows only first N subtasks as actionable", async ({
     authenticatedPage: page,
   }) => {
