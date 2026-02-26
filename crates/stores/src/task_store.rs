@@ -15,48 +15,10 @@ struct PendingReorder {
     parent_id: Option<Option<i64>>,
 }
 
-#[derive(Clone, Debug)]
-pub enum TaskEvent {
-    Created(i64),
-}
-
-#[derive(Clone, Copy)]
-pub struct TaskEventEmitter {
-    events: RwSignal<Vec<TaskEvent>>,
-}
-
-impl Default for TaskEventEmitter {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl TaskEventEmitter {
-    pub fn new() -> Self {
-        Self {
-            events: RwSignal::new(vec![]),
-        }
-    }
-
-    pub fn emit(&self, event: TaskEvent) {
-        self.events.update(|v| v.push(event));
-    }
-
-    /// Drain all pending events (reads + clears). Use inside an Effect to react to events.
-    pub fn drain(&self) -> Vec<TaskEvent> {
-        let events = self.events.get();
-        if !events.is_empty() {
-            self.events.update(|v| v.clear());
-        }
-        events
-    }
-}
-
 #[derive(Clone, Copy)]
 pub struct TaskStore {
     tasks: RwSignal<Vec<TaskModel>>,
     loaded: RwSignal<bool>,
-    events: TaskEventEmitter,
     #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
     reorder_timeout: RwSignal<i32>,
     #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
@@ -68,6 +30,7 @@ pub struct TaskStoreFilter {
     pub project_id: IdFilter,
     pub parent_id: IdFilter,
     pub is_completed: Option<bool>,
+    pub is_someday: Option<bool>,
 }
 
 #[derive(Clone, Default)]
@@ -89,14 +52,9 @@ impl TaskStore {
         Self {
             tasks: RwSignal::new(vec![]),
             loaded: RwSignal::new(false),
-            events: TaskEventEmitter::new(),
             reorder_timeout: RwSignal::new(0),
             pending_reorder: RwSignal::new(None),
         }
-    }
-
-    pub fn events(&self) -> TaskEventEmitter {
-        self.events
     }
 
     // ── Reactive state methods ──────────────────────────────────
@@ -164,6 +122,11 @@ impl TaskStore {
                     None => true,
                     Some(true) => t.completed_at.is_some(),
                     Some(false) => t.completed_at.is_none(),
+                })
+                .filter(|t| match filter.is_someday {
+                    None => true,
+                    Some(true) => t.someday,
+                    Some(false) => !t.someday,
                 })
                 .collect()
         })
@@ -256,7 +219,6 @@ impl TaskStore {
                     store.update_in_place(pid, |t| t.subtask_count += 1);
                 }
                 store.add(task);
-                store.events.emit(TaskEvent::Created(task_id));
                 if should_poll {
                     store.poll_url_resolution(task_id);
                 }
@@ -273,7 +235,6 @@ impl TaskStore {
                 let should_poll = task.is_url_fetching.is_some();
                 let task_id = task.id;
                 self.add(task.clone());
-                self.events.emit(TaskEvent::Created(task_id));
                 if should_poll {
                     self.poll_url_resolution(task_id);
                 }
@@ -377,6 +338,27 @@ impl TaskStore {
         spawn_local(async move {
             let input = UpdateTask {
                 reviewed_at: Some(Some(today)),
+                ..Default::default()
+            };
+            if TaskRepository::update(id, input).await.is_ok() {
+                store.refetch_async().await;
+            }
+        });
+    }
+
+    pub fn toggle_someday(&self, id: i64) {
+        let store = *self;
+        let was_someday = self
+            .tasks
+            .get_untracked()
+            .iter()
+            .find(|t| t.id == id)
+            .map(|t| t.someday)
+            .unwrap_or(false);
+        store.update_in_place(id, |t| t.someday = !was_someday);
+        spawn_local(async move {
+            let input = UpdateTask {
+                someday: Some(!was_someday),
                 ..Default::default()
             };
             if TaskRepository::update(id, input).await.is_ok() {

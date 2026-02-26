@@ -42,6 +42,13 @@ impl TaskService {
         } else if filter.completed == Some(false) {
             query = query.filter(tasks::completed_at.is_null());
         }
+        if let Some(someday) = filter.someday {
+            if someday {
+                query = query.filter(tasks::someday.eq(true));
+            } else {
+                query = query.filter(tasks::someday.eq(false));
+            }
+        }
         if let Some(ref q) = filter.q {
             let pattern = format!("%{q}%");
             query = query.filter(
@@ -65,6 +72,7 @@ impl TaskService {
                     .or(tasks::reviewed_at.le(cutoff)),
             );
             query = query.filter(tasks::completed_at.is_null());
+            query = query.filter(tasks::someday.eq(false));
         }
 
         // Tag filtering via subquery
@@ -218,6 +226,7 @@ impl TaskService {
                 recurrence_type: None,
                 recurrence_rule: None,
                 is_url_fetching: None,
+                someday: false,
             })
             .returning(TaskRow::as_returning())
             .get_result(&mut conn)
@@ -443,6 +452,9 @@ impl TaskService {
         if let Some(ref is_url_fetching) = resolved_input.is_url_fetching {
             changeset.is_url_fetching = Some(*is_url_fetching);
         }
+        if let Some(someday) = resolved_input.someday {
+            changeset.someday = Some(someday);
+        }
 
         // When completing and no explicit sort_key, reset to empty.
         // When uncompleting and no explicit sort_key, place at end of list.
@@ -667,6 +679,7 @@ impl TaskService {
                 recurrence_type: completed_task.recurrence_type,
                 recurrence_rule: completed_task.recurrence_rule.as_deref(),
                 is_url_fetching: None,
+                someday: false,
             })
             .returning(TaskRow::as_returning())
             .get_result(&mut conn)
@@ -697,6 +710,7 @@ impl TaskService {
                     recurrence_type: None,
                     recurrence_rule: None,
                     is_url_fetching: None,
+                    someday: false,
                 })
                 .returning(TaskRow::as_returning())
                 .get_result(&mut conn)

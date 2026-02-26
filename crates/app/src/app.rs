@@ -83,6 +83,16 @@ pub fn App() -> impl IntoView {
                     }
                 />
                 <Route
+                    path=path!("/someday")
+                    view=|| {
+                        view! {
+                            <components::layout::AppLayout>
+                                <pages::someday::SomedayPage/>
+                            </components::layout::AppLayout>
+                        }
+                    }
+                />
+                <Route
                     path=path!("/projects/:id")
                     view=|| {
                         view! {

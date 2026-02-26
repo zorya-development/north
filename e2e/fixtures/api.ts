@@ -21,6 +21,7 @@ interface UpdateTaskParams {
   due_date?: string | null;
   body?: string | null;
   reviewed_at?: string | null;
+  someday?: boolean;
 }
 
 interface Task {
@@ -34,6 +35,7 @@ interface Task {
   reviewed_at: string | null;
   start_at: string | null;
   due_date: string | null;
+  someday: boolean;
   [key: string]: unknown;
 }
 

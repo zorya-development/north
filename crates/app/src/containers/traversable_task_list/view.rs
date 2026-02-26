@@ -300,7 +300,7 @@ fn handle_drop(
             let parent_id = target_node.parent_id;
             let siblings: Vec<i64> = flat_nodes
                 .iter()
-                .filter(|n| n.parent_id == parent_id && !n.is_completed)
+                .filter(|n| n.parent_id == parent_id && !n.is_completed && !n.is_someday)
                 .map(|n| n.task_id)
                 .collect();
             let pos = siblings.iter().position(|&id| id == target_id);
@@ -315,7 +315,7 @@ fn handle_drop(
             let parent_id = target_node.parent_id;
             let siblings: Vec<i64> = flat_nodes
                 .iter()
-                .filter(|n| n.parent_id == parent_id && !n.is_completed)
+                .filter(|n| n.parent_id == parent_id && !n.is_completed && !n.is_someday)
                 .map(|n| n.task_id)
                 .collect();
             let pos = siblings.iter().position(|&id| id == target_id);
@@ -332,7 +332,7 @@ fn handle_drop(
             // Become last child of target.
             let last_child_key = flat_nodes
                 .iter()
-                .filter(|n| n.parent_id == Some(target_id) && !n.is_completed)
+                .filter(|n| n.parent_id == Some(target_id) && !n.is_completed && !n.is_someday)
                 .filter_map(|n| task_sort_key(all_tasks, n.task_id))
                 .next_back();
             let new_key = north_dto::sort_key_after(last_child_key.as_deref());

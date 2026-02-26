@@ -7,4 +7,5 @@ pub mod login;
 pub mod project;
 pub mod review;
 pub mod settings;
+pub mod someday;
 pub mod today;

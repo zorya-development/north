@@ -40,6 +40,7 @@ impl ProjectController {
                     project_id: IdFilter::Is(pid),
                     parent_id: IdFilter::IsNull,
                     is_completed: None,
+                    ..Default::default()
                 })
                 .get()
         });
@@ -73,6 +74,7 @@ impl ProjectController {
             project_id: IdFilter::Any,
             parent_id: IdFilter::IsNull,
             is_completed: None,
+            ..Default::default()
         });
 
         let root_task_ids = Memo::new(move |_| {
@@ -97,6 +99,7 @@ impl ProjectController {
                     project_id: IdFilter::Is(pid),
                     parent_id: IdFilter::IsNull,
                     is_completed: Some(true),
+                    ..Default::default()
                 })
                 .get()
         });

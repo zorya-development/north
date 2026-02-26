@@ -704,6 +704,12 @@ impl TraversableTaskListController {
                     }
                 }
             }
+            "s" | "S" => {
+                ev.prevent_default();
+                if let Some(task_id) = self.cursor_task_id.get_untracked() {
+                    self.app_store.tasks.toggle_someday(task_id);
+                }
+            }
             " " => {
                 ev.prevent_default();
                 self.toggle_complete();

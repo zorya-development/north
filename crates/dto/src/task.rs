@@ -24,6 +24,8 @@ pub struct Task {
     #[serde(default)]
     pub is_url_fetching: Option<DateTime<Utc>>,
     #[serde(default)]
+    pub someday: bool,
+    #[serde(default)]
     pub project_title: Option<String>,
     #[serde(default)]
     pub tags: Vec<crate::TagInfo>,
@@ -121,6 +123,8 @@ pub struct UpdateTask {
         with = "crate::serde_helpers::double_option"
     )]
     pub is_url_fetching: Option<Option<DateTime<Utc>>>,
+
+    pub someday: Option<bool>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -132,6 +136,7 @@ pub struct TaskFilter {
     pub inbox: Option<bool>,
     pub completed: Option<bool>,
     pub q: Option<String>,
+    pub someday: Option<bool>,
     pub sort: Option<String>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,

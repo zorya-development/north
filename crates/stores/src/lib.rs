@@ -22,6 +22,6 @@ pub use settings_store::SettingsStore;
 pub use status_bar_store::{StatusBarStore, StatusBarStyle, StatusBarVariant};
 pub use tag_store::TagStore;
 pub use task_detail_modal_store::TaskDetailModalStore;
-pub use task_store::{IdFilter, TaskEvent, TaskEventEmitter, TaskStore, TaskStoreFilter};
+pub use task_store::{IdFilter, TaskStore, TaskStoreFilter};
 
 pub use north_repositories::{Recurrence, TaskModel};

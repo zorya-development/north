@@ -31,6 +31,7 @@ impl TodayController {
             project_id: IdFilter::Any,
             parent_id: IdFilter::IsNull,
             is_completed: None,
+            ..Default::default()
         });
 
         let root_task_ids = Memo::new(move |_| {
@@ -48,6 +49,7 @@ impl TodayController {
             project_id: IdFilter::Any,
             parent_id: IdFilter::IsNull,
             is_completed: Some(true),
+            ..Default::default()
         });
 
         let completed_count = Memo::new(move |_| {

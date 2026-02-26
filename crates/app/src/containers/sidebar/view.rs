@@ -49,7 +49,9 @@ pub fn SidebarView(
             <nav class="flex-1 px-2 space-y-1 min-w-0">
                 <NavItem href="/inbox" label="Inbox" icon=IconKind::Inbox collapsed=collapsed/>
                 <NavItem href="/today" label="Today" icon=IconKind::Today collapsed=collapsed/>
+                <NavItem href="/someday" label="Someday" icon=IconKind::Someday collapsed=collapsed/>
                 <NavItem href="/tasks" label="All Tasks" icon=IconKind::Tasks collapsed=collapsed/>
+                <NavItem href="/review" label="Review" icon=IconKind::Review collapsed=collapsed/>
 
                 // Projects section
                 <div class=move || if collapsed.get() { "" } else { "pt-4" }>
@@ -202,7 +204,6 @@ pub fn SidebarView(
                 </div>
 
                 <div class="pt-4">
-                    <NavItem href="/review" label="Review" icon=IconKind::Review collapsed=collapsed/>
                     <NavItem href="/stats" label="Stats" icon=IconKind::Stats collapsed=collapsed/>
                 </div>
             </nav>

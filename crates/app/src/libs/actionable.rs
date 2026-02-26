@@ -5,6 +5,9 @@ use north_stores::TaskModel;
 /// within the first N incomplete siblings (sorted by sort_key) where N is the
 /// parent's sequential_limit. A limit of 0 means unlimited.
 pub fn is_actionable(task: &TaskModel, all_tasks: &[TaskModel]) -> bool {
+    if task.someday {
+        return false;
+    }
     let Some(parent_id) = task.parent_id else {
         return true;
     };

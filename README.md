@@ -200,6 +200,9 @@ E2E tests use [Playwright](https://playwright.dev/) and run against the full app
 just playwright              # Start test stack + Playwright UI mode (port 8080)
 just playwright-exec         # Run tests headless in already-running containers
 just playwright-down         # Tear down test containers and volumes
+
+# Rebuild test containers (needed after migrations, schema changes, or new features)
+just playwright-down && docker compose -p north-test -f docker-compose.test.yml up -d --build
 ```
 
 ### Project Structure

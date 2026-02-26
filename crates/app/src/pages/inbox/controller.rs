@@ -30,6 +30,7 @@ impl InboxController {
             project_id: IdFilter::IsNull,
             parent_id: IdFilter::IsNull,
             is_completed: None,
+            ..Default::default()
         });
 
         // IDs of tasks that should stay visible even if they no longer match
@@ -62,6 +63,7 @@ impl InboxController {
             project_id: IdFilter::Any,
             parent_id: IdFilter::IsNull,
             is_completed: None,
+            ..Default::default()
         });
 
         let root_task_ids = Memo::new(move |_| {
@@ -82,6 +84,7 @@ impl InboxController {
             project_id: IdFilter::IsNull,
             parent_id: IdFilter::IsNull,
             is_completed: Some(true),
+            ..Default::default()
         });
 
         let completed_count = Memo::new(move |_| completed_tasks.get().len());

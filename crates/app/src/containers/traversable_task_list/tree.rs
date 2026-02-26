@@ -6,6 +6,7 @@ pub struct FlatNode {
     pub parent_id: Option<i64>,
     pub depth: u8,
     pub is_completed: bool,
+    pub is_someday: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -45,14 +46,22 @@ pub fn flatten_tree(
         .filter(|t| include(t))
         .collect();
 
-    let (mut active, mut completed): (Vec<&TaskModel>, Vec<&TaskModel>) =
-        roots.into_iter().partition(|t| t.completed_at.is_none());
+    let (completed, non_completed): (Vec<&TaskModel>, Vec<&TaskModel>) =
+        roots.into_iter().partition(|t| t.completed_at.is_some());
+    let (mut someday, mut active): (Vec<&TaskModel>, Vec<&TaskModel>) =
+        non_completed.into_iter().partition(|t| t.someday);
 
     active.sort_by(|a, b| a.sort_key.cmp(&b.sort_key));
     for task in &active {
         flatten_subtree(task, all_tasks, 0, include, &mut nodes);
     }
 
+    someday.sort_by(|a, b| a.sort_key.cmp(&b.sort_key));
+    for task in &someday {
+        flatten_subtree(task, all_tasks, 0, include, &mut nodes);
+    }
+
+    let mut completed: Vec<&TaskModel> = completed;
     completed.sort_by(|a, b| a.sort_key.cmp(&b.sort_key));
     for task in &completed {
         flatten_subtree(task, all_tasks, 0, include, &mut nodes);
@@ -73,6 +82,7 @@ fn flatten_subtree(
         parent_id: task.parent_id,
         depth,
         is_completed: task.completed_at.is_some(),
+        is_someday: task.someday,
     });
 
     let children: Vec<&TaskModel> = all_tasks
@@ -81,14 +91,22 @@ fn flatten_subtree(
         .filter(|t| include(t))
         .collect();
 
-    let (mut active, mut completed): (Vec<&TaskModel>, Vec<&TaskModel>) =
-        children.into_iter().partition(|t| t.completed_at.is_none());
+    let (completed, non_completed): (Vec<&TaskModel>, Vec<&TaskModel>) =
+        children.into_iter().partition(|t| t.completed_at.is_some());
+    let (mut someday, mut active): (Vec<&TaskModel>, Vec<&TaskModel>) =
+        non_completed.into_iter().partition(|t| t.someday);
 
     active.sort_by(|a, b| a.sort_key.cmp(&b.sort_key));
     for child in &active {
         flatten_subtree(child, all_tasks, depth + 1, include, nodes);
     }
 
+    someday.sort_by(|a, b| a.sort_key.cmp(&b.sort_key));
+    for child in &someday {
+        flatten_subtree(child, all_tasks, depth + 1, include, nodes);
+    }
+
+    let mut completed: Vec<&TaskModel> = completed;
     completed.sort_by(|a, b| a.sort_key.cmp(&b.sort_key));
     for child in &completed {
         flatten_subtree(child, all_tasks, depth + 1, include, nodes);
@@ -111,6 +129,7 @@ pub fn flatten_flat(
             parent_id: t.parent_id,
             depth: 0,
             is_completed: t.completed_at.is_some(),
+            is_someday: t.someday,
         })
         .collect()
 }
@@ -287,6 +306,7 @@ mod tests {
             updated_at: Utc::now(),
             recurrence: None,
             is_url_fetching: None,
+            someday: false,
             project_title: None,
             tags: vec![],
             subtask_count: 0,
@@ -343,24 +363,28 @@ mod tests {
                 parent_id: None,
                 depth: 0,
                 is_completed: false,
+                is_someday: false,
             },
             FlatNode {
                 task_id: 3,
                 parent_id: Some(1),
                 depth: 1,
                 is_completed: false,
+                is_someday: false,
             },
             FlatNode {
                 task_id: 4,
                 parent_id: Some(1),
                 depth: 1,
                 is_completed: false,
+                is_someday: false,
             },
             FlatNode {
                 task_id: 2,
                 parent_id: None,
                 depth: 0,
                 is_completed: false,
+                is_someday: false,
             },
         ];
 
@@ -381,12 +405,14 @@ mod tests {
                 parent_id: None,
                 depth: 0,
                 is_completed: false,
+                is_someday: false,
             },
             FlatNode {
                 task_id: 3,
                 parent_id: Some(1),
                 depth: 1,
                 is_completed: false,
+                is_someday: false,
             },
         ];
 
@@ -404,12 +430,14 @@ mod tests {
                 parent_id: None,
                 depth: 0,
                 is_completed: false,
+                is_someday: false,
             },
             FlatNode {
                 task_id: 2,
                 parent_id: Some(1),
                 depth: 1,
                 is_completed: false,
+                is_someday: false,
             },
         ];
         assert!(is_descendant_of(&flat, 1, 2));
@@ -424,18 +452,21 @@ mod tests {
                 parent_id: None,
                 depth: 0,
                 is_completed: false,
+                is_someday: false,
             },
             FlatNode {
                 task_id: 2,
                 parent_id: Some(1),
                 depth: 1,
                 is_completed: false,
+                is_someday: false,
             },
             FlatNode {
                 task_id: 3,
                 parent_id: Some(2),
                 depth: 2,
                 is_completed: false,
+                is_someday: false,
             },
         ];
         assert!(is_descendant_of(&flat, 1, 3));
@@ -451,12 +482,14 @@ mod tests {
                 parent_id: None,
                 depth: 0,
                 is_completed: false,
+                is_someday: false,
             },
             FlatNode {
                 task_id: 2,
                 parent_id: None,
                 depth: 0,
                 is_completed: false,
+                is_someday: false,
             },
         ];
         assert!(!is_descendant_of(&flat, 1, 2));

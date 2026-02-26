@@ -10,6 +10,7 @@ pub struct ItemConfig {
     pub show_project: bool,
     pub show_inline_project: bool,
     pub show_inline_tags: bool,
+    pub show_someday: bool,
     pub draggable: bool,
 }
 
@@ -20,6 +21,7 @@ impl Default for ItemConfig {
             show_project: true,
             show_inline_project: false,
             show_inline_tags: true,
+            show_someday: true,
             draggable: false,
         }
     }
@@ -41,6 +43,7 @@ pub fn TaskListItem(
             show_project=config.show_project
             show_inline_project=config.show_inline_project
             show_inline_tags=config.show_inline_tags
+            show_someday=config.show_someday
             draggable=config.draggable
             on_delete=Callback::new(move |()| ctrl.delete())
             on_review=Callback::new(move |()| ctrl.review())

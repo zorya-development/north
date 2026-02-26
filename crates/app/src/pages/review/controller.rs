@@ -32,6 +32,7 @@ impl ReviewController {
             project_id: IdFilter::Any,
             parent_id: IdFilter::IsNull,
             is_completed: Some(false),
+            ..Default::default()
         });
 
         let active_projects = app_store.projects;
@@ -45,6 +46,7 @@ impl ReviewController {
             all_active
                 .get()
                 .into_iter()
+                .filter(|t| !t.someday)
                 .filter(|t| {
                     // Only include tasks in active projects or no project
                     if let Some(pid) = t.project_id {
@@ -76,6 +78,7 @@ impl ReviewController {
             all_active
                 .get()
                 .into_iter()
+                .filter(|t| !t.someday)
                 .filter(|t| {
                     if let Some(pid) = t.project_id {
                         projects

@@ -13,7 +13,7 @@ use north_dto::Project;
 use north_stores::TaskModel;
 use north_ui::{DropdownItem, DropdownMenu, Icon, IconKind};
 
-use super::components::ProjectPrefix;
+use super::components::{ProjectPrefix, SomedayPrefix};
 
 #[component]
 pub fn TaskListItemView(
@@ -23,6 +23,7 @@ pub fn TaskListItemView(
     #[prop(default = true)] show_project: bool,
     #[prop(default = false)] show_inline_project: bool,
     #[prop(default = true)] show_inline_tags: bool,
+    #[prop(default = true)] show_someday: bool,
     #[prop(default = false)] draggable: bool,
     on_delete: Callback<()>,
     on_review: Callback<()>,
@@ -42,6 +43,8 @@ pub fn TaskListItemView(
             .map(|t| t.completed_at.is_some())
             .unwrap_or(false)
     });
+
+    let is_someday = Memo::new(move |_| task.get().map(|t| t.someday).unwrap_or(false));
 
     view! {
         {move || {
@@ -121,6 +124,10 @@ pub fn TaskListItemView(
                         {
                             return;
                         }
+                        // Don't show drop indicator on someday tasks
+                        if is_someday.get_untracked() {
+                            return;
+                        }
                         ev.prevent_default();
                         if let Some(target) = ev
                             .current_target()
@@ -197,7 +204,14 @@ pub fn TaskListItemView(
                         let inline_tags = tags.clone();
                         move || {
                             let completed = is_completed.get();
+                            let someday = is_someday.get();
                             let t = title.clone();
+
+                            let someday_prefix = if someday && show_inline_project && show_someday {
+                                Some(view! { <SomedayPrefix /> }.into_any())
+                            } else {
+                                None
+                            };
 
                             let project_prefix = if show_inline_project {
                                 Some(view! {
@@ -236,12 +250,15 @@ pub fn TaskListItemView(
 
                             let color = if completed {
                                 TextColor::Tertiary
+                            } else if someday {
+                                TextColor::Secondary
                             } else {
                                 TextColor::Primary
                             };
 
                             view! {
                                 <span class="flex-1 pt-0.5 flex items-baseline flex-wrap">
+                                    {someday_prefix}
                                     {project_prefix}
                                     <RichTitle
                                         title=t

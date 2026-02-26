@@ -26,6 +26,7 @@ impl TaskFieldRegistry {
             recurrence_type,
             recurrence_rule,
             is_url_fetching,
+            someday,
             project_title, // FilterField::Project (enriched)
             tags,          // FilterField::Tags (enriched)
             subtask_count,
