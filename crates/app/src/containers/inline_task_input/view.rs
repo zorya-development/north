@@ -53,7 +53,12 @@ pub fn InlineTaskInputView(
                     on:keydown=move |ev| {
                         if ev.key() == "Enter" {
                             if ev.ctrl_key() || ev.meta_key() {
-                                // Ctrl+Enter: insert line break (default textarea behavior)
+                                // Ctrl/Cmd+Enter: insert line break
+                                ev.prevent_default();
+                                if let Some(el) = input_ref.get_untracked() {
+                                    let ta: &web_sys::HtmlTextAreaElement = &el;
+                                    crate::libs::insert_newline_at_cursor(ta);
+                                }
                                 return;
                             }
                             // Plain Enter: submit

@@ -424,18 +424,32 @@ fn InlineEditInput(
     }
 }
 
-/// Borderless inline input for creating a new task.
+/// Borderless inline textarea for creating a new task.
+/// Supports multiline: first line becomes title, remaining lines become body.
+/// Ctrl+Enter inserts a newline; plain Enter submits.
 #[component]
 fn InlineCreateInput(
     depth: Memo<u8>,
     value: RwSignal<String>,
     ctrl: TraversableTaskListController,
 ) -> impl IntoView {
-    let input_ref = NodeRef::<leptos::html::Input>::new();
+    let input_ref = NodeRef::<leptos::html::Textarea>::new();
     // Snapshot the mode that created this input instance.
     // On blur, only close if the mode hasn't changed (genuine click-away).
     // If the mode already transitioned (chaining after create), skip close.
     let created_mode = ctrl.inline_mode.get_untracked();
+
+    let auto_resize = move || {
+        if let Some(el) = input_ref.get_untracked() {
+            if let Some(html_el) = el.dyn_ref::<web_sys::HtmlElement>() {
+                let _ = html_el.style().set_property("height", "auto");
+                let scroll_h = html_el.scroll_height();
+                let _ = html_el
+                    .style()
+                    .set_property("height", &format!("{scroll_h}px"));
+            }
+        }
+    };
 
     Effect::new(move || {
         // Re-run whenever depth changes (indent/outdent) to keep focus.
@@ -452,8 +466,8 @@ fn InlineCreateInput(
             }
             class="pr-4 py-1"
         >
-            <div class="flex items-center gap-2">
-                <div class="flex-shrink-0">
+            <div class="flex items-start gap-2">
+                <div class="flex-shrink-0 pt-1">
                     <svg width="16" height="16" viewBox="0 0 16 16">
                         <circle
                             cx="8" cy="8" r="6.5"
@@ -464,32 +478,39 @@ fn InlineCreateInput(
                         />
                     </svg>
                 </div>
-                <input
-                    type="text"
+                <textarea
                     data-testid="inline-create-input"
                     node_ref=input_ref
                     class="flex-1 pt-0.5 bg-transparent border-none \
                            text-sm text-text-primary \
                            placeholder-text-tertiary \
                            focus:outline-none focus-visible:outline-none \
-                           no-focus-ring"
+                           no-focus-ring resize-none overflow-hidden"
                     placeholder="Task title..."
+                    rows=1
                     prop:value=move || value.get()
                     on:input=move |ev| {
                         value.set(event_target_value(&ev));
+                        auto_resize();
                     }
                     on:keydown=move |ev| {
                         ev.stop_propagation();
-                        match ev.key().as_str() {
-                            "Enter" => {
+                        if ev.key() == "Enter" {
+                            if ev.ctrl_key() || ev.meta_key() {
+                                // Ctrl/Cmd+Enter: insert line break
                                 ev.prevent_default();
-                                ctrl.create_task();
+                                if let Some(el) = input_ref.get_untracked() {
+                                    let ta: &web_sys::HtmlTextAreaElement = &el;
+                                    crate::libs::insert_newline_at_cursor(ta);
+                                }
+                                return;
                             }
-                            "Escape" => {
-                                ev.prevent_default();
-                                ctrl.close_inline();
-                            }
-                            _ => {}
+                            // Plain Enter: submit
+                            ev.prevent_default();
+                            ctrl.create_task();
+                        } else if ev.key() == "Escape" {
+                            ev.prevent_default();
+                            ctrl.close_inline();
                         }
                     }
                     on:blur=move |_| {

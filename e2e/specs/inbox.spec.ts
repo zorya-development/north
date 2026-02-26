@@ -260,4 +260,115 @@ test.describe("Inbox", () => {
     await expect(rows.nth(1)).toContainText("Sub A");
     await expect(rows.nth(2)).toContainText("Sub B");
   });
+
+  test("inline create input is a textarea", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="empty-task-list"]')
+      .waitFor({ state: "visible" });
+
+    await page.locator('[data-testid="inbox-add-task"]').click();
+
+    const input = page.locator('[data-testid="inline-create-input"]');
+    await expect(input).toBeVisible();
+
+    const tagName = await input.evaluate((el) => el.tagName.toLowerCase());
+    expect(tagName).toBe("textarea");
+  });
+
+  test("inline create supports multiline: first line title, rest body", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="empty-task-list"]')
+      .waitFor({ state: "visible" });
+
+    await page.locator('[data-testid="inbox-add-task"]').click();
+
+    const input = page.locator('[data-testid="inline-create-input"]');
+    await expect(input).toBeVisible();
+
+    // Inject multiline content: title + newline + body
+    await input.focus();
+    await input.evaluate((el: HTMLTextAreaElement) => {
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype,
+        "value",
+      )!.set!;
+      nativeInputValueSetter.call(
+        el,
+        "My Task Title\nThis is the body text",
+      );
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    // Plain Enter to submit
+    await input.press("Enter");
+
+    // Task should appear with the title
+    const rows = page.locator('[data-testid="task-row"]');
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText("My Task Title");
+
+    // Close the chained inline input, then open task detail modal
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("e");
+
+    const modal = page.locator('[data-testid="task-detail-modal"]');
+    await expect(modal).toBeVisible();
+
+    const bodyArea = modal.locator('[data-testid="task-detail-body"]');
+    await expect(bodyArea).toContainText("This is the body text");
+  });
+
+  test("Ctrl+Enter inserts newline, plain Enter submits with body", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="empty-task-list"]')
+      .waitFor({ state: "visible" });
+
+    await page.locator('[data-testid="inbox-add-task"]').click();
+
+    const input = page.locator('[data-testid="inline-create-input"]');
+    await expect(input).toBeVisible();
+
+    // Type title, Ctrl+Enter for newline, then type body
+    await input.pressSequentially("Task Title");
+    await input.press("Control+Enter");
+
+    // Ctrl+Enter should NOT submit (no task created yet)
+    await expect(page.locator('[data-testid="task-row"]')).toHaveCount(0);
+
+    // Textarea should contain the title and a newline
+    await expect(input).toHaveValue("Task Title\n");
+
+    // Type body text after the newline
+    await input.pressSequentially("Body line");
+    await expect(input).toHaveValue("Task Title\nBody line");
+
+    // Plain Enter to submit
+    await input.press("Enter");
+
+    // Task should appear
+    const rows = page.locator('[data-testid="task-row"]');
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText("Task Title");
+
+    // Close the chained inline input, then open detail modal
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("e");
+
+    const modal = page.locator('[data-testid="task-detail-modal"]');
+    await expect(modal).toBeVisible();
+
+    const bodyArea = modal.locator('[data-testid="task-detail-body"]');
+    await expect(bodyArea).toContainText("Body line");
+  });
 });

@@ -244,7 +244,7 @@ impl TraversableTaskListController {
         parent_id: Option<i64>,
         depth: u8,
     ) {
-        let title = self.create_input_value.get_untracked().trim().to_string();
+        let (title, body) = Self::parse_title_body(&self.create_input_value.get_untracked());
         if title.is_empty() {
             self.close_inline();
             return;
@@ -267,6 +267,7 @@ impl TraversableTaskListController {
 
         let input = CreateTask {
             title,
+            body,
             parent_id,
             project_id,
             sort_key: Some(sort_key),
@@ -298,7 +299,7 @@ impl TraversableTaskListController {
     }
 
     fn create_task_top(&self) {
-        let title = self.create_input_value.get_untracked().trim().to_string();
+        let (title, body) = Self::parse_title_body(&self.create_input_value.get_untracked());
         if title.is_empty() {
             self.close_inline();
             return;
@@ -319,6 +320,7 @@ impl TraversableTaskListController {
 
         let input = CreateTask {
             title,
+            body,
             parent_id: None,
             project_id,
             sort_key: Some(sort_key),
@@ -348,6 +350,18 @@ impl TraversableTaskListController {
 
     pub fn close_inline(&self) {
         self.inline_mode.set(InlineMode::None);
+    }
+
+    /// Split raw input into (title, optional body).
+    /// First line becomes the title; remaining lines become the body.
+    fn parse_title_body(raw: &str) -> (String, Option<String>) {
+        let mut lines = raw.splitn(2, '\n');
+        let title = lines.next().unwrap_or("").trim().to_string();
+        let body = lines
+            .next()
+            .map(|b| b.trim().to_string())
+            .filter(|b| !b.is_empty());
+        (title, body)
     }
 
     // ── Toggle complete ────────────────────────────────────────
