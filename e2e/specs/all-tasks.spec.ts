@@ -36,9 +36,9 @@ test.describe("All Tasks Page", () => {
     const projectRow = rows.filter({ hasText: "Project Task" });
     await expect(projectRow).toContainText("@Project Alpha");
 
-    // Inbox task should NOT have a project prefix
+    // Inbox task should have @Inbox prefix
     const inboxRow = rows.filter({ hasText: "Inbox Task" });
-    await expect(inboxRow).not.toContainText("@");
+    await expect(inboxRow).toContainText("@Inbox");
 
     // Clean up project
     await api.updateProject(project.id, { status: "archived" });

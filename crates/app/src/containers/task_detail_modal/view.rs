@@ -472,9 +472,10 @@ fn DueDatePicker(
         <div class="flex items-center gap-1">
             <input
                 type="date"
-                class="text-sm bg-transparent text-text-secondary \
+                class="text-xs bg-transparent text-text-secondary \
                        border-none focus:outline-none cursor-pointer \
                        w-full"
+                data-testid="due-date-input"
                 prop:value=move || display.clone().unwrap_or_default()
                 on:change=move |ev| {
                     let val = event_target_value(&ev);
@@ -511,7 +512,7 @@ fn RecurrenceSidebarButton(
 
     view! {
         <button
-            class="text-sm text-text-secondary hover:text-text-primary \
+            class="text-xs text-text-secondary hover:text-text-primary \
                    transition-colors cursor-pointer flex items-center gap-1"
             on:click=move |_| on_click.run(())
         >
@@ -537,13 +538,14 @@ fn BodySection(ctrl: TaskDetailModalController) -> impl IntoView {
                     if body.trim().is_empty() {
                         view! {
                             <div
-                                class="text-sm text-text-tertiary italic \
-                                       cursor-pointer p-1 -m-1 \
+                                class="cursor-pointer p-1 -m-1 \
                                        hover:bg-hover-overlay rounded \
                                        transition-colors"
                                 on:click=move |_| editing.set(true)
                             >
-                                "Add description..."
+                                <Text variant=TextVariant::BodyMd color=TextColor::Tertiary class="italic">
+                                    "Add description..."
+                                </Text>
                             </div>
                         }.into_any()
                     } else {
@@ -601,8 +603,8 @@ fn SequentialLimitInput(sequential_limit: i16, on_change: Callback<i16>) -> impl
             type="number"
             min="1"
             max="999"
-            class="w-16 text-sm bg-bg-input border border-border \
-                   rounded px-2 py-0.5 text-text-primary \
+            class="w-16 text-xs bg-bg-input border border-border \
+                   rounded px-2 py-1 text-text-primary \
                    focus:outline-none focus:border-accent"
             prop:value=move || value.get()
             on:input=move |ev| {

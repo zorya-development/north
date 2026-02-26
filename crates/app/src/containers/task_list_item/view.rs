@@ -196,32 +196,48 @@ pub fn TaskListItemView(
                             let completed = is_completed.get();
                             let t = title.clone();
 
-                            // Project prefix: @ProjectName
+                            // Project prefix: @ProjectName or @Inbox
                             let project_prefix = if show_inline_project {
-                                project_id.and_then(|pid| {
+                                if let Some(pid) = project_id {
                                     let projects = app_store.projects.get();
-                                    let project = projects.iter().find(|p| p.id == pid)?;
-                                    let color = project.color.clone();
-                                    let title = project.title.clone();
-                                    let href = format!("/projects/{pid}");
+                                    projects.iter().find(|p| p.id == pid).map(|project| {
+                                        let color = project.color.clone();
+                                        let title = project.title.clone();
+                                        let href = format!("/projects/{pid}");
+                                        view! {
+                                            <span
+                                                class="text-sm font-medium mr-1"
+                                                style=format!("color: {color}")
+                                            >
+                                                "@"
+                                                <a
+                                                    href=href
+                                                    class="hover:underline"
+                                                    on:click=move |ev: leptos::ev::MouseEvent| {
+                                                        ev.stop_propagation();
+                                                    }
+                                                >
+                                                    {title}
+                                                </a>
+                                            </span>
+                                        }.into_any()
+                                    })
+                                } else {
                                     Some(view! {
-                                        <span
-                                            class="text-sm font-medium mr-1"
-                                            style=format!("color: {color}")
-                                        >
+                                        <span class="text-sm font-medium mr-1 text-text-tertiary">
                                             "@"
                                             <a
-                                                href=href
+                                                href="/inbox"
                                                 class="hover:underline"
                                                 on:click=move |ev: leptos::ev::MouseEvent| {
                                                     ev.stop_propagation();
                                                 }
                                             >
-                                                {title}
+                                                "Inbox"
                                             </a>
                                         </span>
-                                    })
-                                })
+                                    }.into_any())
+                                }
                             } else {
                                 None
                             };

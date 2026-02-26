@@ -8,10 +8,12 @@ test.describe("Task Detail Modal", () => {
   test.beforeEach(async ({ authenticatedPage }) => {
     api = new ApiHelper(authenticatedPage.context());
     await api.deleteAllTasks();
+    await api.deleteAllProjects();
   });
 
   test.afterEach(async () => {
     await api.deleteAllTasks();
+    await api.deleteAllProjects();
   });
 
   test("opens when clicking a task and shows correct data", async ({
@@ -243,5 +245,235 @@ test.describe("Task Detail Modal", () => {
 
     // Body should show the saved description
     await expect(bodyArea).toContainText("This is the task description");
+  });
+
+  test("change project in modal", async ({ authenticatedPage: page }) => {
+    await api.createProject({ title: "Work" });
+    await api.createTask({ title: "Project task" });
+
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    // Open modal
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("e");
+
+    const modal = page.locator('[data-testid="task-detail-modal"]');
+    await expect(modal).toBeVisible();
+
+    // Click project picker trigger (currently shows "Inbox")
+    await modal.locator('[data-testid="project-picker-trigger"]').click();
+
+    // Select "Work" project
+    await modal
+      .locator('[data-testid="project-picker-option"]')
+      .filter({ hasText: "Work" })
+      .click();
+
+    // Verify project shows in header
+    await expect(modal).toContainText("Work");
+
+    // Close and reopen to verify persistence
+    await page.locator('[data-testid="task-detail-close"]').click();
+    await expect(modal).not.toBeVisible();
+
+    await page.keyboard.press("e");
+    await expect(modal).toBeVisible();
+    await expect(modal).toContainText("Work");
+  });
+
+  test("unset project in modal", async ({ authenticatedPage: page }) => {
+    const project = await api.createProject({ title: "Work" });
+    await api.createTask({ title: "Project task", project_id: project.id });
+
+    await page.goto("/all-tasks");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    // Open modal — task is under "Work" project, navigate to it
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("e");
+
+    const modal = page.locator('[data-testid="task-detail-modal"]');
+    await expect(modal).toBeVisible();
+
+    // Verify "Work" is shown in sidebar project picker
+    await expect(
+      modal.locator('[data-testid="project-picker-trigger"]'),
+    ).toContainText("Work");
+
+    // Click project picker trigger
+    await modal.locator('[data-testid="project-picker-trigger"]').click();
+
+    // Click "Inbox" to clear project
+    await modal.locator('[data-testid="project-picker-inbox"]').click();
+
+    // Verify project picker now shows "Inbox"
+    await expect(
+      modal.locator('[data-testid="project-picker-trigger"]'),
+    ).toContainText("Inbox");
+
+    // Close and reopen to verify persistence
+    await page.locator('[data-testid="task-detail-close"]').click();
+    await expect(modal).not.toBeVisible();
+
+    await page.keyboard.press("e");
+    await expect(modal).toBeVisible();
+    await expect(
+      modal.locator('[data-testid="project-picker-trigger"]'),
+    ).toContainText("Inbox");
+  });
+
+  test("change due date in modal", async ({ authenticatedPage: page }) => {
+    await api.createTask({ title: "Due date task" });
+
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    // Open modal
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("e");
+
+    const modal = page.locator('[data-testid="task-detail-modal"]');
+    await expect(modal).toBeVisible();
+
+    // Fill the due date input
+    const dueDateInput = modal.locator('[data-testid="due-date-input"]');
+    await dueDateInput.fill("2026-12-25");
+
+    // Close and reopen to verify persistence
+    await page.locator('[data-testid="task-detail-close"]').click();
+    await expect(modal).not.toBeVisible();
+
+    await page.keyboard.press("e");
+    await expect(modal).toBeVisible();
+    await expect(
+      modal.locator('[data-testid="due-date-input"]'),
+    ).toHaveValue("2026-12-25");
+  });
+
+  test("change start date in modal", async ({ authenticatedPage: page }) => {
+    await api.createTask({ title: "Start date task" });
+
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    // Open modal
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("e");
+
+    const modal = page.locator('[data-testid="task-detail-modal"]');
+    await expect(modal).toBeVisible();
+
+    // Click start date trigger ("Not set")
+    await modal.locator('[data-testid="start-date-trigger"]').click();
+
+    // Fill date in popover
+    const dateInput = modal.locator('[data-testid="start-date-input"]');
+    await expect(dateInput).toBeVisible();
+    await dateInput.fill("2026-12-20");
+
+    // Click Save
+    await modal.locator('[data-testid="start-date-save"]').click();
+
+    // Verify start date is displayed (trigger should now show the date)
+    await expect(
+      modal.locator('[data-testid="start-date-trigger"]'),
+    ).toBeVisible();
+    await expect(
+      modal.locator('[data-testid="start-date-trigger"]'),
+    ).not.toContainText("Not set");
+
+    // Close and reopen to verify persistence
+    await page.locator('[data-testid="task-detail-close"]').click();
+    await expect(modal).not.toBeVisible();
+
+    await page.keyboard.press("e");
+    await expect(modal).toBeVisible();
+    await expect(
+      modal.locator('[data-testid="start-date-trigger"]'),
+    ).not.toContainText("Not set");
+  });
+
+  test("add tag in modal", async ({ authenticatedPage: page }) => {
+    await api.createTask({ title: "Tag task" });
+
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    // Open modal
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("e");
+
+    const modal = page.locator('[data-testid="task-detail-modal"]');
+    await expect(modal).toBeVisible();
+
+    // Click tag picker trigger ("None")
+    await modal.locator('[data-testid="tag-picker-trigger"]').click();
+
+    // Type new tag name in input and press Enter
+    const tagInput = modal.locator('[data-testid="tag-picker-input"]');
+    await expect(tagInput).toBeVisible();
+    await tagInput.fill("urgent");
+    await tagInput.press("Enter");
+
+    // Close popover by clicking elsewhere
+    await modal.locator('[data-testid="task-detail-title"]').click();
+
+    // Verify tag displays in sidebar
+    await expect(modal).toContainText("urgent");
+
+    // Close and reopen to verify persistence
+    await page.locator('[data-testid="task-detail-close"]').click();
+    await expect(modal).not.toBeVisible();
+
+    await page.keyboard.press("e");
+    await expect(modal).toBeVisible();
+    await expect(modal).toContainText("urgent");
+  });
+
+  test("remove tag in modal", async ({ authenticatedPage: page }) => {
+    // Create task with tag via token parsing
+    await api.createTask({ title: "Tagged task #urgent" });
+
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    // Open modal
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("e");
+
+    const modal = page.locator('[data-testid="task-detail-modal"]');
+    await expect(modal).toBeVisible();
+
+    // Verify tag "urgent" is displayed
+    await expect(modal).toContainText("urgent");
+
+    // Click the × button on the tag to remove it
+    await modal.locator('[data-testid="tag-remove"]').click();
+
+    // Wait for store round-trip to complete — the tag remove button should disappear
+    await expect(modal.locator('[data-testid="tag-remove"]')).toHaveCount(0, {
+      timeout: 10_000,
+    });
+
+    // Close and reopen to verify persistence
+    await page.locator('[data-testid="task-detail-close"]').click();
+    await expect(modal).not.toBeVisible();
+
+    await page.keyboard.press("e");
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('[data-testid="tag-remove"]')).toHaveCount(0);
   });
 });

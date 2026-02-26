@@ -83,6 +83,7 @@ pub fn DateTimePickerView(
                                      cursor-pointer select-none",
                                     date_text_class,
                                 )
+                                data-testid="start-date-trigger"
                                 on:click={
                                     let id = initial_date.clone();
                                     let it = initial_time.clone();
@@ -127,6 +128,7 @@ pub fn DateTimePickerView(
                             view! {
                                 <button
                                     class=vis_class
+                                    data-testid="start-date-trigger"
                                     on:click=move |_| {
                                         picked_date.set(String::new());
                                         picked_time
@@ -157,6 +159,7 @@ pub fn DateTimePickerView(
                                rounded px-2 py-1.5 text-sm \
                                text-text-primary w-full \
                                focus:outline-none focus:border-accent"
+                        data-testid="start-date-input"
                         bind:value=picked_date
                         on:change:target=move |ev| {
                             picked_date.set(ev.target().value());
@@ -206,6 +209,7 @@ pub fn DateTimePickerView(
                             class="text-xs bg-accent \
                                    hover:bg-accent-hover text-on-accent \
                                    px-3 py-1 rounded transition-colors"
+                            data-testid="start-date-save"
                             on:click=move |_| {
                                 let d = picked_date.get_untracked();
                                 let t = picked_time.get_untracked();

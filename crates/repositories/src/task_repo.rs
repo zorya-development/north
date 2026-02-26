@@ -30,28 +30,9 @@ impl TaskRepository {
         )
     }
 
-    pub async fn create_with_tokens(input: CreateTask) -> Result<TaskModel, ServerFnError> {
-        notify_on_error(
-            north_server_fns::tasks::create_task_with_tokens(input)
-                .await
-                .map(TaskModel::from),
-        )
-    }
-
     pub async fn update(id: i64, input: UpdateTask) -> Result<TaskModel, ServerFnError> {
         notify_on_error(
             north_server_fns::tasks::update_task(id, input)
-                .await
-                .map(TaskModel::from),
-        )
-    }
-
-    pub async fn update_with_tokens(
-        id: i64,
-        input: UpdateTask,
-    ) -> Result<TaskModel, ServerFnError> {
-        notify_on_error(
-            north_server_fns::tasks::update_task_with_tokens(id, input)
                 .await
                 .map(TaskModel::from),
         )
