@@ -115,8 +115,12 @@ impl TaskDetailModalController {
     // --- Mutations ---
 
     pub fn save(&self) {
-        let t = self.title_draft.get_untracked();
-        let b = self.body_draft.get_untracked();
+        let Some(t) = self.title_draft.try_get_untracked() else {
+            return;
+        };
+        let Some(b) = self.body_draft.try_get_untracked() else {
+            return;
+        };
         let b = if b.trim().is_empty() { None } else { Some(b) };
 
         if let Some(task) = untrack(|| self.store.task()) {
@@ -190,17 +194,17 @@ impl TaskDetailModalController {
 
     pub fn sync_drafts(&self, title: String, body: Option<String>) {
         let body = body.unwrap_or_default();
-        if self.title_draft.get_untracked() != title {
-            self.title_draft.set(title);
+        if self.title_draft.try_get_untracked().as_ref() != Some(&title) {
+            let _ = self.title_draft.try_set(title);
         }
-        if self.body_draft.get_untracked() != body {
-            self.body_draft.set(body);
+        if self.body_draft.try_get_untracked().as_ref() != Some(&body) {
+            let _ = self.body_draft.try_set(body);
         }
     }
 
     pub fn focus_if_new_task(&self, task_id: i64) -> bool {
-        if self.focused_task_id.get_untracked() != Some(task_id) {
-            self.focused_task_id.set(Some(task_id));
+        if self.focused_task_id.try_get_untracked() != Some(Some(task_id)) {
+            let _ = self.focused_task_id.try_set(Some(task_id));
             return true;
         }
         false

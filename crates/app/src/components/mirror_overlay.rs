@@ -6,7 +6,7 @@ use leptos::prelude::*;
 #[component]
 pub fn MirrorOverlay(value: Signal<String>) -> impl IntoView {
     let lines = move || {
-        let raw = value.get();
+        let raw = value.try_get().unwrap_or_default();
         if raw.is_empty() {
             return (String::new(), None);
         }

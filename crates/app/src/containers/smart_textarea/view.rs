@@ -73,7 +73,9 @@ pub fn SmartTextareaView(
     // Auto-resize on value change (for externally set values like sync_drafts)
     if auto_resize {
         Effect::new(move || {
-            let _ = value.get();
+            if value.try_get().is_none() {
+                return;
+            }
             if textarea_ref.get().is_some() {
                 do_auto_resize();
             }
@@ -120,7 +122,7 @@ pub fn SmartTextareaView(
     view! {
         <div class="relative">
             {mirror_overlay.then(|| {
-                view! { <MirrorOverlay value=Signal::derive(move || value.get()) /> }
+                view! { <MirrorOverlay value=Signal::derive(move || value.try_get().unwrap_or_default()) /> }
             })}
             <textarea
                 data-testid=data_testid
@@ -128,7 +130,7 @@ pub fn SmartTextareaView(
                 placeholder=placeholder
                 rows=rows
                 class=combined_class
-                prop:value=move || value.get()
+                prop:value=move || value.try_get().unwrap_or_default()
                 on:input=move |ev| {
                     let val = event_target_value(&ev);
 
@@ -243,10 +245,12 @@ pub fn SmartTextareaView(
                     }
                 }
                 on:blur=move |_| {
-                    // Clear autocomplete suggestions
+                    // Clear autocomplete suggestions.
+                    // Use try_set — signals may be disposed if the parent
+                    // scope was torn down (e.g. modal close removing DOM).
                     if autocomplete {
-                        set_suggestions.set(vec![]);
-                        set_trigger_state.set(None);
+                        let _ = set_suggestions.try_set(vec![]);
+                        let _ = set_trigger_state.try_set(None);
                     }
                     if let Some(cb) = on_blur {
                         cb.run(());

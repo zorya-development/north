@@ -61,15 +61,17 @@ impl TaskDetailModalStore {
     }
 
     pub fn task(&self) -> Option<TaskModel> {
-        self.task_memo.get().and_then(|memo| memo.get())
+        self.task_memo
+            .try_get()?
+            .and_then(|memo| memo.try_get().flatten())
     }
 
     /// Read the current task without subscribing to reactive updates.
     /// Use this in event handlers and callbacks.
     fn task_untracked(&self) -> Option<TaskModel> {
         self.task_memo
-            .get_untracked()
-            .and_then(|memo| memo.get_untracked())
+            .try_get_untracked()?
+            .and_then(|memo| memo.try_get_untracked().flatten())
     }
 
     pub fn is_open(&self) -> bool {

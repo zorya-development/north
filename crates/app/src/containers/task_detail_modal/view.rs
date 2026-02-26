@@ -523,9 +523,9 @@ fn BodySection(ctrl: TaskDetailModalController) -> impl IntoView {
     view! {
         <div data-testid="task-detail-body" class="ml-6">
             <Show
-                when=move || editing.get()
+                when=move || editing.try_get().unwrap_or(false)
                 fallback=move || {
-                    let body = ctrl.body_draft.get();
+                    let body = ctrl.body_draft.try_get().unwrap_or_default();
                     if body.trim().is_empty() {
                         view! {
                             <div

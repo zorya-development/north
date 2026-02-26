@@ -36,7 +36,7 @@ pub fn AutocompleteDropdown(
                                 let base = "w-full text-left px-3 py-1.5 text-sm \
                                             text-text-primary rounded transition-colors \
                                             flex items-center gap-2";
-                                if highlighted.get() == i {
+                                if highlighted.try_get().unwrap_or(0) == i {
                                     format!("{base} bg-bg-tertiary")
                                 } else {
                                     format!("{base} hover:bg-bg-tertiary")
