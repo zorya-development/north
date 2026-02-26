@@ -1,7 +1,6 @@
 use leptos::prelude::*;
-use wasm_bindgen::JsCast;
 
-use crate::components::mirror_overlay::MirrorOverlay;
+use crate::containers::smart_textarea::SmartTextarea;
 
 #[component]
 pub fn InlineTaskInputView(
@@ -11,17 +10,19 @@ pub fn InlineTaskInputView(
     on_close: Callback<()>,
     #[prop(default = "")] class: &'static str,
 ) -> impl IntoView {
-    let auto_resize = move || {
-        if let Some(el) = input_ref.get_untracked() {
-            if let Some(html_el) = el.dyn_ref::<web_sys::HtmlElement>() {
-                let _ = html_el.style().set_property("height", "auto");
-                let scroll_h = html_el.scroll_height();
-                let _ = html_el
-                    .style()
-                    .set_property("height", &format!("{scroll_h}px"));
-            }
+    let submit_cb = Callback::new(move |()| {
+        let raw = value.get_untracked();
+        let mut lines = raw.splitn(2, '\n');
+        let title = lines.next().unwrap_or("").trim().to_string();
+        if title.is_empty() {
+            return;
         }
-    };
+        let body = lines
+            .next()
+            .map(|b| b.trim().to_string())
+            .filter(|b| !b.is_empty());
+        on_submit.run((title, body));
+    });
 
     view! {
         <div class=format!("{class} pr-4 py-1")>
@@ -37,56 +38,24 @@ pub fn InlineTaskInputView(
                         />
                     </svg>
                 </div>
-                <div class="relative flex-1">
-                    <MirrorOverlay value=Signal::derive(move || value.get()) />
-                    <textarea
-                        data-testid="task-detail-subtask-input"
-                        class="w-full pt-0.5 bg-transparent border-none \
-                               text-sm textarea-mirror \
-                               focus:outline-none focus-visible:outline-none \
-                               no-focus-ring resize-none overflow-hidden"
-                        placeholder="Task title..."
-                        rows=1
-                        node_ref=input_ref
-                        prop:value=move || value.get()
-                        on:input=move |ev| {
-                            value.set(event_target_value(&ev));
-                            auto_resize();
-                        }
-                        on:keydown=move |ev| {
-                            if ev.key() == "Enter" {
-                                if ev.ctrl_key() || ev.meta_key() {
-                                    // Ctrl/Cmd+Enter: insert line break
-                                    ev.prevent_default();
-                                    if let Some(el) = input_ref.get_untracked() {
-                                        let ta: &web_sys::HtmlTextAreaElement = &el;
-                                        crate::libs::insert_newline_at_cursor(ta);
-                                    }
-                                    return;
-                                }
-                                // Plain Enter: submit
-                                ev.prevent_default();
-                                ev.stop_propagation();
-                                let raw = value.get_untracked();
-                                let mut lines = raw.splitn(2, '\n');
-                                let title = lines.next().unwrap_or("").trim().to_string();
-                                if title.is_empty() {
-                                    return;
-                                }
-                                let body = lines.next()
-                                    .map(|b| b.trim().to_string())
-                                    .filter(|b| !b.is_empty());
-                                on_submit.run((title, body));
-                            } else if ev.key() == "Escape" {
-                                ev.stop_propagation();
-                                on_close.run(());
-                            }
-                        }
-                        on:blur=move |_| {
-                            on_close.run(());
-                        }
-                    />
-                </div>
+                <SmartTextarea
+                    value=value
+                    placeholder="Task title..."
+                    data_testid="task-detail-subtask-input"
+                    autocomplete=true
+                    mirror_overlay=true
+                    auto_resize=true
+                    multiline=true
+                    autofocus=true
+                    node_ref=input_ref
+                    on_submit=submit_cb
+                    on_close=on_close
+                    on_blur=on_close
+                    class="flex-1 w-full pt-0.5 bg-transparent border-none \
+                           text-sm \
+                           focus:outline-none focus-visible:outline-none \
+                           no-focus-ring resize-none overflow-hidden"
+                />
             </div>
         </div>
     }

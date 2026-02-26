@@ -158,16 +158,12 @@ impl TraversableTaskListController {
         }
     }
 
-    pub fn save_edit(&self, new_title: String) {
+    pub fn save_edit(&self, new_title: String, new_body: Option<String>) {
         if let InlineMode::Edit { task_id } = self.inline_mode.get_untracked() {
             if !new_title.is_empty() {
-                let body = self
-                    .app_store
+                self.app_store
                     .tasks
-                    .get_by_id(task_id)
-                    .get_untracked()
-                    .and_then(|t| t.body);
-                self.app_store.tasks.update_task(task_id, new_title, body);
+                    .update_task(task_id, new_title, new_body);
             }
             self.inline_mode.set(InlineMode::None);
         }

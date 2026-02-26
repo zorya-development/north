@@ -2,6 +2,7 @@ pub mod autocomplete;
 pub mod inline_task_input;
 pub mod project_picker;
 pub mod sidebar;
+pub mod smart_textarea;
 pub mod tag_picker;
 pub mod task_checkbox;
 pub mod task_detail_modal;

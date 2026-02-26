@@ -17,7 +17,9 @@ pub fn AutocompleteDropdown(
     }
 
     view! {
-        <div class="absolute top-full z-50 mt-1 bg-bg-secondary border \
+        <div
+            data-testid="autocomplete-dropdown"
+            class="absolute top-full z-50 mt-1 bg-bg-secondary border \
                     border-border/60 rounded-xl shadow-lg p-1 w-[200px] \
                     max-h-[200px] overflow-y-auto">
             {items
@@ -29,6 +31,7 @@ pub fn AutocompleteDropdown(
                     let select_name = name.clone();
                     view! {
                         <button
+                            data-testid="autocomplete-item"
                             class=move || {
                                 let base = "w-full text-left px-3 py-1.5 text-sm \
                                             text-text-primary rounded transition-colors \

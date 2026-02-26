@@ -1,18 +1,15 @@
 use leptos::prelude::*;
-use wasm_bindgen::JsCast;
 
 use north_stores::Recurrence;
-
-use std::sync::Arc;
 
 use super::controller::TaskDetailModalController;
 use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::date_picker::DateTimePicker;
 use crate::components::enriched_markdown::EnrichedMarkdownView;
 use crate::components::recurrence_modal::RecurrenceModal;
-use crate::containers::autocomplete::AutocompleteTextarea;
 use crate::containers::inline_task_input::InlineTaskInput;
 use crate::containers::project_picker::ProjectPicker;
+use crate::containers::smart_textarea::SmartTextarea;
 use crate::containers::tag_picker::TagPicker;
 use crate::containers::task_checkbox::TaskCheckbox;
 use crate::containers::task_list_item::ItemConfig;
@@ -208,69 +205,28 @@ pub fn TaskDetailModalView(
                                     <div class="pt-1">
                                         <TaskCheckbox task_id=task_id/>
                                     </div>
-                                    {
-                                        let title_read = ctrl.title_draft.read_only();
-                                        let title_write = ctrl.title_draft.write_only();
-                                        let title_keydown = Arc::new(move |ev: leptos::ev::KeyboardEvent| {
-                                            if ev.key() == "Enter" {
-                                                ev.prevent_default();
-                                                ctrl.save();
-                                            }
-                                        }) as Arc<dyn Fn(leptos::ev::KeyboardEvent) + Send + Sync>;
-
-                                        // Strip line breaks from title and auto-resize
-                                        let on_title_input = Callback::new(move |_ev: leptos::ev::Event| {
-                                            let val = ctrl.title_draft.get_untracked();
-                                            let cleaned = val.replace('\n', " ").replace('\r', "");
-                                            if cleaned != val {
-                                                ctrl.title_draft.set(cleaned);
-                                            }
-                                            // Auto-resize textarea to content
-                                            if let Some(el) = title_input_ref.get_untracked() {
-                                                if let Some(html_el) = el.dyn_ref::<web_sys::HtmlElement>() {
-                                                    let _ = html_el.style().set_property("height", "auto");
-                                                    let scroll_h = html_el.scroll_height();
-                                                    let _ = html_el.style().set_property("height", &format!("{scroll_h}px"));
-                                                }
-                                            }
-                                        });
-
-                                        // Auto-resize on initial render
-                                        Effect::new(move || {
-                                            let _ = title_read.get();
-                                            if let Some(el) = title_input_ref.get() {
-                                                if let Some(html_el) = el.dyn_ref::<web_sys::HtmlElement>() {
-                                                    let _ = html_el.style().set_property("height", "auto");
-                                                    let scroll_h = html_el.scroll_height();
-                                                    let _ = html_el.style().set_property("height", &format!("{scroll_h}px"));
-                                                }
-                                            }
-                                        });
-
-                                        view! {
-                                            <div data-testid="task-detail-title" class="flex-1 w-full">
-                                                <AutocompleteTextarea
-                                                    value=title_read
-                                                    set_value=title_write
-                                                    class="text-lg font-semibold \
-                                                           text-text-primary \
-                                                           bg-transparent \
-                                                           border-none \
-                                                           px-1 -mx-1 flex-1 \
-                                                           w-full \
-                                                           focus:outline-none \
-                                                           no-focus-ring \
-                                                           resize-none \
-                                                           overflow-hidden"
-                                                    rows=1
-                                                    on_keydown=title_keydown
-                                                    on_blur=Callback::new(move |()| ctrl.save())
-                                                    on_input=on_title_input
-                                                    node_ref=title_input_ref
-                                                />
-                                            </div>
-                                        }
-                                    }
+                                    <div data-testid="task-detail-title" class="flex-1 w-full">
+                                        <SmartTextarea
+                                            value=ctrl.title_draft
+                                            autocomplete=true
+                                            auto_resize=true
+                                            strip_newlines=true
+                                            on_submit=Callback::new(move |()| ctrl.save())
+                                            on_blur=Callback::new(move |()| ctrl.save())
+                                            node_ref=title_input_ref
+                                            class="text-lg font-semibold \
+                                                   text-text-primary \
+                                                   bg-transparent \
+                                                   border-none \
+                                                   px-1 -mx-1 flex-1 \
+                                                   w-full \
+                                                   focus:outline-none \
+                                                   no-focus-ring \
+                                                   resize-none \
+                                                   overflow-hidden"
+                                            rows=1
+                                        />
+                                    </div>
                                 </div>
 
                                 // Body (edit/view toggle)
@@ -559,7 +515,7 @@ fn RecurrenceSidebarButton(
 
 /// Body section with edit/view toggle:
 /// - View mode (default): rendered markdown or placeholder. Click to edit.
-/// - Edit mode: AutocompleteTextarea. On blur: save and switch to view mode.
+/// - Edit mode: SmartTextarea with autocomplete. On blur: save and switch to view mode.
 #[component]
 fn BodySection(ctrl: TaskDetailModalController) -> impl IntoView {
     let editing = ctrl.body_editing;
@@ -597,33 +553,29 @@ fn BodySection(ctrl: TaskDetailModalController) -> impl IntoView {
                     }
                 }
             >
-                {
-                    let body_read = ctrl.body_draft.read_only();
-                    let body_write = ctrl.body_draft.write_only();
-                    view! {
-                        <AutocompleteTextarea
-                            value=body_read
-                            set_value=body_write
-                            placeholder="Add description..."
-                            class="w-full text-sm \
-                                   text-text-primary \
-                                   bg-transparent \
-                                   border-none \
-                                   p-1 -m-1 \
-                                   focus:outline-none \
-                                   no-focus-ring \
-                                   resize-none \
-                                   min-h-[2rem] \
-                                   placeholder:text-text-tertiary \
-                                   placeholder:italic"
-                            on_blur=Callback::new(move |()| {
-                                ctrl.save();
-                                editing.set(false);
-                            })
-                            autofocus=true
-                        />
-                    }
-                }
+                <SmartTextarea
+                    value=ctrl.body_draft
+                    autocomplete=true
+                    auto_resize=true
+                    multiline=true
+                    autofocus=true
+                    placeholder="Add description..."
+                    on_blur=Callback::new(move |()| {
+                        ctrl.save();
+                        editing.set(false);
+                    })
+                    class="w-full text-sm \
+                           text-text-primary \
+                           bg-transparent \
+                           border-none \
+                           p-1 -m-1 \
+                           focus:outline-none \
+                           no-focus-ring \
+                           resize-none \
+                           min-h-[2rem] \
+                           placeholder:text-text-tertiary \
+                           placeholder:italic"
+                />
             </Show>
         </div>
     }

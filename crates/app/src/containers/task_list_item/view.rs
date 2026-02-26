@@ -62,6 +62,8 @@ pub fn TaskListItemView(
             let reviewed_at = t.reviewed_at;
             let tags = t.tags.clone();
             let recurrence = t.recurrence.clone();
+            let completed = t.completed_at.is_some();
+            let someday = t.someday;
 
             view! {
                 <div
@@ -100,6 +102,7 @@ pub fn TaskListItemView(
                             if !draggable { return; }
                             if let Some(ctx) = drag_ctx {
                                 ctx.dragging_task_id.set(Some(task_id));
+                                ctx.dragging_is_someday.set(is_someday.get_untracked());
                             }
                             if let Some(dt) = ev.data_transfer() {
                                 let _ = dt.set_data(
@@ -124,8 +127,15 @@ pub fn TaskListItemView(
                         {
                             return;
                         }
-                        // Don't show drop indicator on someday tasks
-                        if is_someday.get_untracked() {
+                        // Don't show drop indicator on completed tasks
+                        if is_completed.get_untracked() {
+                            return;
+                        }
+                        // Only allow drops within the same group
+                        // (normal↔normal, someday↔someday)
+                        if ctx.dragging_is_someday.get_untracked()
+                            != is_someday.get_untracked()
+                        {
                             return;
                         }
                         ev.prevent_default();
@@ -202,12 +212,10 @@ pub fn TaskListItemView(
                         </div>
                         {
                         let inline_tags = tags.clone();
-                        move || {
-                            let completed = is_completed.get();
-                            let someday = is_someday.get();
+                        {
                             let t = title.clone();
 
-                            let someday_prefix = if someday && show_inline_project && show_someday {
+                            let someday_prefix = if someday && show_someday {
                                 Some(view! { <SomedayPrefix /> }.into_any())
                             } else {
                                 None

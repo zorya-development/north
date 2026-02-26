@@ -7,7 +7,7 @@ use super::controller::TraversableTaskListController;
 use super::tree::*;
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
 use crate::components::drag_drop::{DragDropContext, DropZone};
-use crate::components::mirror_overlay::MirrorOverlay;
+use crate::containers::smart_textarea::SmartTextarea;
 use crate::containers::task_list_item::{ItemConfig, TaskListItem};
 
 #[component]
@@ -295,12 +295,18 @@ fn handle_drop(
         return;
     };
 
+    let dragging_is_someday = ctx.dragging_is_someday.get_untracked();
+
     match zone {
         DropZone::Above => {
             let parent_id = target_node.parent_id;
             let siblings: Vec<i64> = flat_nodes
                 .iter()
-                .filter(|n| n.parent_id == parent_id && !n.is_completed && !n.is_someday)
+                .filter(|n| {
+                    n.parent_id == parent_id
+                        && !n.is_completed
+                        && n.is_someday == dragging_is_someday
+                })
                 .map(|n| n.task_id)
                 .collect();
             let pos = siblings.iter().position(|&id| id == target_id);
@@ -315,7 +321,11 @@ fn handle_drop(
             let parent_id = target_node.parent_id;
             let siblings: Vec<i64> = flat_nodes
                 .iter()
-                .filter(|n| n.parent_id == parent_id && !n.is_completed && !n.is_someday)
+                .filter(|n| {
+                    n.parent_id == parent_id
+                        && !n.is_completed
+                        && n.is_someday == dragging_is_someday
+                })
                 .map(|n| n.task_id)
                 .collect();
             let pos = siblings.iter().position(|&id| id == target_id);
@@ -332,7 +342,11 @@ fn handle_drop(
             // Become last child of target.
             let last_child_key = flat_nodes
                 .iter()
-                .filter(|n| n.parent_id == Some(target_id) && !n.is_completed && !n.is_someday)
+                .filter(|n| {
+                    n.parent_id == Some(target_id)
+                        && !n.is_completed
+                        && n.is_someday == dragging_is_someday
+                })
                 .filter_map(|n| task_sort_key(all_tasks, n.task_id))
                 .next_back();
             let new_key = north_dto::sort_key_after(last_child_key.as_deref());
@@ -344,7 +358,9 @@ fn handle_drop(
     ctx.drop_target.set(None);
 }
 
-/// Borderless inline input for editing an existing task title.
+/// Borderless inline textarea for editing an existing task title + body.
+/// First line = title, subsequent lines = body (same format as inline create).
+/// Ctrl+Enter inserts a newline; plain Enter saves.
 #[component]
 fn InlineEditInput(
     task_id: i64,
@@ -352,20 +368,36 @@ fn InlineEditInput(
     ctrl: TraversableTaskListController,
 ) -> impl IntoView {
     let app_store = north_stores::use_app_store();
-    let initial_title = app_store
-        .tasks
-        .get_by_id(task_id)
-        .get_untracked()
-        .map(|t| t.title.clone())
-        .unwrap_or_default();
-    let (value, set_value) = signal(initial_title);
-    let input_ref = NodeRef::<leptos::html::Input>::new();
+    let task = app_store.tasks.get_by_id(task_id).get_untracked();
+    let initial_title = task.as_ref().map(|t| t.title.clone()).unwrap_or_default();
+    let initial_body = task.and_then(|t| t.body);
+
+    // Combine title + body into a single multiline value
+    let initial_value = match initial_body {
+        Some(ref body) if !body.is_empty() => format!("{initial_title}\n{body}"),
+        _ => initial_title,
+    };
+    let value = RwSignal::new(initial_value);
+    let textarea_ref = NodeRef::<leptos::html::Textarea>::new();
+
+    let save = move || {
+        let raw = value.get_untracked();
+        let mut lines = raw.splitn(2, '\n');
+        let title = lines.next().unwrap_or("").trim().to_string();
+        let body = lines
+            .next()
+            .map(|b| b.trim().to_string())
+            .filter(|b| !b.is_empty());
+        ctrl.save_edit(title, body);
+    };
 
     Effect::new(move || {
-        if let Some(el) = input_ref.get() {
+        if let Some(el) = textarea_ref.get() {
             let _ = el.focus();
-            let len = el.value().len() as u32;
-            let _ = el.set_selection_range(0, len);
+            // Place cursor at end of first line (title)
+            let val = el.value();
+            let end = val.find('\n').unwrap_or(val.len()) as u32;
+            let _ = el.set_selection_range(0, end);
         }
     });
 
@@ -376,8 +408,8 @@ fn InlineEditInput(
             }
             class="pr-4 py-1 trash-polka-focus"
         >
-            <div class="flex items-center gap-2">
-                <div class="flex-shrink-0">
+            <div class="flex items-start gap-2">
+                <div class="flex-shrink-0 pt-1">
                     <svg width="16" height="16" viewBox="0 0 16 16">
                         <circle
                             cx="8" cy="8" r="6.5"
@@ -388,37 +420,21 @@ fn InlineEditInput(
                         />
                     </svg>
                 </div>
-                <input
-                    type="text"
-                    data-testid="inline-edit-input"
-                    node_ref=input_ref
-                    class="flex-1 pt-0.5 bg-transparent border-none \
-                           text-sm text-text-primary \
+                <SmartTextarea
+                    value=value
+                    data_testid="inline-edit-input"
+                    autocomplete=true
+                    mirror_overlay=true
+                    auto_resize=true
+                    multiline=true
+                    node_ref=textarea_ref
+                    on_submit=Callback::new(move |()| save())
+                    on_close=Callback::new(move |()| ctrl.cancel_edit())
+                    on_blur=Callback::new(move |()| ctrl.cancel_edit())
+                    class="flex-1 w-full pt-0.5 bg-transparent border-none \
+                           text-sm \
                            focus:outline-none focus-visible:outline-none \
-                           no-focus-ring"
-                    prop:value=move || value.get()
-                    on:input=move |ev| {
-                        set_value.set(event_target_value(&ev));
-                    }
-                    on:keydown=move |ev| {
-                        ev.stop_propagation();
-                        match ev.key().as_str() {
-                            "Enter" => {
-                                ev.prevent_default();
-                                let title =
-                                    value.get_untracked().trim().to_string();
-                                ctrl.save_edit(title);
-                            }
-                            "Escape" => {
-                                ev.prevent_default();
-                                ctrl.cancel_edit();
-                            }
-                            _ => {}
-                        }
-                    }
-                    on:blur=move |_| {
-                        ctrl.cancel_edit();
-                    }
+                           no-focus-ring resize-none overflow-hidden"
                 />
             </div>
         </div>
@@ -439,18 +455,6 @@ fn InlineCreateInput(
     // On blur, only close if the mode hasn't changed (genuine click-away).
     // If the mode already transitioned (chaining after create), skip close.
     let created_mode = ctrl.inline_mode.get_untracked();
-
-    let auto_resize = move || {
-        if let Some(el) = input_ref.get_untracked() {
-            if let Some(html_el) = el.dyn_ref::<web_sys::HtmlElement>() {
-                let _ = html_el.style().set_property("height", "auto");
-                let scroll_h = html_el.scroll_height();
-                let _ = html_el
-                    .style()
-                    .set_property("height", &format!("{scroll_h}px"));
-            }
-        }
-    };
 
     Effect::new(move || {
         // Re-run whenever depth changes (indent/outdent) to keep focus.
@@ -479,49 +483,28 @@ fn InlineCreateInput(
                         />
                     </svg>
                 </div>
-                <div class="relative flex-1">
-                    <MirrorOverlay value=Signal::derive(move || value.get()) />
-                    <textarea
-                        data-testid="inline-create-input"
-                        node_ref=input_ref
-                        class="w-full pt-0.5 bg-transparent border-none \
-                               text-sm textarea-mirror \
-                               focus:outline-none focus-visible:outline-none \
-                               no-focus-ring resize-none overflow-hidden"
-                        placeholder="Task title..."
-                        rows=1
-                        prop:value=move || value.get()
-                        on:input=move |ev| {
-                            value.set(event_target_value(&ev));
-                            auto_resize();
+                <SmartTextarea
+                    value=value
+                    placeholder="Task title..."
+                    data_testid="inline-create-input"
+                    autocomplete=true
+                    mirror_overlay=true
+                    auto_resize=true
+                    multiline=true
+                    autofocus=true
+                    node_ref=input_ref
+                    on_submit=Callback::new(move |()| ctrl.create_task())
+                    on_close=Callback::new(move |()| ctrl.close_inline())
+                    on_blur=Callback::new(move |()| {
+                        if ctrl.inline_mode.get_untracked() == created_mode {
+                            ctrl.close_inline();
                         }
-                        on:keydown=move |ev| {
-                            ev.stop_propagation();
-                            if ev.key() == "Enter" {
-                                if ev.ctrl_key() || ev.meta_key() {
-                                    // Ctrl/Cmd+Enter: insert line break
-                                    ev.prevent_default();
-                                    if let Some(el) = input_ref.get_untracked() {
-                                        let ta: &web_sys::HtmlTextAreaElement = &el;
-                                        crate::libs::insert_newline_at_cursor(ta);
-                                    }
-                                    return;
-                                }
-                                // Plain Enter: submit
-                                ev.prevent_default();
-                                ctrl.create_task();
-                            } else if ev.key() == "Escape" {
-                                ev.prevent_default();
-                                ctrl.close_inline();
-                            }
-                        }
-                        on:blur=move |_| {
-                            if ctrl.inline_mode.get_untracked() == created_mode {
-                                ctrl.close_inline();
-                            }
-                        }
-                    />
-                </div>
+                    })
+                    class="flex-1 w-full pt-0.5 bg-transparent border-none \
+                           text-sm \
+                           focus:outline-none focus-visible:outline-none \
+                           no-focus-ring resize-none overflow-hidden"
+                />
             </div>
         </div>
     }

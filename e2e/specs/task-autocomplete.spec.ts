@@ -35,7 +35,7 @@ test.describe("Task Inline Autocomplete", () => {
     await page.locator('[data-testid="inbox-add-task"]').click();
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();
-    await input.fill("Buy supplies @Work");
+    await input.fill("Buy supplies @Work ");
     await input.press("Enter");
 
     // Task should remain visible on inbox (extra_show_ids keeps it)
@@ -59,7 +59,7 @@ test.describe("Task Inline Autocomplete", () => {
     await page.locator('[data-testid="inbox-add-task"]').click();
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();
-    await input.fill("Buy supplies @Work");
+    await input.fill("Buy supplies @Work ");
     await input.press("Enter");
 
     // Wait for the task to appear (confirms server round-trip completed)

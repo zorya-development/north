@@ -7,13 +7,13 @@ use north_dto::{Project, ProjectStatus, Tag};
 use north_ui::{AutocompleteDropdown, SuggestionItem};
 
 #[derive(Clone)]
-struct TriggerState {
-    trigger: char,
-    start: usize,
-    query: String,
+pub struct TriggerState {
+    pub trigger: char,
+    pub start: usize,
+    pub query: String,
 }
 
-fn find_trigger(value: &str, cursor: usize) -> Option<TriggerState> {
+pub fn find_trigger(value: &str, cursor: usize) -> Option<TriggerState> {
     if cursor > value.len() || !value.is_char_boundary(cursor) {
         return None;
     }
@@ -38,7 +38,7 @@ fn find_trigger(value: &str, cursor: usize) -> Option<TriggerState> {
     None
 }
 
-fn get_suggestions(
+pub fn get_suggestions(
     tags: &[Tag],
     projects: &[Project],
     trigger: char,
@@ -69,7 +69,7 @@ fn get_suggestions(
     }
 }
 
-fn insert_completion(value: &str, trigger_start: usize, trigger: char, name: &str) -> String {
+pub fn insert_completion(value: &str, trigger_start: usize, trigger: char, name: &str) -> String {
     let before = &value[..trigger_start];
     let after_trigger = &value[trigger_start + 1..];
     let rest_start = after_trigger
@@ -195,140 +195,6 @@ pub fn AutocompleteInputView(
                         cb.run(());
                     }
                 }
-                class=class
-            />
-            <Show when=move || !suggestions.get().is_empty()>
-                <AutocompleteDropdown
-                    items=suggestions.get()
-                    highlighted=highlighted
-                    on_select=on_select
-                />
-            </Show>
-        </div>
-    }
-}
-
-#[component]
-pub fn AutocompleteTextareaView(
-    value: ReadSignal<String>,
-    set_value: WriteSignal<String>,
-    #[prop(optional)] placeholder: &'static str,
-    #[prop(optional)] class: &'static str,
-    #[prop(optional, default = 3)] rows: u32,
-    on_keydown: Option<std::sync::Arc<dyn Fn(KeyboardEvent) + Send + Sync>>,
-    on_blur: Option<Callback<()>>,
-    on_input: Option<Callback<leptos::ev::Event>>,
-    node_ref: NodeRef<html::Textarea>,
-    autofocus: bool,
-    tags: Signal<Vec<Tag>>,
-    projects: Signal<Vec<Project>>,
-) -> impl IntoView {
-    let (trigger_state, set_trigger_state) = signal(None::<TriggerState>);
-    let (highlighted, set_highlighted) = signal(0_usize);
-    let (suggestions, set_suggestions) = signal(Vec::<SuggestionItem>::new());
-    let textarea_ref = node_ref;
-
-    if autofocus {
-        Effect::new(move || {
-            if let Some(el) = textarea_ref.get() {
-                let _ = el.focus();
-            }
-        });
-    }
-
-    let update_suggestions = move |val: &str, cursor: usize| {
-        if let Some(ts) = find_trigger(val, cursor) {
-            let items = get_suggestions(&tags.get(), &projects.get(), ts.trigger, &ts.query);
-            set_suggestions.set(items);
-            set_trigger_state.set(Some(ts));
-            set_highlighted.set(0);
-            return;
-        }
-        set_suggestions.set(vec![]);
-        set_trigger_state.set(None);
-    };
-
-    let on_select = Callback::new(move |name: String| {
-        if let Some(ts) = trigger_state.get_untracked() {
-            let val = value.get_untracked();
-            let new_val = insert_completion(&val, ts.start, ts.trigger, &name);
-            set_value.set(new_val);
-        }
-        set_suggestions.set(vec![]);
-        set_trigger_state.set(None);
-    });
-
-    view! {
-        <div class="relative">
-            <textarea
-                node_ref=textarea_ref
-                placeholder=placeholder
-                prop:value=move || value.get()
-                on:input=move |ev| {
-                    let val = event_target_value(&ev);
-                    set_value.set(val.clone());
-                    if let Some(target) = ev
-                        .target()
-                        .and_then(|t| {
-                            t.dyn_ref::<leptos::web_sys::HtmlTextAreaElement>().cloned()
-                        })
-                    {
-                        let cursor = target.selection_start().ok().flatten().unwrap_or(
-                            val.len() as u32,
-                        ) as usize;
-                        update_suggestions(&val, cursor);
-                    }
-                    if let Some(cb) = on_input {
-                        cb.run(ev);
-                    }
-                }
-                on:keydown=move |ev| {
-                    let items = suggestions.get_untracked();
-                    if !items.is_empty() {
-                        match ev.key().as_str() {
-                            "ArrowDown" => {
-                                ev.prevent_default();
-                                set_highlighted.update(|h| {
-                                    *h = (*h + 1).min(items.len() - 1);
-                                });
-                                return;
-                            }
-                            "ArrowUp" => {
-                                ev.prevent_default();
-                                set_highlighted
-                                    .update(|h| {
-                                        *h = h.saturating_sub(1);
-                                    });
-                                return;
-                            }
-                            "Enter" if !ev.shift_key() => {
-                                let idx = highlighted.get_untracked();
-                                if idx < items.len() {
-                                    ev.prevent_default();
-                                    on_select.run(items[idx].name.clone());
-                                    return;
-                                }
-                            }
-                            "Escape" => {
-                                set_suggestions.set(vec![]);
-                                set_trigger_state.set(None);
-                                return;
-                            }
-                            _ => {}
-                        }
-                    }
-                    if let Some(ref handler) = on_keydown {
-                        handler(ev);
-                    }
-                }
-                on:blur=move |_| {
-                    set_suggestions.set(vec![]);
-                    set_trigger_state.set(None);
-                    if let Some(cb) = on_blur {
-                        cb.run(());
-                    }
-                }
-                rows=rows
                 class=class
             />
             <Show when=move || !suggestions.get().is_empty()>
