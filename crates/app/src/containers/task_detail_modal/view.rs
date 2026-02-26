@@ -1,4 +1,5 @@
 use leptos::prelude::*;
+use wasm_bindgen::JsCast;
 
 use north_stores::Recurrence;
 
@@ -226,9 +227,11 @@ pub fn TaskDetailModalView(
                                             }
                                             // Auto-resize textarea to content
                                             if let Some(el) = title_input_ref.get_untracked() {
-                                                el.style().set_property("height", "auto").ok();
-                                                let scroll_h = el.scroll_height();
-                                                el.style().set_property("height", &format!("{scroll_h}px")).ok();
+                                                if let Some(html_el) = el.dyn_ref::<web_sys::HtmlElement>() {
+                                                    let _ = html_el.style().set_property("height", "auto");
+                                                    let scroll_h = html_el.scroll_height();
+                                                    let _ = html_el.style().set_property("height", &format!("{scroll_h}px"));
+                                                }
                                             }
                                         });
 
@@ -236,9 +239,11 @@ pub fn TaskDetailModalView(
                                         Effect::new(move || {
                                             let _ = title_read.get();
                                             if let Some(el) = title_input_ref.get() {
-                                                el.style().set_property("height", "auto").ok();
-                                                let scroll_h = el.scroll_height();
-                                                el.style().set_property("height", &format!("{scroll_h}px")).ok();
+                                                if let Some(html_el) = el.dyn_ref::<web_sys::HtmlElement>() {
+                                                    let _ = html_el.style().set_property("height", "auto");
+                                                    let scroll_h = html_el.scroll_height();
+                                                    let _ = html_el.style().set_property("height", &format!("{scroll_h}px"));
+                                                }
                                             }
                                         });
 

@@ -36,7 +36,7 @@ test.describe("Task Detail Modal", () => {
     // Title should contain the task title
     const titleArea = modal.locator('[data-testid="task-detail-title"]');
     await expect(titleArea).toBeVisible();
-    await expect(titleArea.locator("input")).toHaveValue("Modal Task");
+    await expect(titleArea.locator("textarea")).toHaveValue("Modal Task");
   });
 
   test("edit title persists on close and reopen", async ({
@@ -58,7 +58,7 @@ test.describe("Task Detail Modal", () => {
 
     // Edit title
     const titleInput = modal.locator(
-      '[data-testid="task-detail-title"] input',
+      '[data-testid="task-detail-title"] textarea',
     );
     await titleInput.fill("Updated Title");
     await titleInput.press("Enter");
@@ -76,7 +76,7 @@ test.describe("Task Detail Modal", () => {
     await page.keyboard.press("e");
     await expect(modal).toBeVisible();
     await expect(
-      modal.locator('[data-testid="task-detail-title"] input'),
+      modal.locator('[data-testid="task-detail-title"] textarea'),
     ).toHaveValue("Updated Title");
   });
 
@@ -136,7 +136,7 @@ test.describe("Task Detail Modal", () => {
     const modal = page.locator('[data-testid="task-detail-modal"]');
     await expect(modal).toBeVisible();
     const titleInput = modal.locator(
-      '[data-testid="task-detail-title"] input',
+      '[data-testid="task-detail-title"] textarea',
     );
     await expect(titleInput).toHaveValue("Task A");
 
@@ -457,5 +457,194 @@ test.describe("Task Detail Modal", () => {
     await page.keyboard.press("e");
     await expect(modal).toBeVisible();
     await expect(modal.locator('[data-testid="tag-remove"]')).toHaveCount(0);
+  });
+
+  test("title textarea strips line breaks on paste", async ({
+    authenticatedPage: page,
+  }) => {
+    await api.createTask({ title: "Paste Test" });
+
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("e");
+
+    const modal = page.locator('[data-testid="task-detail-modal"]');
+    await expect(modal).toBeVisible();
+
+    const titleTextarea = modal.locator(
+      '[data-testid="task-detail-title"] textarea',
+    );
+    await expect(titleTextarea).toBeVisible();
+
+    // Clear and type text with a newline character via evaluate
+    await titleTextarea.fill("");
+    await titleTextarea.evaluate((el: HTMLTextAreaElement) => {
+      el.value = "Line One\nLine Two";
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    // The on_input callback should strip newlines, replacing them with spaces
+    await expect(titleTextarea).not.toHaveValue(/\n/);
+    const value = await titleTextarea.inputValue();
+    expect(value).toContain("Line One");
+    expect(value).toContain("Line Two");
+    expect(value).not.toContain("\n");
+  });
+
+  test("title uses textarea element for multiline wrapping", async ({
+    authenticatedPage: page,
+  }) => {
+    // Create task with a long title that would wrap
+    const longTitle =
+      "This is a very long task title that should wrap to multiple lines in the detail modal textarea";
+    await api.createTask({ title: longTitle });
+
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("e");
+
+    const modal = page.locator('[data-testid="task-detail-modal"]');
+    await expect(modal).toBeVisible();
+
+    // Verify the title is in a textarea (not input)
+    const titleTextarea = modal.locator(
+      '[data-testid="task-detail-title"] textarea',
+    );
+    await expect(titleTextarea).toBeVisible();
+    await expect(titleTextarea).toHaveValue(longTitle);
+
+    // Verify no input element exists
+    await expect(
+      modal.locator('[data-testid="task-detail-title"] input'),
+    ).toHaveCount(0);
+  });
+
+  test("create subtask with body via inline input", async ({
+    authenticatedPage: page,
+  }) => {
+    await api.createTask({ title: "Parent Task" });
+
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    // Open modal
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("e");
+
+    const modal = page.locator('[data-testid="task-detail-modal"]');
+    await expect(modal).toBeVisible();
+
+    // Click "+ Add subtask"
+    await modal.locator('[data-testid="task-detail-subtask-btn"]').click();
+
+    const subtaskInput = modal.locator(
+      '[data-testid="task-detail-subtask-input"]',
+    );
+    await expect(subtaskInput).toBeVisible();
+
+    // Set the textarea value to title + newline + body via evaluate
+    // (simulates Ctrl+Enter multiline content)
+    await subtaskInput.focus();
+    await subtaskInput.evaluate((el: HTMLTextAreaElement) => {
+      // Simulate typing title + newline + body
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype,
+        "value",
+      )!.set!;
+      nativeInputValueSetter.call(el, "Subtask Title\nThis is the body");
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    // Plain Enter to submit
+    await subtaskInput.press("Enter");
+
+    // Subtask should appear with the title
+    await expect(modal.locator('[data-testid="task-row"]')).toHaveCount(1);
+    await expect(
+      modal.locator('[data-testid="task-row"]').first(),
+    ).toContainText("Subtask Title");
+
+    // Open the subtask detail to verify body was saved
+    const subtaskRow = modal.locator('[data-testid="task-row"]').first();
+    await subtaskRow.click();
+
+    // After navigating to subtask, body should contain the text
+    const bodyArea = modal.locator('[data-testid="task-detail-body"]');
+    await expect(bodyArea).toContainText("This is the body");
+  });
+
+  test("inline subtask input is a textarea", async ({
+    authenticatedPage: page,
+  }) => {
+    await api.createTask({ title: "Parent Task" });
+
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("e");
+
+    const modal = page.locator('[data-testid="task-detail-modal"]');
+    await expect(modal).toBeVisible();
+
+    await modal.locator('[data-testid="task-detail-subtask-btn"]').click();
+
+    // Verify the subtask input is a textarea element
+    const subtaskInput = modal.locator(
+      '[data-testid="task-detail-subtask-input"]',
+    );
+    await expect(subtaskInput).toBeVisible();
+
+    // The element should be a textarea
+    const tagName = await subtaskInput.evaluate((el) =>
+      el.tagName.toLowerCase(),
+    );
+    expect(tagName).toBe("textarea");
+  });
+
+  test("Enter in title textarea saves without inserting newline", async ({
+    authenticatedPage: page,
+  }) => {
+    await api.createTask({ title: "Enter Test" });
+
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("e");
+
+    const modal = page.locator('[data-testid="task-detail-modal"]');
+    await expect(modal).toBeVisible();
+
+    const titleTextarea = modal.locator(
+      '[data-testid="task-detail-title"] textarea',
+    );
+
+    // Edit and press Enter — should save, not insert newline
+    await titleTextarea.fill("New Title Via Enter");
+    await titleTextarea.press("Enter");
+
+    // Close and reopen to verify save
+    await page.locator('[data-testid="task-detail-close"]').click();
+    await expect(modal).not.toBeVisible();
+
+    await page.keyboard.press("e");
+    await expect(modal).toBeVisible();
+    await expect(
+      modal.locator('[data-testid="task-detail-title"] textarea'),
+    ).toHaveValue("New Title Via Enter");
   });
 });

@@ -54,6 +54,8 @@ pub fn AutocompleteTextarea(
     let tags = Signal::derive(move || app_store.map(|s| s.tags.get()).unwrap_or_default());
     let projects = Signal::derive(move || app_store.map(|s| s.projects.get()).unwrap_or_default());
 
+    let textarea_ref = node_ref.unwrap_or_default();
+
     view! {
         <AutocompleteTextareaView
             value=value
@@ -64,7 +66,7 @@ pub fn AutocompleteTextarea(
             on_keydown=on_keydown
             on_blur=on_blur
             on_input=on_input
-            node_ref=node_ref
+            node_ref=textarea_ref
             autofocus=autofocus
             tags=tags
             projects=projects

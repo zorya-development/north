@@ -2,6 +2,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use north_dto::CreateTask;
 use north_stores::use_app_store;
+use wasm_bindgen::JsCast;
 
 use super::view::InlineTaskInputView;
 
@@ -51,7 +52,9 @@ pub fn InlineTaskInput(
                     if let Some(el) = input_ref.get() {
                         let _ = el.focus();
                         // Reset height after clearing
-                        el.style().set_property("height", "auto").ok();
+                        if let Some(html_el) = el.dyn_ref::<web_sys::HtmlElement>() {
+                            let _ = html_el.style().set_property("height", "auto");
+                        }
                     }
                 });
             })

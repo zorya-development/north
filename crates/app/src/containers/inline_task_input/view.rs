@@ -1,4 +1,5 @@
 use leptos::prelude::*;
+use wasm_bindgen::JsCast;
 
 #[component]
 pub fn InlineTaskInputView(
@@ -10,9 +11,13 @@ pub fn InlineTaskInputView(
 ) -> impl IntoView {
     let auto_resize = move || {
         if let Some(el) = input_ref.get_untracked() {
-            el.style().set_property("height", "auto").ok();
-            let scroll_h = el.scroll_height();
-            el.style().set_property("height", &format!("{scroll_h}px")).ok();
+            if let Some(html_el) = el.dyn_ref::<web_sys::HtmlElement>() {
+                let _ = html_el.style().set_property("height", "auto");
+                let scroll_h = html_el.scroll_height();
+                let _ = html_el
+                    .style()
+                    .set_property("height", &format!("{scroll_h}px"));
+            }
         }
     };
 
