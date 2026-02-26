@@ -113,6 +113,13 @@ impl TaskDetailModalController {
         let t = self.title_draft.get_untracked();
         let b = self.body_draft.get_untracked();
         let b = if b.trim().is_empty() { None } else { Some(b) };
+
+        if let Some(task) = untrack(|| self.store.task()) {
+            if task.title == t && task.body == b {
+                return;
+            }
+        }
+
         self.store.update(t, b);
     }
 
