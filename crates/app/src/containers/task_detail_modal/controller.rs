@@ -5,6 +5,7 @@ use north_stores::{
 };
 
 use crate::containers::traversable_task_list::ExtraVisibleIds;
+use crate::libs::KeepCompletedVisible;
 
 #[derive(Clone, Copy)]
 pub struct TaskDetailModalController {
@@ -24,9 +25,13 @@ impl TaskDetailModalController {
     pub fn new(app_store: AppStore) -> Self {
         let extra_visible_ids = expect_context::<ExtraVisibleIds>().0;
         let subtask_show_completed = RwSignal::new(false);
+        let keep_completed_signal = use_context::<KeepCompletedVisible>().map(|kc| kc.signal());
         let subtask_filter = Signal::derive(move || {
             let show = subtask_show_completed.get();
-            Callback::new(move |task: TaskModel| task.completed_at.is_none() || show)
+            let pinned = keep_completed_signal.map(|s| s.get()).unwrap_or_default();
+            Callback::new(move |task: TaskModel| {
+                task.completed_at.is_none() || show || pinned.contains(&task.id)
+            })
         });
 
         Self {

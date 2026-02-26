@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use north_dto::Project;
 use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskModel, TaskStoreFilter};
 
-use crate::libs::{is_actionable, KeepTaskVisible};
+use crate::libs::{is_actionable, KeepCompletedVisible, KeepTaskVisible};
 
 const HIDE_NON_ACTIONABLE_KEY: &str = "north:hide-non-actionable:project";
 
@@ -48,6 +48,9 @@ impl ProjectController {
         // the project filter (e.g. moved to another project via detail modal).
         let extra_show_ids: RwSignal<Vec<i64>> = RwSignal::new(vec![]);
         provide_context(KeepTaskVisible::new(extra_show_ids));
+
+        let keep_completed = KeepCompletedVisible::new();
+        provide_context(keep_completed);
 
         // Track tasks that disappear from the base filter and keep them visible.
         let prev_filtered_ids: RwSignal<Vec<i64>> = RwSignal::new(vec![]);
@@ -108,12 +111,14 @@ impl ProjectController {
 
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
 
+        let keep_completed_signal = keep_completed.signal();
         let node_filter = Signal::derive(move || {
             let hide = hide_non_actionable.get();
             let show = show_completed.get();
+            let pinned = keep_completed_signal.get();
             Callback::new(move |task: TaskModel| {
                 if task.completed_at.is_some() {
-                    return show;
+                    return show || pinned.contains(&task.id);
                 }
                 if !hide {
                     return true;

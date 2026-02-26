@@ -64,7 +64,7 @@ pub fn TaskDetailModalView(
 
                     if ctrl.focus_if_new_task(task_id) {
                         request_animation_frame(move || {
-                            if let Some(el) = title_input_ref.get() {
+                            if let Some(el) = title_input_ref.get_untracked() {
                                 let _ = el.focus();
                             }
                         });

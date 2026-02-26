@@ -3,7 +3,7 @@ use leptos::prelude::*;
 use north_dto::ProjectStatus;
 use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskModel, TaskStoreFilter};
 
-use crate::libs::is_actionable;
+use crate::libs::{is_actionable, KeepCompletedVisible};
 
 const HIDE_NON_ACTIONABLE_KEY: &str = "north:hide-non-actionable:review";
 
@@ -99,17 +99,22 @@ impl ReviewController {
         let hide_non_actionable =
             Signal::derive(move || app_store.browser_storage.get_bool(HIDE_NON_ACTIONABLE_KEY));
 
+        let keep_completed = KeepCompletedVisible::new();
+        provide_context(keep_completed);
+
         let show_completed = RwSignal::new(false);
         let show_completed_reviewed = RwSignal::new(false);
 
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
 
+        let keep_completed_signal = keep_completed.signal();
         let pending_filter = Signal::derive(move || {
             let hide = hide_non_actionable.get();
             let show = show_completed.get();
+            let pinned = keep_completed_signal.get();
             Callback::new(move |task: TaskModel| {
                 if task.completed_at.is_some() {
-                    return show;
+                    return show || pinned.contains(&task.id);
                 }
                 if !hide {
                     return true;
@@ -120,7 +125,10 @@ impl ReviewController {
 
         let reviewed_filter = Signal::derive(move || {
             let show = show_completed_reviewed.get();
-            Callback::new(move |task: north_stores::TaskModel| task.completed_at.is_none() || show)
+            let pinned = keep_completed_signal.get();
+            Callback::new(move |task: north_stores::TaskModel| {
+                task.completed_at.is_none() || show || pinned.contains(&task.id)
+            })
         });
 
         Self {

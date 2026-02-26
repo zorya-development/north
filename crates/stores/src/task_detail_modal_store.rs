@@ -64,6 +64,14 @@ impl TaskDetailModalStore {
         self.task_memo.get().and_then(|memo| memo.get())
     }
 
+    /// Read the current task without subscribing to reactive updates.
+    /// Use this in event handlers and callbacks.
+    fn task_untracked(&self) -> Option<TaskModel> {
+        self.task_memo
+            .get_untracked()
+            .and_then(|memo| memo.get_untracked())
+    }
+
     pub fn is_open(&self) -> bool {
         self.current_task_id().is_some()
     }
@@ -154,59 +162,81 @@ impl TaskDetailModalStore {
     // ── Task mutations (delegate to task_store) ───────────────────
 
     pub fn toggle_complete(&self) {
-        let Some(task) = self.task() else { return };
+        let Some(task) = self.task_untracked() else {
+            return;
+        };
         let was_completed = task.completed_at.is_some();
         self.task_store.toggle_complete(task.id, was_completed);
     }
 
     pub fn delete(&self) {
-        let Some(task) = self.task() else { return };
+        let Some(task) = self.task_untracked() else {
+            return;
+        };
         self.task_store.delete_task(task.id);
         self.close();
     }
 
     pub fn update(&self, title: String, body: Option<String>) {
-        let Some(task) = self.task() else { return };
+        let Some(task) = self.task_untracked() else {
+            return;
+        };
         self.task_store.update_task(task.id, title, body);
     }
 
     pub fn set_start_at(&self, start_at: String) {
-        let Some(task) = self.task() else { return };
+        let Some(task) = self.task_untracked() else {
+            return;
+        };
         self.task_store.set_start_at(task.id, start_at);
     }
 
     pub fn clear_start_at(&self) {
-        let Some(task) = self.task() else { return };
+        let Some(task) = self.task_untracked() else {
+            return;
+        };
         self.task_store.clear_start_at(task.id);
     }
 
     pub fn set_project(&self, project_id: i64) {
-        let Some(task) = self.task() else { return };
+        let Some(task) = self.task_untracked() else {
+            return;
+        };
         self.task_store.set_project(task.id, project_id);
     }
 
     pub fn clear_project(&self) {
-        let Some(task) = self.task() else { return };
+        let Some(task) = self.task_untracked() else {
+            return;
+        };
         self.task_store.clear_project(task.id);
     }
 
     pub fn set_tags(&self, tag_names: Vec<String>) {
-        let Some(task) = self.task() else { return };
+        let Some(task) = self.task_untracked() else {
+            return;
+        };
         self.task_store.set_tags(task.id, tag_names);
     }
 
     pub fn set_due_date(&self, due_date: String) {
-        let Some(task) = self.task() else { return };
+        let Some(task) = self.task_untracked() else {
+            return;
+        };
         self.task_store.set_due_date(task.id, due_date);
     }
 
     pub fn clear_due_date(&self) {
-        let Some(task) = self.task() else { return };
+        let Some(task) = self.task_untracked() else {
+            return;
+        };
         self.task_store.clear_due_date(task.id);
     }
 
     pub fn set_sequential_limit(&self, limit: i16) {
-        let Some(task) = self.task() else { return };
+        let Some(task) = self.task_untracked() else {
+            return;
+        };
         self.task_store.set_sequential_limit(task.id, limit);
     }
 
@@ -215,7 +245,9 @@ impl TaskDetailModalStore {
         recurrence_type: Option<RecurrenceType>,
         recurrence_rule: Option<String>,
     ) {
-        let Some(task) = self.task() else { return };
+        let Some(task) = self.task_untracked() else {
+            return;
+        };
         self.task_store
             .set_recurrence(task.id, recurrence_type, recurrence_rule);
     }

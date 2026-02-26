@@ -2,7 +2,7 @@ use chrono::Utc;
 use leptos::prelude::*;
 use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskModel, TaskStoreFilter};
 
-use crate::libs::is_actionable;
+use crate::libs::{is_actionable, KeepCompletedVisible};
 
 const HIDE_NON_ACTIONABLE_KEY: &str = "north:hide-non-actionable:today";
 
@@ -62,17 +62,22 @@ impl TodayController {
         let show_completed = RwSignal::new(false);
         let is_loaded = app_store.tasks.loaded_signal();
 
+        let keep_completed = KeepCompletedVisible::new();
+        provide_context(keep_completed);
+
         let hide_non_actionable =
             Signal::derive(move || app_store.browser_storage.get_bool(HIDE_NON_ACTIONABLE_KEY));
 
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
 
+        let keep_completed_signal = keep_completed.signal();
         let node_filter = Signal::derive(move || {
             let hide = hide_non_actionable.get();
             let show = show_completed.get();
+            let pinned = keep_completed_signal.get();
             Callback::new(move |task: TaskModel| {
                 if task.completed_at.is_some() {
-                    return show;
+                    return show || pinned.contains(&task.id);
                 }
                 if !hide {
                     return true;

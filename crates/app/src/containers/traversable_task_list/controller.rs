@@ -5,7 +5,7 @@ use north_stores::{AppStore, ModalStore, StatusBarVariant, TaskModel, TaskStoreF
 
 use super::tree::*;
 use crate::containers::task_list_item::ItemConfig;
-use crate::libs::KeepTaskVisible;
+use crate::libs::{KeepCompletedVisible, KeepTaskVisible};
 
 #[derive(Clone, Copy)]
 #[allow(dead_code)]
@@ -25,6 +25,7 @@ pub struct TraversableTaskListController {
     scoped: bool,
     default_project_id: Option<Signal<Option<i64>>>,
     keep_visible: Option<KeepTaskVisible>,
+    keep_completed: Option<KeepCompletedVisible>,
     on_task_click: Option<Callback<i64>>,
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
 }
@@ -73,6 +74,7 @@ impl TraversableTaskListController {
         let create_input_value = RwSignal::new(String::new());
         let pending_delete = RwSignal::new(false);
         let keep_visible = use_context::<KeepTaskVisible>();
+        let keep_completed = use_context::<KeepCompletedVisible>();
 
         Self {
             flat_nodes,
@@ -90,6 +92,7 @@ impl TraversableTaskListController {
             scoped,
             default_project_id,
             keep_visible,
+            keep_completed,
             on_task_click,
             on_reorder,
         }
@@ -361,9 +364,13 @@ impl TraversableTaskListController {
             .map(|t| t.completed_at.is_some())
             .unwrap_or(false);
 
-        // When completing, advance cursor to neighbor before the task
-        // moves to the completed group or disappears from the list.
+        // When completing, pin the task so it stays visible until refresh,
+        // then advance cursor to neighbor before the task moves to the
+        // completed group.
         if !is_completed {
+            if let Some(kc) = self.keep_completed {
+                kc.keep(task_id);
+            }
             let nodes = self.flat_nodes.get_untracked();
             let next_cursor = next_sibling(&nodes, task_id)
                 .or_else(|| prev_sibling(&nodes, task_id))

@@ -14,6 +14,9 @@ struct TriggerState {
 }
 
 fn find_trigger(value: &str, cursor: usize) -> Option<TriggerState> {
+    if cursor > value.len() || !value.is_char_boundary(cursor) {
+        return None;
+    }
     let before = &value[..cursor];
     for trigger in ['#', '@'] {
         if let Some(pos) = before.rfind(trigger) {

@@ -99,7 +99,7 @@ test.describe("Project Page", () => {
     // Complete via checkbox
     await page.locator('[data-testid="task-checkbox"]').click();
 
-    // Task should disappear from active list
-    await expect(page.locator('[data-testid="task-row"]')).toHaveCount(0);
+    // Task stays visible until page refresh
+    await expect(page.locator('[data-testid="task-row"]')).toHaveCount(1);
   });
 });
