@@ -94,168 +94,166 @@ pub fn TraversableTaskListView(
                 }
             }
         >
-            {move || {
-                if !is_loaded.get() {
-                    return view! { <Spinner/> }.into_any();
+            // Loading spinner
+            <Show when=move || !is_loaded.get()>
+                <Spinner/>
+            </Show>
+
+            // CreateTop input (shown above the list or above empty state)
+            <Show when=move || {
+                is_loaded.get() && matches!(inline_mode.get(), InlineMode::CreateTop)
+            }>
+                <InlineCreateInput
+                    depth=Memo::new(|_| 0u8)
+                    value=create_input_value
+                    ctrl=ctrl
+                />
+            </Show>
+
+            // Empty state
+            <Show when=move || {
+                is_loaded.get()
+                    && flat_nodes.get().is_empty()
+                    && !matches!(inline_mode.get(), InlineMode::CreateTop)
+            }>
+                <div data-testid="empty-task-list">
+                    <Text
+                        variant=TextVariant::BodyMd
+                        color=TextColor::Secondary
+                        tag=TextTag::P
+                        class="py-8 text-center"
+                    >
+                        {empty_message}
+                    </Text>
+                </div>
+            </Show>
+
+            // Task list — <For> is always mounted, handles its own diffing
+            <div
+                data-testid="task-list"
+                style:display=move || {
+                    if is_loaded.get() && !flat_nodes.get().is_empty() {
+                        ""
+                    } else {
+                        "none"
+                    }
                 }
-                let nodes = flat_nodes.get();
-                if nodes.is_empty() {
-                    return view! {
-                        <Show when=move || {
-                            matches!(inline_mode.get(), InlineMode::CreateTop)
-                        }>
+            >
+            <For
+                each=move || flat_nodes.get()
+                key=|node| node.task_id
+                children=move |node| {
+                    let task_id = node.task_id;
+                    let initial_depth = node.depth;
+
+                    let depth = Memo::new(move |_| {
+                        flat_nodes
+                            .get()
+                            .iter()
+                            .find(|n| n.task_id == task_id)
+                            .map(|n| n.depth)
+                            .unwrap_or(initial_depth)
+                    });
+
+                    let is_selected = Memo::new(move |_| {
+                        cursor_task_id.get() == Some(task_id)
+                    });
+
+                    let is_editing = Memo::new(move |_| {
+                        matches!(
+                            inline_mode.get(),
+                            InlineMode::Edit { task_id: id }
+                            if id == task_id
+                        )
+                    });
+
+                    let has_create_before = Memo::new(move |_| {
+                        matches!(
+                            inline_mode.get(),
+                            InlineMode::Create {
+                                anchor_task_id,
+                                placement: Placement::Before,
+                                ..
+                            } if anchor_task_id == task_id
+                        )
+                    });
+
+                    let has_create_after = Memo::new(move |_| {
+                        matches!(
+                            inline_mode.get(),
+                            InlineMode::Create {
+                                anchor_task_id,
+                                placement: Placement::After,
+                                ..
+                            } if anchor_task_id == task_id
+                        )
+                    });
+
+                    let create_depth = Memo::new(move |_| {
+                        match inline_mode.get() {
+                            InlineMode::Create { depth, .. } => depth,
+                            _ => 0,
+                        }
+                    });
+
+                    view! {
+                        <Show when=move || has_create_before.get()>
                             <InlineCreateInput
-                                depth=Memo::new(|_| 0u8)
+                                depth=create_depth
                                 value=create_input_value
                                 ctrl=ctrl
                             />
                         </Show>
-                        <Show when=move || {
-                            !matches!(inline_mode.get(), InlineMode::CreateTop)
-                        }>
-                            <div data-testid="empty-task-list">
-                                <Text
-                                    variant=TextVariant::BodyMd
-                                    color=TextColor::Secondary
-                                    tag=TextTag::P
-                                    class="py-8 text-center"
-                                >
-                                    {empty_message}
-                                </Text>
+
+                        <Show when=move || !is_editing.get()>
+                            <div
+                                data-testid="task-row"
+                                data-task-id=task_id
+                                data-focused=move || is_selected.get().to_string()
+                                style=move || {
+                                    format!(
+                                        "padding-left: {}rem",
+                                        depth.get() as f32 * 1.5,
+                                    )
+                                }
+                                class=move || {
+                                    if is_selected.get() {
+                                        "trash-polka-focus"
+                                    } else {
+                                        ""
+                                    }
+                                }
+                                on:click=move |_| {
+                                    cursor_task_id.set(Some(task_id));
+                                    ctrl.open_detail_for(task_id);
+                                }
+                            >
+                                <TaskListItem
+                                    task_id=task_id
+                                    config=item_config
+                                />
                             </div>
                         </Show>
+
+                        <Show when=move || is_editing.get()>
+                            <InlineEditInput
+                                task_id=task_id
+                                depth=depth
+                                ctrl=ctrl
+                            />
+                        </Show>
+
+                        <Show when=move || has_create_after.get()>
+                            <InlineCreateInput
+                                depth=create_depth
+                                value=create_input_value
+                                ctrl=ctrl
+                            />
+                        </Show>
                     }
-                    .into_any();
                 }
-                view! {
-                    <Show when=move || {
-                        matches!(inline_mode.get(), InlineMode::CreateTop)
-                    }>
-                        <InlineCreateInput
-                            depth=Memo::new(|_| 0u8)
-                            value=create_input_value
-                            ctrl=ctrl
-                        />
-                    </Show>
-                    <div data-testid="task-list">
-                    <For
-                        each=move || flat_nodes.get()
-                        key=|node| node.task_id
-                        children=move |node| {
-                            let task_id = node.task_id;
-                            let initial_depth = node.depth;
-
-                            let depth = Memo::new(move |_| {
-                                flat_nodes
-                                    .get()
-                                    .iter()
-                                    .find(|n| n.task_id == task_id)
-                                    .map(|n| n.depth)
-                                    .unwrap_or(initial_depth)
-                            });
-
-                            let is_selected = Memo::new(move |_| {
-                                cursor_task_id.get() == Some(task_id)
-                            });
-
-                            let is_editing = Memo::new(move |_| {
-                                matches!(
-                                    inline_mode.get(),
-                                    InlineMode::Edit { task_id: id }
-                                    if id == task_id
-                                )
-                            });
-
-                            let has_create_before = Memo::new(move |_| {
-                                matches!(
-                                    inline_mode.get(),
-                                    InlineMode::Create {
-                                        anchor_task_id,
-                                        placement: Placement::Before,
-                                        ..
-                                    } if anchor_task_id == task_id
-                                )
-                            });
-
-                            let has_create_after = Memo::new(move |_| {
-                                matches!(
-                                    inline_mode.get(),
-                                    InlineMode::Create {
-                                        anchor_task_id,
-                                        placement: Placement::After,
-                                        ..
-                                    } if anchor_task_id == task_id
-                                )
-                            });
-
-                            let create_depth = Memo::new(move |_| {
-                                match inline_mode.get() {
-                                    InlineMode::Create { depth, .. } => depth,
-                                    _ => 0,
-                                }
-                            });
-
-                            view! {
-                                <Show when=move || has_create_before.get()>
-                                    <InlineCreateInput
-                                        depth=create_depth
-                                        value=create_input_value
-                                        ctrl=ctrl
-                                    />
-                                </Show>
-
-                                <Show when=move || !is_editing.get()>
-                                    <div
-                                        data-testid="task-row"
-                                        data-task-id=task_id
-                                        data-focused=move || is_selected.get().to_string()
-                                        style=move || {
-                                            format!(
-                                                "padding-left: {}rem",
-                                                depth.get() as f32 * 1.5,
-                                            )
-                                        }
-                                        class=move || {
-                                            if is_selected.get() {
-                                                "trash-polka-focus"
-                                            } else {
-                                                ""
-                                            }
-                                        }
-                                        on:click=move |_| {
-                                            cursor_task_id.set(Some(task_id));
-                                            ctrl.open_detail_for(task_id);
-                                        }
-                                    >
-                                        <TaskListItem
-                                            task_id=task_id
-                                            config=item_config
-                                        />
-                                    </div>
-                                </Show>
-
-                                <Show when=move || is_editing.get()>
-                                    <InlineEditInput
-                                        task_id=task_id
-                                        depth=depth
-                                        ctrl=ctrl
-                                    />
-                                </Show>
-
-                                <Show when=move || has_create_after.get()>
-                                    <InlineCreateInput
-                                        depth=create_depth
-                                        value=create_input_value
-                                        ctrl=ctrl
-                                    />
-                                </Show>
-                            }
-                        }
-                    />
-                    </div>
-                }
-                .into_any()
-            }}
+            />
+            </div>
         </div>
     }
 }
