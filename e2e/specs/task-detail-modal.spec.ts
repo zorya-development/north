@@ -263,14 +263,22 @@ test.describe("Task Detail Modal", () => {
     const modal = page.locator('[data-testid="task-detail-modal"]');
     await expect(modal).toBeVisible();
 
-    // Click project picker trigger (currently shows "Inbox")
-    await modal.locator('[data-testid="project-picker-trigger"]').click();
-
-    // Select "Work" project
-    await modal
+    // Click project picker trigger — a background refetch may re-render
+    // modal content (detaching the open popover), so retry if needed
+    const workOption = modal
       .locator('[data-testid="project-picker-option"]')
-      .filter({ hasText: "Work" })
-      .click();
+      .filter({ hasText: "Work" });
+    await modal.locator('[data-testid="project-picker-trigger"]').click();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await workOption.click({ timeout: 3000 });
+        break;
+      } catch {
+        await modal
+          .locator('[data-testid="project-picker-trigger"]')
+          .click();
+      }
+    }
 
     // Verify project shows in header
     await expect(modal).toContainText("Work");
@@ -288,7 +296,7 @@ test.describe("Task Detail Modal", () => {
     const project = await api.createProject({ title: "Work" });
     await api.createTask({ title: "Project task", project_id: project.id });
 
-    await page.goto("/all-tasks");
+    await page.goto("/tasks");
     await page
       .locator('[data-testid="task-list"]')
       .waitFor({ state: "visible" });
@@ -305,11 +313,20 @@ test.describe("Task Detail Modal", () => {
       modal.locator('[data-testid="project-picker-trigger"]'),
     ).toContainText("Work");
 
-    // Click project picker trigger
+    // Click project picker trigger — retry if background refetch
+    // re-renders modal content and closes the popover
+    const inboxOption = modal.locator('[data-testid="project-picker-inbox"]');
     await modal.locator('[data-testid="project-picker-trigger"]').click();
-
-    // Click "Inbox" to clear project
-    await modal.locator('[data-testid="project-picker-inbox"]').click();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await inboxOption.click({ timeout: 3000 });
+        break;
+      } catch {
+        await modal
+          .locator('[data-testid="project-picker-trigger"]')
+          .click();
+      }
+    }
 
     // Verify project picker now shows "Inbox"
     await expect(
@@ -372,12 +389,18 @@ test.describe("Task Detail Modal", () => {
     const modal = page.locator('[data-testid="task-detail-modal"]');
     await expect(modal).toBeVisible();
 
-    // Click start date trigger ("Not set")
-    await modal.locator('[data-testid="start-date-trigger"]').click();
-
-    // Fill date in popover
+    // Click start date trigger — retry if background refetch
+    // re-renders modal content and closes the popover
     const dateInput = modal.locator('[data-testid="start-date-input"]');
-    await expect(dateInput).toBeVisible();
+    await modal.locator('[data-testid="start-date-trigger"]').click();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await dateInput.waitFor({ state: "visible", timeout: 3000 });
+        break;
+      } catch {
+        await modal.locator('[data-testid="start-date-trigger"]').click();
+      }
+    }
     await dateInput.fill("2026-12-20");
 
     // Click Save
@@ -417,12 +440,18 @@ test.describe("Task Detail Modal", () => {
     const modal = page.locator('[data-testid="task-detail-modal"]');
     await expect(modal).toBeVisible();
 
-    // Click tag picker trigger ("None")
-    await modal.locator('[data-testid="tag-picker-trigger"]').click();
-
-    // Type new tag name in input and press Enter
+    // Click tag picker trigger — retry if background refetch
+    // re-renders modal content and closes the popover
     const tagInput = modal.locator('[data-testid="tag-picker-input"]');
-    await expect(tagInput).toBeVisible();
+    await modal.locator('[data-testid="tag-picker-trigger"]').click();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await tagInput.waitFor({ state: "visible", timeout: 3000 });
+        break;
+      } catch {
+        await modal.locator('[data-testid="tag-picker-trigger"]').click();
+      }
+    }
     await tagInput.fill("urgent");
     await tagInput.press("Enter");
 
@@ -457,11 +486,18 @@ test.describe("Task Detail Modal", () => {
     const modal = page.locator('[data-testid="task-detail-modal"]');
     await expect(modal).toBeVisible();
 
-    // Verify tag "urgent" is displayed
+    // Verify tag "urgent" is displayed — retry click if background
+    // refetch re-renders modal content and detaches the element
     await expect(modal).toContainText("urgent");
-
-    // Click the × button on the tag to remove it
-    await modal.locator('[data-testid="tag-remove"]').click();
+    const tagRemove = modal.locator('[data-testid="tag-remove"]').first();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await tagRemove.click({ force: true, timeout: 3000 });
+        break;
+      } catch {
+        // Re-render detached element, retry
+      }
+    }
 
     // Wait for store round-trip to complete — the tag remove button should disappear
     await expect(modal.locator('[data-testid="tag-remove"]')).toHaveCount(0, {

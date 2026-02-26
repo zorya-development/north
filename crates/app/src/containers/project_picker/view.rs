@@ -111,7 +111,7 @@ pub fn ProjectPickerView(
                 }
             })
         >
-            <div class="p-1 w-[200px] max-h-[240px] overflow-y-auto">
+            <div class="p-1 w-[200px] max-h-[240px] overflow-y-auto" data-testid="project-picker-panel">
                 {move || {
                     let list = projects.get();
                     if list.is_empty() {
