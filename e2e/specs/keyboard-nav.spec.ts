@@ -145,8 +145,10 @@ test.describe("Keyboard Navigation", () => {
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Space");
 
-    // Completed task should disappear (show_completed defaults to false)
-    await expect(page.locator('[data-testid="task-row"]')).toHaveCount(0);
+    // Task is completed (verified via API)
+    const tasks = await api.listTasks();
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].completed_at).not.toBeNull();
   });
 
   test("E opens task detail modal, Escape closes it", async ({
