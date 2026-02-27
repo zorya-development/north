@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.tag }}
-      base_changed: ${{ steps.changes.outputs.base }}
+      base_exists: ${{ steps.check.outputs.exists }}
     steps:
       - uses: actions/checkout@v4
 
@@ -22,17 +22,22 @@ jobs:
         id: version
         run: echo "tag=$(cat docker/base/VERSION | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
 
-      - uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            base:
-              - 'docker/base/**'
+      - name: Check if base image exists
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api /orgs/zorya-development/packages/container/north%2Fbase/versions \
+            --jq '.[].metadata.container.tags[]' 2>/dev/null | grep -qx "${{ steps.version.outputs.tag }}"; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
 
   build-base:
     name: Build Base Image
     needs: [resolve]
-    if: needs.resolve.outputs.base_changed == 'true'
+    if: needs.resolve.outputs.base_exists == 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: read

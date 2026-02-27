@@ -24,7 +24,7 @@ north/
 ├── docs/                       # PRD.md, DESIGN.md, UI_KIT.md
 ├── chart/                      # Helm chart for Kubernetes deployment
 ├── .github/workflows/
-│   ├── test.yml                # CI: fmt, clippy, test
+│   ├── ci.yml                  # CI: build + check (parallel) → e2e
 │   └── release.yml             # Release: prod Docker image + GitHub release on master
 │
 └── crates/
@@ -199,10 +199,11 @@ Three Dockerfiles, layered:
 
 ## CI/CD
 
-**test.yml** (push to master + all PRs):
-1. `resolve` — reads `docker/base/VERSION`, detects changes in `docker/base/**`
-2. `build-base` — conditional: builds and pushes base image only if base files changed
-3. `check` — runs `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`
+**ci.yml** (all PRs):
+1. `resolve` — reads `docker/base/VERSION`, checks if image tag exists in GHCR
+2. `build-base` — conditional: builds and pushes base image only if tag doesn't exist in registry
+3. `build` + `check` — run in parallel; build produces release binary, check runs fmt/clippy/test
+4. `e2e` — runs Playwright tests against the release binary (requires both build and check to pass)
 
 **release.yml** (push to master only):
 1. `resolve` — reads app version from `Cargo.toml`, checks if git tag exists
