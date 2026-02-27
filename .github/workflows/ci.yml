@@ -121,8 +121,8 @@ jobs:
 
   check:
     name: Check
-    needs: [resolve, build-base, build]
-    if: always() && needs.build.result == 'success'
+    needs: [resolve, build-base]
+    if: always() && needs.resolve.result == 'success' && needs.build-base.result != 'failure'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/zorya-development/north/base:${{ needs.resolve.outputs.version }}
@@ -146,6 +146,7 @@ jobs:
       UPLOAD_DIR: /tmp/north-uploads
       RUSTC_WRAPPER: "sccache"
       SCCACHE_DIR: /sccache
+      CARGO_INCREMENTAL: "0"
 
     steps:
       - uses: actions/checkout@v4
@@ -181,8 +182,8 @@ jobs:
 
   e2e:
     name: E2E
-    needs: [resolve, build-base, build]
-    if: always() && needs.build.result == 'success'
+    needs: [resolve, build-base, build, check]
+    if: always() && needs.build.result == 'success' && needs.check.result == 'success'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/zorya-development/north/base:${{ needs.resolve.outputs.version }}
