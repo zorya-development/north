@@ -1,5 +1,4 @@
-import { test, expect } from "@playwright/test";
-import { ADMIN_USER, loginViaUI } from "../fixtures/auth";
+import { test, expect, ADMIN_USER, loginViaUI } from "../fixtures/auth";
 
 test.describe("Login", () => {
   test("renders the login form", async ({ page }) => {

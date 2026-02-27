@@ -1,11 +1,22 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
+use leptos::wasm_bindgen::JsCast;
 use north_dto::CreateTask;
 use north_stores::{AppStore, ModalStore, StatusBarVariant, TaskModel, TaskStoreFilter};
 
 use super::tree::*;
 use crate::containers::task_list_item::ItemConfig;
 use crate::libs::{KeepCompletedVisible, KeepTaskVisible};
+
+/// Blur the currently focused element so that blur handlers fire while
+/// signals/callbacks are still alive — before a `<Show>` disposes the scope.
+fn blur_active_element() {
+    if let Some(el) = document().active_element() {
+        if let Some(html_el) = el.dyn_ref::<web_sys::HtmlElement>() {
+            let _ = html_el.blur();
+        }
+    }
+}
 
 #[derive(Clone, Copy)]
 #[allow(dead_code)]
@@ -165,12 +176,14 @@ impl TraversableTaskListController {
                     .tasks
                     .update_task(task_id, new_title, new_body);
             }
+            blur_active_element();
             self.inline_mode.set(InlineMode::None);
         }
     }
 
     pub fn cancel_edit(&self) {
         if matches!(self.inline_mode.get_untracked(), InlineMode::Edit { .. }) {
+            blur_active_element();
             self.inline_mode.set(InlineMode::None);
         }
     }
@@ -283,6 +296,10 @@ impl TraversableTaskListController {
                 // For After placement, chain: next create goes after the
                 // newly created task. For Before, anchor stays the same.
                 if placement == Placement::After {
+                    // Blur before changing inline_mode to prevent disposed-callback
+                    // panics: the old <Show> scope will tear down, and the browser
+                    // fires blur into handlers whose Callbacks are already disposed.
+                    blur_active_element();
                     inline_mode.set(InlineMode::Create {
                         anchor_task_id: task.id,
                         placement: Placement::After,
@@ -333,6 +350,8 @@ impl TraversableTaskListController {
                 if let Some(kv) = keep_visible {
                     kv.keep(task.id);
                 }
+                // Blur before changing inline_mode (see create_task_anchored).
+                blur_active_element();
                 // Chain: next create goes after the newly created task.
                 inline_mode.set(InlineMode::Create {
                     anchor_task_id: task.id,
@@ -345,6 +364,7 @@ impl TraversableTaskListController {
     }
 
     pub fn close_inline(&self) {
+        blur_active_element();
         self.inline_mode.set(InlineMode::None);
     }
 

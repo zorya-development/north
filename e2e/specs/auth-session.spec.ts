@@ -1,5 +1,4 @@
-import { test, expect } from "@playwright/test";
-import { loginViaUI, waitForInboxLoaded } from "../fixtures/auth";
+import { test, expect, loginViaUI, waitForInboxLoaded } from "../fixtures/auth";
 
 test.describe("Auth Session", () => {
   test("session persists on reload", async ({ page }) => {

@@ -1,4 +1,4 @@
-import { test as base, type Page } from "@playwright/test";
+import { test as base, expect, type Page } from "@playwright/test";
 
 export interface TestUser {
   email: string;
@@ -39,10 +39,24 @@ type AuthFixtures = {
 };
 
 export const test = base.extend<AuthFixtures>({
+  page: async ({ page }, use) => {
+    const errors: string[] = [];
+    page.on("pageerror", (err) => errors.push(err.message));
+    page.on("console", (msg) => {
+      if (msg.type() === "error" && msg.text().includes("panicked at")) {
+        errors.push(msg.text());
+      }
+    });
+
+    await use(page);
+
+    expect(errors, "Browser console errors detected").toEqual([]);
+  },
+
   authenticatedPage: async ({ page }, use) => {
     await loginViaUI(page);
     await use(page);
   },
 });
 
-export { expect } from "@playwright/test";
+export { expect };
