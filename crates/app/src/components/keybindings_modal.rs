@@ -14,6 +14,7 @@ pub fn KeybindingsModal(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> 
         ("Space", "Toggle complete"),
         ("E", "Open detail"),
         ("R", "Mark as reviewed"),
+        ("S", "Toggle someday"),
         ("Delete", "Delete task"),
         ("Escape", "Clear selection"),
         ("?", "This help"),
@@ -21,7 +22,7 @@ pub fn KeybindingsModal(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> 
 
     view! {
         <Modal open=open set_open=set_open>
-            <div class="p-6">
+            <div data-testid="keybindings-modal" class="p-6">
                 <h2 class="text-lg font-semibold text-text-primary mb-4">
                     "Keyboard shortcuts"
                 </h2>

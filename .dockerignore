@@ -1,7 +1,6 @@
 target/
 .git/
 uploads/
-node_modules/
 docker/
 .github/
 .dockerignore
@@ -11,3 +10,18 @@ docker-compose.yml
 .env.*
 .vscode/
 .idea/
+
+# Testing
+e2e/
+test-results/
+
+# Docs & assets
+docs/
+.docs/
+.assets/
+
+# Tools & config
+.claude/
+.playwright-mcp/
+scripts/
+chart/

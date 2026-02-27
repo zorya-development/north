@@ -16,7 +16,6 @@ pub fn ReviewView(
     reviewed_filter: Signal<Callback<north_stores::TaskModel, bool>>,
     show_reviewed: ReadSignal<bool>,
     set_show_reviewed: WriteSignal<bool>,
-    on_review_all: Callback<()>,
     on_task_click: Callback<i64>,
     on_toggle_visibility: Callback<()>,
 ) -> impl IntoView {
@@ -46,13 +45,6 @@ pub fn ReviewView(
                     </button>
                 </div>
                 <div class="flex items-center gap-3 mt-2">
-                    <button
-                        on:click=move |_| on_review_all.run(())
-                        class="text-sm text-text-secondary hover:text-accent \
-                               transition-colors cursor-pointer"
-                    >
-                        "Mark All as Reviewed"
-                    </button>
                     <button
                         on:click=move |_| on_toggle_visibility.run(())
                         class="text-xs text-text-secondary \
@@ -84,6 +76,7 @@ pub fn ReviewView(
 
             <div class="border-t border-border pt-4">
                 <button
+                    data-testid="review-toggle-recent"
                     on:click=move |_| {
                         set_show_reviewed.update(|v| *v = !*v);
                     }

@@ -15,11 +15,11 @@ pub fn Popover(
 
     Effect::new(move |_| {
         if !open.get() {
-            if let Some(el) = panel_ref.get() {
-                // Access web_sys::HtmlElement::style() via Node → JsCast
-                let node: &web_sys::Node = &el;
-                let html: &web_sys::HtmlElement = node.unchecked_ref();
-                let _ = html.style().set_property("opacity", "0");
+            // Reset visibility for next open
+            if let Some(panel_el) = panel_ref.get() {
+                let panel_node: &web_sys::Node = &panel_el;
+                let panel_ws: &web_sys::HtmlElement = panel_node.unchecked_ref();
+                let _ = panel_ws.style().set_property("visibility", "hidden");
             }
             return;
         }
@@ -76,7 +76,8 @@ pub fn Popover(
         let style = panel_ws.style();
         let _ = style.set_property("top", &format!("{top}px"));
         let _ = style.set_property("left", &format!("{left}px"));
-        let _ = style.set_property("opacity", "1");
+        // Position set — reveal the panel
+        let _ = style.remove_property("visibility");
     });
 
     view! {
@@ -92,7 +93,7 @@ pub fn Popover(
             <div
                 node_ref=panel_ref
                 class="fixed z-50 rounded-xl shadow-lg"
-                style="opacity: 0; background-color: var(--bg-secondary); \
+                style="visibility: hidden; background-color: var(--bg-secondary); \
                        border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);"
                 style:display=move || {
                     if open.get() { "block" } else { "none" }

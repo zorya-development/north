@@ -1,10 +1,22 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
+use leptos::wasm_bindgen::JsCast;
 use north_dto::CreateTask;
 use north_stores::{AppStore, ModalStore, StatusBarVariant, TaskModel, TaskStoreFilter};
 
 use super::tree::*;
 use crate::containers::task_list_item::ItemConfig;
+use crate::libs::{KeepCompletedVisible, KeepTaskVisible};
+
+/// Blur the currently focused element so that blur handlers fire while
+/// signals/callbacks are still alive — before a `<Show>` disposes the scope.
+fn blur_active_element() {
+    if let Some(el) = document().active_element() {
+        if let Some(html_el) = el.dyn_ref::<web_sys::HtmlElement>() {
+            let _ = html_el.blur();
+        }
+    }
+}
 
 #[derive(Clone, Copy)]
 #[allow(dead_code)]
@@ -23,6 +35,8 @@ pub struct TraversableTaskListController {
     allow_reorder: bool,
     scoped: bool,
     default_project_id: Option<Signal<Option<i64>>>,
+    keep_visible: Option<KeepTaskVisible>,
+    keep_completed: Option<KeepCompletedVisible>,
     on_task_click: Option<Callback<i64>>,
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
 }
@@ -70,6 +84,8 @@ impl TraversableTaskListController {
         let inline_mode = RwSignal::new(InlineMode::None);
         let create_input_value = RwSignal::new(String::new());
         let pending_delete = RwSignal::new(false);
+        let keep_visible = use_context::<KeepTaskVisible>();
+        let keep_completed = use_context::<KeepCompletedVisible>();
 
         Self {
             flat_nodes,
@@ -86,6 +102,8 @@ impl TraversableTaskListController {
             allow_reorder,
             scoped,
             default_project_id,
+            keep_visible,
+            keep_completed,
             on_task_click,
             on_reorder,
         }
@@ -151,23 +169,21 @@ impl TraversableTaskListController {
         }
     }
 
-    pub fn save_edit(&self, new_title: String) {
+    pub fn save_edit(&self, new_title: String, new_body: Option<String>) {
         if let InlineMode::Edit { task_id } = self.inline_mode.get_untracked() {
             if !new_title.is_empty() {
-                let body = self
-                    .app_store
+                self.app_store
                     .tasks
-                    .get_by_id(task_id)
-                    .get_untracked()
-                    .and_then(|t| t.body);
-                self.app_store.tasks.update_task(task_id, new_title, body);
+                    .update_task(task_id, new_title, new_body);
             }
+            blur_active_element();
             self.inline_mode.set(InlineMode::None);
         }
     }
 
     pub fn cancel_edit(&self) {
         if matches!(self.inline_mode.get_untracked(), InlineMode::Edit { .. }) {
+            blur_active_element();
             self.inline_mode.set(InlineMode::None);
         }
     }
@@ -237,7 +253,7 @@ impl TraversableTaskListController {
         parent_id: Option<i64>,
         depth: u8,
     ) {
-        let title = self.create_input_value.get_untracked().trim().to_string();
+        let (title, body) = Self::parse_title_body(&self.create_input_value.get_untracked());
         if title.is_empty() {
             self.close_inline();
             return;
@@ -260,6 +276,7 @@ impl TraversableTaskListController {
 
         let input = CreateTask {
             title,
+            body,
             parent_id,
             project_id,
             sort_key: Some(sort_key),
@@ -270,11 +287,19 @@ impl TraversableTaskListController {
 
         let store = self.app_store.tasks;
         let inline_mode = self.inline_mode;
+        let keep_visible = self.keep_visible;
         spawn_local(async move {
             if let Some(task) = store.create_task_async(input).await {
+                if let Some(kv) = keep_visible {
+                    kv.keep(task.id);
+                }
                 // For After placement, chain: next create goes after the
                 // newly created task. For Before, anchor stays the same.
                 if placement == Placement::After {
+                    // Blur before changing inline_mode to prevent disposed-callback
+                    // panics: the old <Show> scope will tear down, and the browser
+                    // fires blur into handlers whose Callbacks are already disposed.
+                    blur_active_element();
                     inline_mode.set(InlineMode::Create {
                         anchor_task_id: task.id,
                         placement: Placement::After,
@@ -287,7 +312,7 @@ impl TraversableTaskListController {
     }
 
     fn create_task_top(&self) {
-        let title = self.create_input_value.get_untracked().trim().to_string();
+        let (title, body) = Self::parse_title_body(&self.create_input_value.get_untracked());
         if title.is_empty() {
             self.close_inline();
             return;
@@ -308,6 +333,7 @@ impl TraversableTaskListController {
 
         let input = CreateTask {
             title,
+            body,
             parent_id: None,
             project_id,
             sort_key: Some(sort_key),
@@ -318,8 +344,14 @@ impl TraversableTaskListController {
 
         let store = self.app_store.tasks;
         let inline_mode = self.inline_mode;
+        let keep_visible = self.keep_visible;
         spawn_local(async move {
             if let Some(task) = store.create_task_async(input).await {
+                if let Some(kv) = keep_visible {
+                    kv.keep(task.id);
+                }
+                // Blur before changing inline_mode (see create_task_anchored).
+                blur_active_element();
                 // Chain: next create goes after the newly created task.
                 inline_mode.set(InlineMode::Create {
                     anchor_task_id: task.id,
@@ -332,7 +364,20 @@ impl TraversableTaskListController {
     }
 
     pub fn close_inline(&self) {
+        blur_active_element();
         self.inline_mode.set(InlineMode::None);
+    }
+
+    /// Split raw input into (title, optional body).
+    /// First line becomes the title; remaining lines become the body.
+    fn parse_title_body(raw: &str) -> (String, Option<String>) {
+        let mut lines = raw.splitn(2, '\n');
+        let title = lines.next().unwrap_or("").trim().to_string();
+        let body = lines
+            .next()
+            .map(|b| b.trim().to_string())
+            .filter(|b| !b.is_empty());
+        (title, body)
     }
 
     // ── Toggle complete ────────────────────────────────────────
@@ -349,9 +394,13 @@ impl TraversableTaskListController {
             .map(|t| t.completed_at.is_some())
             .unwrap_or(false);
 
-        // When completing, advance cursor to neighbor before the task
-        // moves to the completed group or disappears from the list.
+        // When completing, pin the task so it stays visible until refresh,
+        // then advance cursor to neighbor before the task moves to the
+        // completed group.
         if !is_completed {
+            if let Some(kc) = self.keep_completed {
+                kc.keep(task_id);
+            }
             let nodes = self.flat_nodes.get_untracked();
             let next_cursor = next_sibling(&nodes, task_id)
                 .or_else(|| prev_sibling(&nodes, task_id))
@@ -669,6 +718,12 @@ impl TraversableTaskListController {
                     if let Some(task_id) = self.cursor_task_id.get_untracked() {
                         self.app_store.tasks.review_task(task_id);
                     }
+                }
+            }
+            "s" | "S" => {
+                ev.prevent_default();
+                if let Some(task_id) = self.cursor_task_id.get_untracked() {
+                    self.app_store.tasks.toggle_someday(task_id);
                 }
             }
             " " => {

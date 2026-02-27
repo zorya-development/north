@@ -48,7 +48,10 @@ pub fn FilterView(
         }
     });
 
-    let item_config = ItemConfig::default();
+    let item_config = ItemConfig {
+        show_inline_project: true,
+        ..Default::default()
+    };
 
     view! {
         <div class="space-y-4">
@@ -123,6 +126,7 @@ pub fn FilterView(
                 <div class="flex items-center gap-1 flex-shrink-0">
                     // Save icon
                     <button
+                        data-testid="filter-save-btn"
                         class=move || {
                             let base = "p-1.5 rounded transition-colors";
                             let disabled = parse_error.get().is_some()
@@ -212,6 +216,7 @@ pub fn FilterView(
                         />
                     </div>
                     <button
+                        data-testid="filter-search-btn"
                         class="w-24 py-0 text-sm bg-accent \
                                hover:bg-accent-hover text-white \
                                rounded transition-colors \
@@ -228,9 +233,11 @@ pub fn FilterView(
                     </button>
                 </div>
                 <Show when=move || parse_error.get().is_some()>
-                    <Text variant=TextVariant::BodySm color=TextColor::Danger tag=TextTag::P class="mt-1">
-                        {move || parse_error.get().unwrap_or_default()}
-                    </Text>
+                    <div data-testid="filter-error">
+                        <Text variant=TextVariant::BodySm color=TextColor::Danger tag=TextTag::P class="mt-1">
+                            {move || parse_error.get().unwrap_or_default()}
+                        </Text>
+                    </div>
                 </Show>
             </div>
 
@@ -252,12 +259,13 @@ pub fn FilterView(
 
             // Save filter modal (new filters only)
             <Modal open=show_save_modal set_open=set_show_save_modal>
-                <div class="p-4 space-y-4">
+                <div data-testid="filter-save-modal" class="p-4 space-y-4">
                     <Text variant=TextVariant::HeadingSm>
                         "Save Filter"
                     </Text>
                     <input
                         type="text"
+                        data-testid="filter-save-input"
                         node_ref=modal_input_ref
                         class="w-full bg-bg-input border border-border \
                                rounded px-3 py-2 text-sm text-text-primary \

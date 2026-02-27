@@ -30,28 +30,9 @@ impl TaskRepository {
         )
     }
 
-    pub async fn create_with_tokens(input: CreateTask) -> Result<TaskModel, ServerFnError> {
-        notify_on_error(
-            north_server_fns::tasks::create_task_with_tokens(input)
-                .await
-                .map(TaskModel::from),
-        )
-    }
-
     pub async fn update(id: i64, input: UpdateTask) -> Result<TaskModel, ServerFnError> {
         notify_on_error(
             north_server_fns::tasks::update_task(id, input)
-                .await
-                .map(TaskModel::from),
-        )
-    }
-
-    pub async fn update_with_tokens(
-        id: i64,
-        input: UpdateTask,
-    ) -> Result<TaskModel, ServerFnError> {
-        notify_on_error(
-            north_server_fns::tasks::update_task_with_tokens(id, input)
                 .await
                 .map(TaskModel::from),
         )
@@ -71,9 +52,5 @@ impl TaskRepository {
 
     pub async fn set_tags(task_id: i64, tag_names: Vec<String>) -> Result<(), ServerFnError> {
         notify_on_error(north_server_fns::tasks::set_task_tags(task_id, tag_names).await)
-    }
-
-    pub async fn review_all() -> Result<(), ServerFnError> {
-        notify_on_error(north_server_fns::tasks::review_all_tasks().await)
     }
 }

@@ -25,7 +25,7 @@ pub fn FilterAutocompleteTextarea(
             .map(|s| SuggestionItem {
                 name: s.label,
                 color: if s.color.is_empty() {
-                    "#6b7280".into()
+                    north_dto::DEFAULT_COLOR.into()
                 } else {
                     s.color
                 },
@@ -52,6 +52,7 @@ pub fn FilterAutocompleteTextarea(
     view! {
         <div class="relative flex flex-col">
             <textarea
+                data-testid="filter-query-input"
                 node_ref=textarea_ref
                 placeholder=placeholder
                 prop:value=move || filter_dsl.query().get()

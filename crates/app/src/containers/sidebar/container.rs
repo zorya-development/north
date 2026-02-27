@@ -65,6 +65,9 @@ pub fn Sidebar() -> impl IntoView {
                     app_store.tasks.set_project(task_id, project_id);
                 },
             )
+            on_delete_filter=Callback::new(move |id: i64| {
+                app_store.saved_filters.delete(id);
+            })
         />
     }
 }

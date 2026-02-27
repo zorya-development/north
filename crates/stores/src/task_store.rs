@@ -2,7 +2,7 @@ use chrono::Utc;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use north_dto::RecurrenceType;
-use north_dto::{CreateTask, UpdateTask};
+use north_dto::{CreateTask, TagInfo, UpdateTask};
 use north_repositories::{TaskModel, TaskRepository};
 
 #[cfg(feature = "hydrate")]
@@ -30,6 +30,7 @@ pub struct TaskStoreFilter {
     pub project_id: IdFilter,
     pub parent_id: IdFilter,
     pub is_completed: Option<bool>,
+    pub is_someday: Option<bool>,
 }
 
 #[derive(Clone, Default)]
@@ -122,6 +123,11 @@ impl TaskStore {
                     Some(true) => t.completed_at.is_some(),
                     Some(false) => t.completed_at.is_none(),
                 })
+                .filter(|t| match filter.is_someday {
+                    None => true,
+                    Some(true) => t.someday,
+                    Some(false) => !t.someday,
+                })
                 .collect()
         })
     }
@@ -194,7 +200,7 @@ impl TaskStore {
                 body: Some(body),
                 ..Default::default()
             };
-            if let Ok(task) = TaskRepository::update_with_tokens(id, input).await {
+            if let Ok(task) = TaskRepository::update(id, input).await {
                 store.refetch_async().await;
                 if task.is_url_fetching.is_some() {
                     store.poll_url_resolution(id);
@@ -206,7 +212,7 @@ impl TaskStore {
     pub fn create_task(&self, input: CreateTask) {
         let store = *self;
         spawn_local(async move {
-            if let Ok(task) = TaskRepository::create_with_tokens(input).await {
+            if let Ok(task) = TaskRepository::create(input).await {
                 let should_poll = task.is_url_fetching.is_some();
                 let task_id = task.id;
                 if let Some(pid) = task.parent_id {
@@ -224,7 +230,7 @@ impl TaskStore {
     /// to avoid triggering a re-render of the parent task item (which would
     /// destroy any inline input that is currently focused).
     pub async fn create_task_async(&self, input: CreateTask) -> Option<TaskModel> {
-        match TaskRepository::create_with_tokens(input).await {
+        match TaskRepository::create(input).await {
             Ok(task) => {
                 let should_poll = task.is_url_fetching.is_some();
                 let task_id = task.id;
@@ -296,6 +302,26 @@ impl TaskStore {
 
     pub fn set_tags(&self, task_id: i64, tag_names: Vec<String>) {
         let store = *self;
+        // Optimistic update — build new tags list from desired names
+        store.update_in_place(task_id, |t| {
+            let new_tags: Vec<TagInfo> = tag_names
+                .iter()
+                .map(|name| {
+                    // Preserve color for existing tags, use default for new ones
+                    let color = t
+                        .tags
+                        .iter()
+                        .find(|ti| ti.name == *name)
+                        .map(|ti| ti.color.clone())
+                        .unwrap_or_else(|| north_dto::DEFAULT_COLOR.to_string());
+                    TagInfo {
+                        name: name.clone(),
+                        color,
+                    }
+                })
+                .collect();
+            t.tags = new_tags;
+        });
         spawn_local(async move {
             if TaskRepository::set_tags(task_id, tag_names).await.is_ok() {
                 store.refetch_async().await;
@@ -312,6 +338,27 @@ impl TaskStore {
         spawn_local(async move {
             let input = UpdateTask {
                 reviewed_at: Some(Some(today)),
+                ..Default::default()
+            };
+            if TaskRepository::update(id, input).await.is_ok() {
+                store.refetch_async().await;
+            }
+        });
+    }
+
+    pub fn toggle_someday(&self, id: i64) {
+        let store = *self;
+        let was_someday = self
+            .tasks
+            .get_untracked()
+            .iter()
+            .find(|t| t.id == id)
+            .map(|t| t.someday)
+            .unwrap_or(false);
+        store.update_in_place(id, |t| t.someday = !was_someday);
+        spawn_local(async move {
+            let input = UpdateTask {
+                someday: Some(!was_someday),
                 ..Default::default()
             };
             if TaskRepository::update(id, input).await.is_ok() {

@@ -25,6 +25,7 @@ pub struct TaskRow {
     pub recurrence_type: Option<RecurrenceTypeMapping>,
     pub recurrence_rule: Option<String>,
     pub is_url_fetching: Option<DateTime<Utc>>,
+    pub someday: bool,
 }
 
 #[derive(Debug, Insertable)]
@@ -38,9 +39,11 @@ pub struct NewTask<'a> {
     pub sort_key: &'a str,
     pub start_at: Option<DateTime<Utc>>,
     pub due_date: Option<NaiveDate>,
+    pub reviewed_at: Option<NaiveDate>,
     pub recurrence_type: Option<RecurrenceTypeMapping>,
     pub recurrence_rule: Option<&'a str>,
     pub is_url_fetching: Option<DateTime<Utc>>,
+    pub someday: bool,
 }
 
 #[derive(Debug, Default, AsChangeset)]
@@ -59,6 +62,7 @@ pub struct TaskChangeset<'a> {
     pub recurrence_type: Option<Option<RecurrenceTypeMapping>>,
     pub recurrence_rule: Option<Option<&'a str>>,
     pub is_url_fetching: Option<Option<DateTime<Utc>>>,
+    pub someday: Option<bool>,
 }
 
 impl From<TaskRow> for north_dto::Task {
@@ -81,6 +85,7 @@ impl From<TaskRow> for north_dto::Task {
             recurrence_type: row.recurrence_type.map(Into::into),
             recurrence_rule: row.recurrence_rule,
             is_url_fetching: row.is_url_fetching,
+            someday: row.someday,
             project_title: None,
             tags: vec![],
             subtask_count: 0,

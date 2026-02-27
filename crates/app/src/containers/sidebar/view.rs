@@ -5,12 +5,9 @@ use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::drag_drop::DragDropContext;
 use crate::components::theme_toggle::ThemeToggle;
 use north_dto::{Project, SavedFilter};
-use north_ui::{Icon, IconKind, Popover};
+use north_ui::{DropdownItem, DropdownMenu, Icon, IconKind, Popover};
 
-const PRESET_COLORS: &[&str] = &[
-    "#6b7280", "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6",
-    "#ec4899",
-];
+use crate::constants::PRESET_COLORS;
 
 #[component]
 pub fn SidebarView(
@@ -22,6 +19,7 @@ pub fn SidebarView(
     on_archive_project: Callback<i64>,
     on_edit_project: Callback<(i64, String, String)>,
     on_drop_task_to_project: Callback<(i64, i64)>,
+    on_delete_filter: Callback<i64>,
 ) -> impl IntoView {
     let (creating, set_creating) = signal(false);
     let (new_title, set_new_title) = signal(String::new());
@@ -37,7 +35,7 @@ pub fn SidebarView(
     };
 
     view! {
-        <aside class=aside_class>
+        <aside class=aside_class data-testid="sidebar">
             // Logo area
             <Show
                 when=move || !collapsed.get()
@@ -51,7 +49,9 @@ pub fn SidebarView(
             <nav class="flex-1 px-2 space-y-1 min-w-0">
                 <NavItem href="/inbox" label="Inbox" icon=IconKind::Inbox collapsed=collapsed/>
                 <NavItem href="/today" label="Today" icon=IconKind::Today collapsed=collapsed/>
+                <NavItem href="/someday" label="Someday" icon=IconKind::Someday collapsed=collapsed/>
                 <NavItem href="/tasks" label="All Tasks" icon=IconKind::Tasks collapsed=collapsed/>
+                <NavItem href="/review" label="Review" icon=IconKind::Review collapsed=collapsed/>
 
                 // Projects section
                 <div class=move || if collapsed.get() { "" } else { "pt-4" }>
@@ -77,6 +77,7 @@ pub fn SidebarView(
                                 class="p-0.5 rounded text-text-tertiary \
                                        hover:text-text-secondary \
                                        hover:bg-bg-tertiary transition-colors"
+                                data-testid="sidebar-create-project-btn"
                                 on:click=move |_| {
                                     set_creating.update(|v| *v = !*v);
                                 }
@@ -102,6 +103,7 @@ pub fn SidebarView(
                             >
                                 <input
                                     type="text"
+                                    data-testid="sidebar-create-project-input"
                                     class="w-full bg-bg-input border border-border \
                                            rounded px-2 py-1.5 text-sm \
                                            text-text-primary placeholder:text-text-tertiary \
@@ -183,11 +185,15 @@ pub fn SidebarView(
                                     .get()
                                     .into_iter()
                                     .map(|f| {
+                                        let fid = f.id;
                                         let href = format!("/filters/{}", f.id);
                                         view! {
                                             <FilterNavItem
                                                 href=href
                                                 title=f.title
+                                                on_delete=Callback::new(move |_: ()| {
+                                                    on_delete_filter.run(fid);
+                                                })
                                             />
                                         }
                                     })
@@ -198,7 +204,6 @@ pub fn SidebarView(
                 </div>
 
                 <div class="pt-4">
-                    <NavItem href="/review" label="Review" icon=IconKind::Review collapsed=collapsed/>
                     <NavItem href="/stats" label="Stats" icon=IconKind::Stats collapsed=collapsed/>
                 </div>
             </nav>
@@ -220,6 +225,7 @@ pub fn SidebarView(
                         }
                     }
                     on:click=move |_| on_toggle_collapsed.run(())
+                    data-testid="sidebar-collapse-btn"
                     aria-expanded=move || (!collapsed.get()).to_string()
                     aria-label="Toggle sidebar"
                     title=move || if collapsed.get() { "Expand sidebar (Ctrl+B)" } else { "Collapse sidebar (Ctrl+B)" }
@@ -476,6 +482,7 @@ fn ProjectItem(
                     view! {
                         <a
                             href=href.clone()
+                            data-testid="sidebar-project-item"
                             class=class
                             on:mouseenter=move |_| set_hover.set(true)
                             on:mouseleave=move |_| set_hover.set(false)
@@ -663,12 +670,15 @@ fn FilterNavItem(
     href: String,
     title: String,
     #[prop(optional)] on_click: Option<Callback<()>>,
+    #[prop(optional)] on_delete: Option<Callback<()>>,
 ) -> impl IntoView {
     let location = use_location();
     let href_cmp = href.clone();
+    let (hover, set_hover) = signal(false);
+    let (menu_open, set_menu_open) = signal(false);
 
     let class = Memo::new(move |_| {
-        let base = "flex items-center gap-2 px-3 py-1.5 rounded-lg \
+        let base = "group flex items-center gap-2 px-3 py-1.5 rounded-lg \
                     text-sm text-text-primary hover:bg-bg-tertiary \
                     transition-colors";
         if location.pathname.get() == href_cmp {
@@ -681,7 +691,14 @@ fn FilterNavItem(
     view! {
         <a
             href=href
+            data-testid="sidebar-filter-item"
             class=class
+            on:mouseenter=move |_| set_hover.set(true)
+            on:mouseleave=move |_| {
+                if !menu_open.get_untracked() {
+                    set_hover.set(false);
+                }
+            }
             on:click=move |_| {
                 if let Some(cb) = on_click {
                     cb.run(());
@@ -689,7 +706,44 @@ fn FilterNavItem(
             }
         >
             <Icon kind=IconKind::Filter class="w-3.5 h-3.5 text-text-tertiary"/>
-            <span class="truncate">{title}</span>
+            <span class="flex-1 truncate">{title}</span>
+            <Show when=move || on_delete.is_some() && (hover.get() || menu_open.get())>
+                <DropdownMenu
+                    open=menu_open
+                    set_open=set_menu_open
+                    trigger=Box::new(move || {
+                        view! {
+                            <button
+                                on:click=move |ev| {
+                                    ev.prevent_default();
+                                    ev.stop_propagation();
+                                    set_menu_open.update(|o| *o = !*o);
+                                }
+                                class="p-0.5 rounded \
+                                       hover:bg-bg-input \
+                                       text-text-tertiary \
+                                       hover:text-text-secondary \
+                                       transition-colors"
+                                aria-label="Filter actions"
+                            >
+                                <Icon kind=IconKind::KebabMenu class="w-3.5 h-3.5"/>
+                            </button>
+                        }.into_any()
+                    })
+                >
+                    <DropdownItem
+                        label="Delete"
+                        on_click=move || {
+                            set_menu_open.set(false);
+                            set_hover.set(false);
+                            if let Some(cb) = on_delete {
+                                cb.run(());
+                            }
+                        }
+                        danger=true
+                    />
+                </DropdownMenu>
+            </Show>
         </a>
     }
 }
@@ -729,7 +783,7 @@ fn NavItem(
     };
 
     view! {
-        <a href=href class=class title=label>
+        <a href=href class=class title=label data-testid="sidebar-nav-item" data-href=href>
             <Icon kind=icon class="w-4 h-4 flex-shrink-0"/>
             <Show when=move || !collapsed.get()>
                 {label}

@@ -1,4 +1,5 @@
 use leptos::prelude::*;
+use north_dto::Project;
 use north_stores::{AppStore, TaskModel};
 
 #[derive(Clone, Copy)]
@@ -6,15 +7,18 @@ pub struct TaskListItemController {
     app_store: AppStore,
     task_id: i64,
     pub task: Memo<Option<TaskModel>>,
+    pub projects: Signal<Vec<Project>>,
 }
 
 impl TaskListItemController {
     pub fn new(app_store: AppStore, task_id: i64) -> Self {
         let task = app_store.tasks.get_by_id(task_id);
+        let projects = Signal::derive(move || app_store.projects.get());
         Self {
             app_store,
             task_id,
             task,
+            projects,
         }
     }
 

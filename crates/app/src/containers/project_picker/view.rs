@@ -53,6 +53,7 @@ pub fn ProjectPickerView(
                                        text-text-secondary hover:bg-bg-tertiary \
                                        px-1.5 py-0.5 rounded transition-colors \
                                        cursor-pointer select-none"
+                                data-testid="project-picker-trigger"
                                 on:click=move |_| {
                                     set_popover_open.update(|o| *o = !*o);
                                 }
@@ -92,6 +93,7 @@ pub fn ProjectPickerView(
                             view! {
                                 <button
                                     class=vis_class
+                                    data-testid="project-picker-trigger"
                                     on:click=move |_| {
                                         set_popover_open.update(|o| *o = !*o);
                                     }
@@ -109,7 +111,7 @@ pub fn ProjectPickerView(
                 }
             })
         >
-            <div class="p-1 w-[200px] max-h-[240px] overflow-y-auto">
+            <div class="p-1 w-[200px] max-h-[240px] overflow-y-auto" data-testid="project-picker-panel">
                 {move || {
                     let list = projects.get();
                     if list.is_empty() {
@@ -129,6 +131,7 @@ pub fn ProjectPickerView(
                                            hover:bg-bg-tertiary \
                                            rounded transition-colors \
                                            flex items-center gap-2"
+                                    data-testid="project-picker-inbox"
                                     on:click=move |_| {
                                         set_popover_open.set(false);
                                         on_clear_project.run(task_id);
@@ -156,6 +159,7 @@ pub fn ProjectPickerView(
                                                        transition-colors \
                                                        flex items-center \
                                                        gap-2"
+                                                data-testid="project-picker-option"
                                                 on:click=move |_| {
                                                     set_popover_open
                                                         .set(false);

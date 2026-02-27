@@ -2,16 +2,14 @@ use leptos::prelude::*;
 
 use north_stores::Recurrence;
 
-use std::sync::Arc;
-
 use super::controller::TaskDetailModalController;
 use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::date_picker::DateTimePicker;
 use crate::components::enriched_markdown::EnrichedMarkdownView;
 use crate::components::recurrence_modal::RecurrenceModal;
-use crate::containers::autocomplete::{AutocompleteInput, AutocompleteTextarea};
 use crate::containers::inline_task_input::InlineTaskInput;
 use crate::containers::project_picker::ProjectPicker;
+use crate::containers::smart_textarea::SmartTextarea;
 use crate::containers::tag_picker::TagPicker;
 use crate::containers::task_checkbox::TaskCheckbox;
 use crate::containers::task_list_item::ItemConfig;
@@ -27,7 +25,7 @@ pub fn TaskDetailModalView(
     let subtask_filter = ctrl.subtask_filter;
     let (show_inline_input, set_show_inline_input) = signal(false);
     let input_value = RwSignal::new(String::new());
-    let title_input_ref = NodeRef::<leptos::html::Input>::new();
+    let title_input_ref = NodeRef::<leptos::html::Textarea>::new();
     let subtask_cursor = RwSignal::new(None::<i64>);
 
     view! {
@@ -38,6 +36,7 @@ pub fn TaskDetailModalView(
             />
             <div
                 role="dialog"
+                data-testid="task-detail-modal"
                 class="relative border border-(--border-muted) \
                        rounded-2xl shadow-2xl max-w-3xl w-full mx-4 \
                        max-h-[85vh] flex flex-col"
@@ -63,7 +62,7 @@ pub fn TaskDetailModalView(
 
                     if ctrl.focus_if_new_task(task_id) {
                         request_animation_frame(move || {
-                            if let Some(el) = title_input_ref.get() {
+                            if let Some(el) = title_input_ref.get_untracked() {
                                 let _ = el.focus();
                             }
                         });
@@ -98,6 +97,7 @@ pub fn TaskDetailModalView(
                             </div>
                             <div class="flex items-center gap-1">
                                 <button
+                                    data-testid="task-detail-prev"
                                     class="p-1 rounded text-text-tertiary \
                                            hover:text-text-primary \
                                            hover:bg-bg-tertiary \
@@ -113,6 +113,7 @@ pub fn TaskDetailModalView(
                                     />
                                 </button>
                                 <button
+                                    data-testid="task-detail-next"
                                     class="p-1 rounded text-text-tertiary \
                                            hover:text-text-primary \
                                            hover:bg-bg-tertiary \
@@ -128,6 +129,7 @@ pub fn TaskDetailModalView(
                                     />
                                 </button>
                                 <button
+                                    data-testid="task-detail-delete"
                                     class="p-1 rounded text-danger \
                                            hover:text-danger-hover \
                                            hover:bg-bg-tertiary \
@@ -141,6 +143,7 @@ pub fn TaskDetailModalView(
                                     />
                                 </button>
                                 <button
+                                    data-testid="task-detail-close"
                                     class="p-1 rounded text-text-tertiary \
                                            hover:text-text-primary \
                                            hover:bg-bg-tertiary \
@@ -202,33 +205,28 @@ pub fn TaskDetailModalView(
                                     <div class="pt-1">
                                         <TaskCheckbox task_id=task_id/>
                                     </div>
-                                    {
-                                        let title_read = ctrl.title_draft.read_only();
-                                        let title_write = ctrl.title_draft.write_only();
-                                        let title_keydown = Arc::new(move |ev: leptos::ev::KeyboardEvent| {
-                                            if ev.key() == "Enter" {
-                                                ev.prevent_default();
-                                                ctrl.save();
-                                            }
-                                        }) as Arc<dyn Fn(leptos::ev::KeyboardEvent) + Send + Sync>;
-                                        view! {
-                                            <AutocompleteInput
-                                                value=title_read
-                                                set_value=title_write
-                                                class="text-lg font-semibold \
-                                                       text-text-primary \
-                                                       bg-transparent \
-                                                       border-none \
-                                                       px-1 -mx-1 flex-1 \
-                                                       w-full \
-                                                       focus:outline-none \
-                                                       no-focus-ring"
-                                                on_keydown=title_keydown
-                                                on_blur=Callback::new(move |()| ctrl.save())
-                                                node_ref=title_input_ref
-                                            />
-                                        }
-                                    }
+                                    <div data-testid="task-detail-title" class="flex-1 w-full">
+                                        <SmartTextarea
+                                            value=ctrl.title_draft
+                                            autocomplete=true
+                                            auto_resize=true
+                                            strip_newlines=true
+                                            on_submit=Callback::new(move |()| ctrl.save())
+                                            on_blur=Callback::new(move |()| ctrl.save())
+                                            node_ref=title_input_ref
+                                            class="text-lg font-semibold \
+                                                   text-text-primary \
+                                                   bg-transparent \
+                                                   border-none \
+                                                   px-1 -mx-1 flex-1 \
+                                                   w-full \
+                                                   focus:outline-none \
+                                                   no-focus-ring \
+                                                   resize-none \
+                                                   overflow-hidden"
+                                            rows=1
+                                        />
+                                    </div>
                                 </div>
 
                                 // Body (edit/view toggle)
@@ -276,6 +274,7 @@ pub fn TaskDetailModalView(
                                     </Show>
                                     <Show when=move || !show_inline_input.get()>
                                         <button
+                                            data-testid="task-detail-subtask-btn"
                                             class="my-3 text-xs text-accent \
                                                    hover:text-accent-hover \
                                                    hover:underline cursor-pointer \
@@ -464,9 +463,10 @@ fn DueDatePicker(
         <div class="flex items-center gap-1">
             <input
                 type="date"
-                class="text-sm bg-transparent text-text-secondary \
+                class="text-xs bg-transparent text-text-secondary \
                        border-none focus:outline-none cursor-pointer \
                        w-full"
+                data-testid="due-date-input"
                 prop:value=move || display.clone().unwrap_or_default()
                 on:change=move |ev| {
                     let val = event_target_value(&ev);
@@ -503,7 +503,7 @@ fn RecurrenceSidebarButton(
 
     view! {
         <button
-            class="text-sm text-text-secondary hover:text-text-primary \
+            class="text-xs text-text-secondary hover:text-text-primary \
                    transition-colors cursor-pointer flex items-center gap-1"
             on:click=move |_| on_click.run(())
         >
@@ -515,27 +515,28 @@ fn RecurrenceSidebarButton(
 
 /// Body section with edit/view toggle:
 /// - View mode (default): rendered markdown or placeholder. Click to edit.
-/// - Edit mode: AutocompleteTextarea. On blur: save and switch to view mode.
+/// - Edit mode: SmartTextarea with autocomplete. On blur: save and switch to view mode.
 #[component]
 fn BodySection(ctrl: TaskDetailModalController) -> impl IntoView {
-    let (editing, set_editing) = signal(false);
+    let editing = ctrl.body_editing;
 
     view! {
-        <div class="ml-6">
+        <div data-testid="task-detail-body" class="ml-6">
             <Show
-                when=move || editing.get()
+                when=move || editing.try_get().unwrap_or(false)
                 fallback=move || {
-                    let body = ctrl.body_draft.get();
+                    let body = ctrl.body_draft.try_get().unwrap_or_default();
                     if body.trim().is_empty() {
                         view! {
                             <div
-                                class="text-sm text-text-tertiary italic \
-                                       cursor-pointer p-1 -m-1 \
+                                class="cursor-pointer p-1 -m-1 \
                                        hover:bg-hover-overlay rounded \
                                        transition-colors"
-                                on:click=move |_| set_editing.set(true)
+                                on:click=move |_| editing.set(true)
                             >
-                                "Add description..."
+                                <Text variant=TextVariant::BodyMd color=TextColor::Tertiary class="italic">
+                                    "Add description..."
+                                </Text>
                             </div>
                         }.into_any()
                     } else {
@@ -544,7 +545,7 @@ fn BodySection(ctrl: TaskDetailModalController) -> impl IntoView {
                                 class="cursor-pointer p-1 -m-1 \
                                        hover:bg-hover-overlay rounded \
                                        transition-colors"
-                                on:click=move |_| set_editing.set(true)
+                                on:click=move |_| editing.set(true)
                             >
                                 <EnrichedMarkdownView content=body/>
                             </div>
@@ -552,33 +553,29 @@ fn BodySection(ctrl: TaskDetailModalController) -> impl IntoView {
                     }
                 }
             >
-                {
-                    let body_read = ctrl.body_draft.read_only();
-                    let body_write = ctrl.body_draft.write_only();
-                    view! {
-                        <AutocompleteTextarea
-                            value=body_read
-                            set_value=body_write
-                            placeholder="Add description..."
-                            class="w-full text-sm \
-                                   text-text-primary \
-                                   bg-transparent \
-                                   border-none \
-                                   p-1 -m-1 \
-                                   focus:outline-none \
-                                   no-focus-ring \
-                                   resize-none \
-                                   min-h-[2rem] \
-                                   placeholder:text-text-tertiary \
-                                   placeholder:italic"
-                            on_blur=Callback::new(move |()| {
-                                ctrl.save();
-                                set_editing.set(false);
-                            })
-                            autofocus=true
-                        />
-                    }
-                }
+                <SmartTextarea
+                    value=ctrl.body_draft
+                    autocomplete=true
+                    auto_resize=true
+                    multiline=true
+                    autofocus=true
+                    placeholder="Add description..."
+                    on_blur=Callback::new(move |()| {
+                        ctrl.save();
+                        editing.set(false);
+                    })
+                    class="w-full text-sm \
+                           text-text-primary \
+                           bg-transparent \
+                           border-none \
+                           p-1 -m-1 \
+                           focus:outline-none \
+                           no-focus-ring \
+                           resize-none \
+                           min-h-[2rem] \
+                           placeholder:text-text-tertiary \
+                           placeholder:italic"
+                />
             </Show>
         </div>
     }
@@ -593,8 +590,8 @@ fn SequentialLimitInput(sequential_limit: i16, on_change: Callback<i16>) -> impl
             type="number"
             min="1"
             max="999"
-            class="w-16 text-sm bg-bg-input border border-border \
-                   rounded px-2 py-0.5 text-text-primary \
+            class="w-16 text-xs bg-bg-input border border-border \
+                   rounded px-2 py-1 text-text-primary \
                    focus:outline-none focus:border-accent"
             prop:value=move || value.get()
             on:input=move |ev| {

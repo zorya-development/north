@@ -86,33 +86,6 @@ pub async fn set_task_tags(task_id: i64, tag_names: Vec<String>) -> Result<(), S
         .map_err(|e| ServerFnError::new(e.to_string()))
 }
 
-#[server(ApiReviewAllTasksFn, "/api")]
-pub async fn review_all_tasks() -> Result<(), ServerFnError> {
-    let pool = expect_context::<north_core::DbPool>();
-    let user_id = crate::auth::get_auth_user_id().await?;
-    north_core::TaskService::review_all(&pool, user_id)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
-}
-
-#[server(ApiCreateTaskWithTokensFn, "/api")]
-pub async fn create_task_with_tokens(input: CreateTask) -> Result<Task, ServerFnError> {
-    let pool = expect_context::<north_core::DbPool>();
-    let user_id = crate::auth::get_auth_user_id().await?;
-    north_core::TaskService::create_with_tokens(&pool, user_id, &input)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
-}
-
-#[server(name = ApiUpdateTaskWithTokensFn, prefix = "/api", input = Json)]
-pub async fn update_task_with_tokens(id: i64, input: UpdateTask) -> Result<Task, ServerFnError> {
-    let pool = expect_context::<north_core::DbPool>();
-    let user_id = crate::auth::get_auth_user_id().await?;
-    north_core::TaskService::update_with_tokens(&pool, user_id, id, &input)
-        .await
-        .map_err(|e| ServerFnError::new(e.to_string()))
-}
-
 #[server(ApiAddTaskTagsFn, "/api")]
 pub async fn add_task_tags(task_id: i64, tag_names: Vec<String>) -> Result<(), ServerFnError> {
     let pool = expect_context::<north_core::DbPool>();

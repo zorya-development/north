@@ -26,6 +26,7 @@ pub fn TaskCheckboxView(
 
     view! {
         <button
+            data-testid="task-checkbox"
             on:click=move |_| on_toggle.run(())
             class="flex-shrink-0 group cursor-pointer"
             aria-label=move || {

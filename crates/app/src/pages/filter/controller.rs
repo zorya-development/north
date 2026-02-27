@@ -38,10 +38,13 @@ impl FilterController {
                 || filter_dsl.query().get() != original_query.0.get()
         });
 
-        // Load existing filter if editing
+        // Load existing filter if editing.
+        // Track saved_filters reactively so the effect re-runs when the
+        // store is populated (e.g. after async refetch on full navigation).
         Effect::new(move |_| {
+            let filters = app_store.saved_filters.get();
             if let Some(id) = filter_id.get() {
-                if let Some(f) = app_store.saved_filters.get_by_id(id) {
+                if let Some(f) = filters.into_iter().find(|f| f.id == id) {
                     title_text.1.set(f.title.clone());
                     filter_dsl.load_query(f.query.clone());
                     original_title.1.set(f.title);

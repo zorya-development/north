@@ -43,3 +43,12 @@ pub async fn update_project(
     let result = ProjectService::update(&state.pool, auth_user.id, id, &body).await?;
     Ok(Json(result))
 }
+
+pub async fn delete_project(
+    auth_user: axum::Extension<AuthUser>,
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<(), AppError> {
+    ProjectService::delete(&state.pool, auth_user.id, id).await?;
+    Ok(())
+}

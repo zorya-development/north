@@ -16,6 +16,7 @@ pub fn TaskMetaView(
     #[prop(default = None)] due_date_display: Option<String>,
     #[prop(default = TaskMetaItemVariant::Info)] due_date_variant: TaskMetaItemVariant,
     #[prop(default = vec![])] tags: Vec<TagInfo>,
+    #[prop(default = true)] show_tags: bool,
     #[prop(default = false)] show_review: bool,
     #[prop(default = None)] reviewed_at_display: Option<String>,
     #[prop(default = Callback::new(|_| {}))] on_review: Callback<()>,
@@ -93,7 +94,7 @@ pub fn TaskMetaView(
                     </TaskMetaItem>
                 }
             })}
-            {(!tags.is_empty()).then(|| {
+            {(show_tags && !tags.is_empty()).then(|| {
                 tags.into_iter()
                     .map(|tag| {
                         view! {

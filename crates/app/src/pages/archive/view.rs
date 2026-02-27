@@ -45,7 +45,9 @@ pub fn ArchiveView(
                                         let pid = project.id;
                                         let href = format!("/projects/{}", project.id);
                                         view! {
-                                            <div class="flex items-center justify-between \
+                                            <div
+                                                data-testid="archive-project"
+                                                class="flex items-center justify-between \
                                                         px-3 py-2 rounded-md bg-bg-secondary">
                                                 <a
                                                     href=href
@@ -56,6 +58,7 @@ pub fn ArchiveView(
                                                 </a>
                                                 <div class="flex items-center gap-2">
                                                     <button
+                                                        data-testid="archive-unarchive-btn"
                                                         class="text-xs px-2 py-1 rounded \
                                                                bg-bg-tertiary \
                                                                text-text-secondary \
@@ -68,6 +71,7 @@ pub fn ArchiveView(
                                                         "Unarchive"
                                                     </button>
                                                     <button
+                                                        data-testid="archive-delete-btn"
                                                         class="text-xs px-2 py-1 rounded \
                                                                bg-bg-tertiary text-danger \
                                                                hover:text-danger-hover \

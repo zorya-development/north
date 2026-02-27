@@ -1,0 +1,265 @@
+name: ci
+
+on:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  REGISTRY: ghcr.io
+  BASE_IMAGE: ghcr.io/zorya-development/north/base
+
+jobs:
+  resolve:
+    name: Resolve base image
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.tag }}
+      base_exists: ${{ steps.check.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        run: echo "tag=$(cat docker/base/VERSION | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Check if base image exists
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api /orgs/zorya-development/packages/container/north%2Fbase/versions \
+            --jq '.[].metadata.container.tags[]' 2>/dev/null | grep -qx "${{ steps.version.outputs.tag }}"; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-base:
+    name: Build Base Image
+    needs: [resolve]
+    if: needs.resolve.outputs.base_exists == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: docker/base
+          push: true
+          provenance: false
+          tags: ${{ env.BASE_IMAGE }}:${{ needs.resolve.outputs.version }}
+
+  build:
+    name: Build
+    needs: [resolve, build-base]
+    if: always() && needs.resolve.result == 'success' && needs.build-base.result != 'failure'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/zorya-development/north/base:${{ needs.resolve.outputs.version }}
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: north_test
+          POSTGRES_USER: north
+          POSTGRES_PASSWORD: north
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://north:north@postgres:5432/north_test
+      JWT_SECRET: test-secret
+      UPLOAD_DIR: /tmp/north-uploads
+      RUSTC_WRAPPER: "sccache"
+      SCCACHE_DIR: /sccache
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache sccache
+        uses: actions/cache@v4
+        with:
+          path: /sccache
+          key: sccache-build-${{ hashFiles('Cargo.lock') }}
+          restore-keys: sccache-build-
+
+      - name: Start sccache server
+        run: sccache --start-server
+
+      - name: Run migrations
+        run: diesel migration run
+
+      - name: Build app
+        run: cargo leptos build --release
+
+      - name: Seed test data
+        run: ./target/release/north-server --seed
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          retention-days: 1
+          path: |
+            target/release/north-server
+            target/site
+
+  check:
+    name: Check
+    needs: [resolve, build-base]
+    if: always() && needs.resolve.result == 'success' && needs.build-base.result != 'failure'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/zorya-development/north/base:${{ needs.resolve.outputs.version }}
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: north_test
+          POSTGRES_USER: north
+          POSTGRES_PASSWORD: north
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://north:north@postgres:5432/north_test
+      JWT_SECRET: test-secret
+      UPLOAD_DIR: /tmp/north-uploads
+      RUSTC_WRAPPER: "sccache"
+      SCCACHE_DIR: /sccache
+      CARGO_INCREMENTAL: "0"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache sccache
+        uses: actions/cache@v4
+        with:
+          path: /sccache
+          key: sccache-check-${{ hashFiles('Cargo.lock') }}
+          restore-keys: sccache-check-
+
+      - name: Start sccache server
+        run: sccache --start-server
+
+      - name: Run migrations
+        run: diesel migration run
+
+      - name: Format check
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Test
+        run: cargo test
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
+
+  e2e:
+    name: E2E
+    needs: [resolve, build-base, build, check]
+    if: always() && needs.build.result == 'success' && needs.check.result == 'success'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/zorya-development/north/base:${{ needs.resolve.outputs.version }}
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: north_test
+          POSTGRES_USER: north
+          POSTGRES_PASSWORD: north
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://north:north@postgres:5432/north_test
+      JWT_SECRET: test-secret
+      UPLOAD_DIR: /tmp/north-uploads
+      LEPTOS_SITE_ADDR: 0.0.0.0:5000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: target
+
+      - name: Make server executable
+        run: chmod +x target/release/north-server
+
+      - name: Run migrations & seed
+        run: |
+          diesel migration run
+          ./target/release/north-server --seed
+
+      - name: Install Node.js
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+          apt-get install -y nodejs
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('e2e/package-lock.json') }}
+
+      - name: Install Playwright
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Start server
+        run: |
+          ./target/release/north-server &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:5000/login && exit 0
+            sleep 2
+          done
+          echo "Server failed to start" && exit 1
+
+      - name: Run e2e tests
+        working-directory: e2e
+        run: npx playwright test
+        env:
+          BASE_URL: http://localhost:5000
+          CI: "true"
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 7

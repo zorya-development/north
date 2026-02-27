@@ -32,6 +32,7 @@ pub enum IconKind {
     Keyboard,
     Recurrence,
     Clock,
+    Someday,
 }
 
 #[component]
@@ -331,6 +332,17 @@ pub fn Icon(kind: IconKind, #[prop(default = "w-4 h-4")] class: &'static str) ->
                  stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"/>
                 <polyline points="12 6 12 12 16 14"/>
+            </svg>
+        }
+        .into_any(),
+        IconKind::Someday => view! {
+            <svg xmlns="http://www.w3.org/2000/svg" class=class viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 22h14"/>
+                <path d="M5 2h14"/>
+                <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/>
+                <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>
             </svg>
         }
         .into_any(),

@@ -42,7 +42,7 @@ pub fn TagPickerView(
                 let mut tags = display_tags.get_untracked();
                 tags.push(TagInfo {
                     name,
-                    color: "#6b7280".to_string(),
+                    color: north_dto::DEFAULT_COLOR.to_string(),
                 });
                 set_display_tags.set(tags);
 
@@ -120,6 +120,7 @@ pub fn TagPickerView(
                                                              hidden \
                                                              group-hover/tag:inline"
                                                         }
+                                                        data-testid="tag-remove"
                                                         on:click=move |ev| {
                                                             ev.stop_propagation();
                                                             let mut names =
@@ -145,6 +146,7 @@ pub fn TagPickerView(
                                                hover:bg-bg-tertiary px-1 py-0.5 \
                                                rounded transition-colors text-xs \
                                                cursor-pointer"
+                                        data-testid="tag-picker-trigger"
                                         on:click=move |_| {
                                             set_popover_open.update(|o| *o = !*o);
                                         }
@@ -175,6 +177,7 @@ pub fn TagPickerView(
                                 view! {
                                     <button
                                         class=vis_class
+                                        data-testid="tag-picker-trigger"
                                         on:click=move |_| {
                                             set_popover_open
                                                 .update(|o| *o = !*o);
@@ -204,6 +207,7 @@ pub fn TagPickerView(
                                text-text-primary \
                                placeholder:text-text-tertiary \
                                focus:outline-none focus:border-accent"
+                        data-testid="tag-picker-input"
                         placeholder="New tag..."
                         prop:value=move || new_tag_input.get()
                         on:input=move |ev| {
@@ -251,6 +255,7 @@ pub fn TagPickerView(
                                                        transition-colors \
                                                        flex items-center \
                                                        gap-2"
+                                                data-testid="tag-picker-option"
                                                 on:click=move |_| {
                                                     toggle_tag(
                                                         toggle_name.clone(),

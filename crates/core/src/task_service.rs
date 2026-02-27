@@ -42,6 +42,13 @@ impl TaskService {
         } else if filter.completed == Some(false) {
             query = query.filter(tasks::completed_at.is_null());
         }
+        if let Some(someday) = filter.someday {
+            if someday {
+                query = query.filter(tasks::someday.eq(true));
+            } else {
+                query = query.filter(tasks::someday.eq(false));
+            }
+        }
         if let Some(ref q) = filter.q {
             let pattern = format!("%{q}%");
             query = query.filter(
@@ -65,6 +72,7 @@ impl TaskService {
                     .or(tasks::reviewed_at.le(cutoff)),
             );
             query = query.filter(tasks::completed_at.is_null());
+            query = query.filter(tasks::someday.eq(false));
         }
 
         // Tag filtering via subquery
@@ -148,6 +156,24 @@ impl TaskService {
     }
 
     pub async fn create(pool: &DbPool, user_id: i64, input: &CreateTask) -> ServiceResult<Task> {
+        // Token parsing: extract #tags and @project from title
+        let parsed = crate::filter::text_parser::parse_tokens(&input.title);
+
+        let mut resolved_project_id = input.project_id;
+        if let Some(ref project_name) = parsed.project {
+            if let Ok(Some(pid)) =
+                crate::ProjectService::find_by_title(pool, user_id, project_name).await
+            {
+                resolved_project_id = Some(pid);
+            }
+        }
+
+        let title = if parsed.cleaned.is_empty() {
+            input.title.clone()
+        } else {
+            parsed.cleaned
+        };
+
         let mut conn = pool.get().await?;
 
         let sort_key = if let Some(ref sk) = input.sort_key {
@@ -162,9 +188,9 @@ impl TaskService {
                     .first(&mut conn)
                     .await
                     .optional()?
-            } else if input.project_id.is_some() {
+            } else if resolved_project_id.is_some() {
                 tasks::table
-                    .filter(tasks::project_id.eq(input.project_id))
+                    .filter(tasks::project_id.eq(resolved_project_id))
                     .filter(tasks::parent_id.is_null())
                     .filter(tasks::user_id.eq(user_id))
                     .order(tasks::sort_key.desc())
@@ -189,16 +215,18 @@ impl TaskService {
         let row = diesel::insert_into(tasks::table)
             .values(&NewTask {
                 user_id,
-                title: &input.title,
+                title: &title,
                 body: input.body.as_deref(),
-                project_id: input.project_id,
+                project_id: resolved_project_id,
                 parent_id: input.parent_id,
                 sort_key: &sort_key,
                 start_at: input.start_at,
                 due_date: input.due_date,
+                reviewed_at: input.reviewed_at,
                 recurrence_type: None,
                 recurrence_rule: None,
                 is_url_fetching: None,
+                someday: false,
             })
             .returning(TaskRow::as_returning())
             .get_result(&mut conn)
@@ -216,6 +244,15 @@ impl TaskService {
                 .ok();
         }
 
+        // Add extracted tags
+        if !parsed.tags.is_empty() {
+            crate::TagService::add_task_tags_pooled(pool, user_id, task.id, &parsed.tags).await?;
+            task = Self::get_by_id(pool, user_id, task.id).await?;
+        }
+
+        // Check for bare URLs and resolve in background
+        task = Self::maybe_resolve_urls(pool, user_id, task).await?;
+
         Ok(task)
     }
 
@@ -224,6 +261,89 @@ impl TaskService {
         user_id: i64,
         id: i64,
         input: &UpdateTask,
+    ) -> ServiceResult<Task> {
+        // Token parsing: extract #tags and @project from title if present
+        let mut resolved_input = input.clone();
+        let mut tags_to_add = Vec::new();
+        let mut has_urls = false;
+
+        if let Some(ref title) = input.title {
+            let parsed = crate::filter::text_parser::parse_tokens(title);
+            let cleaned = if parsed.cleaned.is_empty() {
+                title.clone()
+            } else {
+                parsed.cleaned
+            };
+            if crate::url_service::has_bare_urls(&cleaned) {
+                has_urls = true;
+            }
+            resolved_input.title = Some(cleaned);
+            tags_to_add = parsed.tags;
+
+            if let Some(ref project_name) = parsed.project {
+                if let Ok(Some(pid)) =
+                    crate::ProjectService::find_by_title(pool, user_id, project_name).await
+                {
+                    resolved_input.project_id = Some(Some(pid));
+                }
+            }
+        }
+
+        if let Some(Some(ref body)) = input.body {
+            if crate::url_service::has_bare_urls(body) {
+                has_urls = true;
+            }
+        }
+
+        if has_urls {
+            resolved_input.is_url_fetching = Some(Some(Utc::now()));
+        }
+
+        let mut task = Self::update_raw(pool, user_id, id, &resolved_input).await?;
+
+        // Add extracted tags
+        if !tags_to_add.is_empty() {
+            crate::TagService::add_task_tags_pooled(pool, user_id, task.id, &tags_to_add).await?;
+            task = Self::get_by_id(pool, user_id, task.id).await?;
+        }
+
+        // Resolve bare URLs in background
+        if has_urls {
+            let bg_pool = pool.clone();
+            let task_id = task.id;
+            let bg_title = task.title.clone();
+            let bg_body = task.body.clone();
+            tokio::spawn(async move {
+                let resolved_title = crate::url_service::resolve_urls_in_text(&bg_title).await;
+                let resolved_body = match bg_body {
+                    Some(ref body) => Some(crate::url_service::resolve_urls_in_text(body).await),
+                    None => None,
+                };
+
+                let update_input = UpdateTask {
+                    title: Some(resolved_title),
+                    body: Some(resolved_body),
+                    is_url_fetching: Some(None),
+                    ..Default::default()
+                };
+                if let Err(e) =
+                    TaskService::update_raw(&bg_pool, user_id, task_id, &update_input).await
+                {
+                    tracing::error!(task_id, error = %e, "Background URL resolution failed");
+                }
+            });
+        }
+
+        Ok(task)
+    }
+
+    /// Raw update without token parsing — used by background URL resolution
+    /// and `maybe_resolve_urls` to avoid re-parsing tokens.
+    async fn update_raw(
+        pool: &DbPool,
+        user_id: i64,
+        id: i64,
+        resolved_input: &UpdateTask,
     ) -> ServiceResult<Task> {
         let mut conn = pool.get().await?;
 
@@ -238,16 +358,16 @@ impl TaskService {
 
         let mut changeset = TaskChangeset::default();
 
-        if let Some(ref title) = input.title {
+        if let Some(ref title) = resolved_input.title {
             changeset.title = Some(title.as_str());
         }
-        if let Some(ref body) = input.body {
+        if let Some(ref body) = resolved_input.body {
             changeset.body = Some(body.as_deref());
         }
-        if let Some(ref project_id) = input.project_id {
+        if let Some(ref project_id) = resolved_input.project_id {
             changeset.project_id = Some(*project_id);
         }
-        if let Some(ref parent_id) = input.parent_id {
+        if let Some(ref parent_id) = resolved_input.parent_id {
             changeset.parent_id = Some(*parent_id);
             if let Some(pid) = parent_id {
                 let parent_project: Option<i64> = tasks::table
@@ -260,7 +380,7 @@ impl TaskService {
                 changeset.project_id = Some(parent_project);
             }
         }
-        if let Some(ref sort_key) = input.sort_key {
+        if let Some(ref sort_key) = resolved_input.sort_key {
             changeset.sort_key = Some(sort_key.as_str());
         }
 
@@ -271,7 +391,7 @@ impl TaskService {
         let resolved_parent = changeset.parent_id.unwrap_or(existing.parent_id);
         let project_changed =
             resolved_project != existing.project_id || resolved_parent != existing.parent_id;
-        if project_changed && input.sort_key.is_none() {
+        if project_changed && resolved_input.sort_key.is_none() {
             let last_key: Option<String> = if let Some(pid) = resolved_parent {
                 tasks::table
                     .filter(tasks::parent_id.eq(pid))
@@ -308,40 +428,43 @@ impl TaskService {
             new_sort_key = north_dto::sort_key_after(last_key.as_deref());
             changeset.sort_key = Some(&new_sort_key);
         }
-        if let Some(sequential_limit) = input.sequential_limit {
+        if let Some(sequential_limit) = resolved_input.sequential_limit {
             changeset.sequential_limit = Some(sequential_limit);
         }
-        if let Some(ref start_at) = input.start_at {
+        if let Some(ref start_at) = resolved_input.start_at {
             changeset.start_at = Some(*start_at);
         }
-        if let Some(ref due_date) = input.due_date {
+        if let Some(ref due_date) = resolved_input.due_date {
             changeset.due_date = Some(*due_date);
         }
-        if let Some(ref reviewed_at) = input.reviewed_at {
+        if let Some(ref reviewed_at) = resolved_input.reviewed_at {
             changeset.reviewed_at = Some(*reviewed_at);
         }
-        if let Some(ref completed_at) = input.completed_at {
+        if let Some(ref completed_at) = resolved_input.completed_at {
             changeset.completed_at = Some(*completed_at);
         }
-        if let Some(ref recurrence_type) = input.recurrence_type {
+        if let Some(ref recurrence_type) = resolved_input.recurrence_type {
             changeset.recurrence_type = Some(recurrence_type.map(RecurrenceTypeMapping::from));
         }
-        if let Some(ref recurrence_rule) = input.recurrence_rule {
+        if let Some(ref recurrence_rule) = resolved_input.recurrence_rule {
             changeset.recurrence_rule = Some(recurrence_rule.as_deref());
         }
-        if let Some(ref is_url_fetching) = input.is_url_fetching {
+        if let Some(ref is_url_fetching) = resolved_input.is_url_fetching {
             changeset.is_url_fetching = Some(*is_url_fetching);
+        }
+        if let Some(someday) = resolved_input.someday {
+            changeset.someday = Some(someday);
         }
 
         // When completing and no explicit sort_key, reset to empty.
         // When uncompleting and no explicit sort_key, place at end of list.
         let uncomplete_sort_key: String;
-        if input.sort_key.is_none() && changeset.sort_key.is_none() {
-            if let Some(Some(_)) = input.completed_at {
+        if resolved_input.sort_key.is_none() && changeset.sort_key.is_none() {
+            if let Some(Some(_)) = resolved_input.completed_at {
                 if existing.completed_at.is_none() {
                     changeset.sort_key = Some("");
                 }
-            } else if let Some(None) = input.completed_at {
+            } else if let Some(None) = resolved_input.completed_at {
                 if existing.completed_at.is_some() {
                     let last_key: Option<String> = if let Some(pid) = resolved_parent {
                         tasks::table
@@ -396,7 +519,7 @@ impl TaskService {
         .await?;
 
         // If completing (was null, now set), cascade to descendants
-        if let Some(Some(_)) = input.completed_at {
+        if let Some(Some(_)) = resolved_input.completed_at {
             if existing.completed_at.is_none() {
                 let now = Utc::now();
                 let mut parent_ids = vec![id];
@@ -443,124 +566,6 @@ impl TaskService {
         Ok(Task::from(row))
     }
 
-    pub async fn create_with_tokens(
-        pool: &DbPool,
-        user_id: i64,
-        input: &CreateTask,
-    ) -> ServiceResult<Task> {
-        let parsed = crate::filter::text_parser::parse_tokens(&input.title);
-
-        let mut resolved_project_id = input.project_id;
-        if let Some(ref project_name) = parsed.project {
-            if let Ok(Some(pid)) =
-                crate::ProjectService::find_by_title(pool, user_id, project_name).await
-            {
-                resolved_project_id = Some(pid);
-            }
-        }
-
-        let title = if parsed.cleaned.is_empty() {
-            input.title.clone()
-        } else {
-            parsed.cleaned
-        };
-
-        let create_input = CreateTask {
-            title,
-            body: input.body.clone(),
-            project_id: resolved_project_id,
-            ..input.clone()
-        };
-
-        let mut task = Self::create(pool, user_id, &create_input).await?;
-
-        if !parsed.tags.is_empty() {
-            crate::TagService::add_task_tags_pooled(pool, user_id, task.id, &parsed.tags).await?;
-            task = Self::get_by_id(pool, user_id, task.id).await?;
-        }
-
-        task = Self::maybe_resolve_urls(pool, user_id, task).await?;
-
-        Ok(task)
-    }
-
-    pub async fn update_with_tokens(
-        pool: &DbPool,
-        user_id: i64,
-        id: i64,
-        input: &UpdateTask,
-    ) -> ServiceResult<Task> {
-        let mut resolved_input = input.clone();
-        let mut tags_to_add = Vec::new();
-        let mut has_urls = false;
-
-        if let Some(ref title) = input.title {
-            let parsed = crate::filter::text_parser::parse_tokens(title);
-            let cleaned = if parsed.cleaned.is_empty() {
-                title.clone()
-            } else {
-                parsed.cleaned
-            };
-            if crate::url_service::has_bare_urls(&cleaned) {
-                has_urls = true;
-            }
-            resolved_input.title = Some(cleaned);
-            tags_to_add = parsed.tags;
-
-            if let Some(ref project_name) = parsed.project {
-                if let Ok(Some(pid)) =
-                    crate::ProjectService::find_by_title(pool, user_id, project_name).await
-                {
-                    resolved_input.project_id = Some(Some(pid));
-                }
-            }
-        }
-
-        if let Some(Some(ref body)) = input.body {
-            if crate::url_service::has_bare_urls(body) {
-                has_urls = true;
-            }
-        }
-
-        if has_urls {
-            resolved_input.is_url_fetching = Some(Some(Utc::now()));
-        }
-
-        let mut task = Self::update(pool, user_id, id, &resolved_input).await?;
-
-        if !tags_to_add.is_empty() {
-            crate::TagService::add_task_tags_pooled(pool, user_id, task.id, &tags_to_add).await?;
-            task = Self::get_by_id(pool, user_id, task.id).await?;
-        }
-
-        if has_urls {
-            let bg_pool = pool.clone();
-            let task_id = task.id;
-            let bg_title = task.title.clone();
-            let bg_body = task.body.clone();
-            tokio::spawn(async move {
-                let resolved_title = crate::url_service::resolve_urls_in_text(&bg_title).await;
-                let resolved_body = match bg_body {
-                    Some(ref body) => Some(crate::url_service::resolve_urls_in_text(body).await),
-                    None => None,
-                };
-
-                let update_input = UpdateTask {
-                    title: Some(resolved_title),
-                    body: Some(resolved_body),
-                    is_url_fetching: Some(None),
-                    ..Default::default()
-                };
-                if let Err(e) = TaskService::update(&bg_pool, user_id, task_id, &update_input).await
-                {
-                    tracing::error!(task_id, error = %e, "Background URL resolution failed");
-                }
-            });
-        }
-
-        Ok(task)
-    }
-
     pub async fn delete(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<()> {
         let mut conn = pool.get().await?;
         let affected = diesel::delete(
@@ -574,23 +579,6 @@ impl TaskService {
             return Err(ServiceError::NotFound("Task not found".into()));
         }
         Ok(())
-    }
-
-    pub async fn review(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<Task> {
-        let today = Utc::now().date_naive();
-        let mut conn = pool.get().await?;
-        let row = diesel::update(
-            tasks::table
-                .filter(tasks::id.eq(id))
-                .filter(tasks::user_id.eq(user_id)),
-        )
-        .set(tasks::reviewed_at.eq(Some(today)))
-        .returning(TaskRow::as_returning())
-        .get_result(&mut conn)
-        .await
-        .optional()?
-        .ok_or_else(|| ServiceError::NotFound("Task not found".into()))?;
-        Ok(Task::from(row))
     }
 
     // ── Recurrence ─────────────────────────────────────────────────
@@ -687,9 +675,11 @@ impl TaskService {
                 sort_key: &sort_key,
                 start_at: Some(next_start),
                 due_date: next_due,
+                reviewed_at: None,
                 recurrence_type: completed_task.recurrence_type,
                 recurrence_rule: completed_task.recurrence_rule.as_deref(),
                 is_url_fetching: None,
+                someday: false,
             })
             .returning(TaskRow::as_returning())
             .get_result(&mut conn)
@@ -716,9 +706,11 @@ impl TaskService {
                     sort_key: &child_sort_key,
                     start_at: None,
                     due_date: None,
+                    reviewed_at: None,
                     recurrence_type: None,
                     recurrence_rule: None,
                     is_url_fetching: None,
+                    someday: false,
                 })
                 .returning(TaskRow::as_returning())
                 .get_result(&mut conn)
@@ -840,7 +832,7 @@ impl TaskService {
             is_url_fetching: Some(Some(Utc::now())),
             ..Default::default()
         };
-        task = Self::update(pool, user_id, task.id, &flag_input).await?;
+        task = Self::update_raw(pool, user_id, task.id, &flag_input).await?;
 
         let bg_pool = pool.clone();
         let task_id = task.id;
@@ -859,7 +851,8 @@ impl TaskService {
                 is_url_fetching: Some(None),
                 ..Default::default()
             };
-            if let Err(e) = TaskService::update(&bg_pool, user_id, task_id, &update_input).await {
+            if let Err(e) = TaskService::update_raw(&bg_pool, user_id, task_id, &update_input).await
+            {
                 tracing::error!(task_id, error = %e, "Background URL resolution failed");
             }
         });
@@ -951,37 +944,6 @@ impl TaskService {
                 task
             })
             .collect())
-    }
-
-    pub async fn review_all(pool: &DbPool, user_id: i64) -> ServiceResult<()> {
-        let mut conn = pool.get().await?;
-        let today = Utc::now().date_naive();
-
-        let settings_val: serde_json::Value = users::table
-            .filter(users::id.eq(user_id))
-            .select(users::settings)
-            .first(&mut conn)
-            .await?;
-        let settings: UserSettings = serde_json::from_value(settings_val).unwrap_or_default();
-        let cutoff =
-            Utc::now().date_naive() - chrono::Duration::days(settings.review_interval_days as i64);
-
-        diesel::update(
-            tasks::table
-                .filter(tasks::user_id.eq(user_id))
-                .filter(tasks::parent_id.is_null())
-                .filter(tasks::completed_at.is_null())
-                .filter(
-                    tasks::reviewed_at
-                        .is_null()
-                        .or(tasks::reviewed_at.le(cutoff)),
-                ),
-        )
-        .set(tasks::reviewed_at.eq(Some(today)))
-        .execute(&mut conn)
-        .await?;
-
-        Ok(())
     }
 
     pub async fn execute_dsl_filter(

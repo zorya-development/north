@@ -1,21 +1,29 @@
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
 
-use crate::atoms::{Text, TextColor, TextVariant};
+use crate::atoms::{TextColor, TextVariant};
 use crate::components::date_picker::DateTimePicker;
 use crate::components::drag_drop::{DragDropContext, DropZone};
+use crate::components::rich_title::RichTitle;
 use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
 use crate::containers::task_checkbox::TaskCheckbox;
 use crate::containers::task_meta::TaskMeta;
+use north_dto::Project;
 use north_stores::TaskModel;
 use north_ui::{DropdownItem, DropdownMenu, Icon, IconKind};
+
+use super::components::{ProjectPrefix, SomedayPrefix};
 
 #[component]
 pub fn TaskListItemView(
     task: Memo<Option<TaskModel>>,
+    projects: Signal<Vec<Project>>,
     #[prop(default = false)] show_review: bool,
     #[prop(default = true)] show_project: bool,
+    #[prop(default = false)] show_inline_project: bool,
+    #[prop(default = true)] show_inline_tags: bool,
+    #[prop(default = true)] show_someday: bool,
     #[prop(default = false)] draggable: bool,
     on_delete: Callback<()>,
     on_review: Callback<()>,
@@ -25,7 +33,7 @@ pub fn TaskListItemView(
     on_clear_project: Callback<()>,
     on_set_tags: Callback<Vec<String>>,
 ) -> impl IntoView {
-    let _ = show_project; // Reserved for future use (e.g. hiding project in TaskMeta)
+    let _ = show_project; // Used by ItemConfig for future TaskMeta project display
     let drag_ctx = use_context::<DragDropContext>();
     let (hovered, set_hovered) = signal(false);
     let (menu_open, set_menu_open) = signal(false);
@@ -35,6 +43,8 @@ pub fn TaskListItemView(
             .map(|t| t.completed_at.is_some())
             .unwrap_or(false)
     });
+
+    let is_someday = Memo::new(move |_| task.get().map(|t| t.someday).unwrap_or(false));
 
     view! {
         {move || {
@@ -52,6 +62,8 @@ pub fn TaskListItemView(
             let reviewed_at = t.reviewed_at;
             let tags = t.tags.clone();
             let recurrence = t.recurrence.clone();
+            let completed = t.completed_at.is_some();
+            let someday = t.someday;
 
             view! {
                 <div
@@ -90,6 +102,7 @@ pub fn TaskListItemView(
                             if !draggable { return; }
                             if let Some(ctx) = drag_ctx {
                                 ctx.dragging_task_id.set(Some(task_id));
+                                ctx.dragging_is_someday.set(is_someday.get_untracked());
                             }
                             if let Some(dt) = ev.data_transfer() {
                                 let _ = dt.set_data(
@@ -111,6 +124,17 @@ pub fn TaskListItemView(
                         let ctx = drag_ctx.unwrap();
                         if ctx.dragging_task_id.get_untracked()
                             == Some(task_id)
+                        {
+                            return;
+                        }
+                        // Don't show drop indicator on completed tasks
+                        if is_completed.get_untracked() {
+                            return;
+                        }
+                        // Only allow drops within the same group
+                        // (normal↔normal, someday↔someday)
+                        if ctx.dragging_is_someday.get_untracked()
+                            != is_someday.get_untracked()
                         {
                             return;
                         }
@@ -186,24 +210,75 @@ pub fn TaskListItemView(
                         >
                             <TaskCheckbox task_id=task_id/>
                         </div>
-                        {move || {
-                            let completed = is_completed.get();
+                        {
+                        let inline_tags = tags.clone();
+                        {
                             let t = title.clone();
+
+                            let someday_prefix = if someday && show_someday {
+                                Some(view! { <SomedayPrefix /> }.into_any())
+                            } else {
+                                None
+                            };
+
+                            let project_prefix = if show_inline_project {
+                                Some(view! {
+                                    <ProjectPrefix project_id=project_id projects=projects />
+                                }.into_any())
+                            } else {
+                                None
+                            };
+
+                            // Tag suffix: #tag1 #tag2
+                            let tag_suffix = if show_inline_tags && !inline_tags.is_empty() {
+                                let tag_views = inline_tags.iter().map(|tag| {
+                                    let query = format!("tags=\"{}\"", tag.name);
+                                    let encoded = urlencoding::encode(&query).into_owned();
+                                    let href = format!("/filters/new?q={encoded}");
+                                    let name = tag.name.clone();
+                                    view! {
+                                        <span class="text-text-secondary text-sm ml-1.5">
+                                            "#"
+                                            <a
+                                                href=href
+                                                class="hover:underline"
+                                                on:click=move |ev: leptos::ev::MouseEvent| {
+                                                    ev.stop_propagation();
+                                                }
+                                            >
+                                                {name}
+                                            </a>
+                                        </span>
+                                    }
+                                }).collect::<Vec<_>>();
+                                Some(tag_views)
+                            } else {
+                                None
+                            };
+
+                            let color = if completed {
+                                TextColor::Tertiary
+                            } else if someday {
+                                TextColor::Secondary
+                            } else {
+                                TextColor::Primary
+                            };
+
                             view! {
-                                <Text
-                                    variant=TextVariant::BodyMd
-                                    color={if completed {
-                                        TextColor::Tertiary
-                                    } else {
-                                        TextColor::Primary
-                                    }}
-                                    line_through=completed
-                                    class="flex-1 pt-0.5"
-                                >
-                                    {t}
-                                </Text>
+                                <span class="flex-1 pt-0.5 flex items-baseline flex-wrap">
+                                    {someday_prefix}
+                                    {project_prefix}
+                                    <RichTitle
+                                        title=t
+                                        variant=TextVariant::BodyMd
+                                        color=color
+                                        line_through=completed
+                                    />
+                                    {tag_suffix}
+                                </span>
                             }
-                        }}
+                        }
+                        }
                         <div
                             class=move || format!(
                                 "{} transition-opacity \
@@ -299,6 +374,7 @@ pub fn TaskListItemView(
                         tags=tags
                         reviewed_at=reviewed_at
                         show_review=show_review
+                        show_tags=!show_inline_tags
                         on_review=on_review
                         recurrence=recurrence
                         class="pl-6"

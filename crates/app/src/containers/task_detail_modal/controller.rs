@@ -5,6 +5,7 @@ use north_stores::{
 };
 
 use crate::containers::traversable_task_list::ExtraVisibleIds;
+use crate::libs::KeepCompletedVisible;
 
 #[derive(Clone, Copy)]
 pub struct TaskDetailModalController {
@@ -14,6 +15,7 @@ pub struct TaskDetailModalController {
     extra_visible_ids: RwSignal<Vec<i64>>,
     pub title_draft: RwSignal<String>,
     pub body_draft: RwSignal<String>,
+    pub body_editing: RwSignal<bool>,
     pub focused_task_id: RwSignal<Option<i64>>,
     pub subtask_show_completed: RwSignal<bool>,
     pub subtask_filter: Signal<Callback<TaskModel, bool>>,
@@ -23,9 +25,13 @@ impl TaskDetailModalController {
     pub fn new(app_store: AppStore) -> Self {
         let extra_visible_ids = expect_context::<ExtraVisibleIds>().0;
         let subtask_show_completed = RwSignal::new(false);
+        let keep_completed_signal = use_context::<KeepCompletedVisible>().map(|kc| kc.signal());
         let subtask_filter = Signal::derive(move || {
             let show = subtask_show_completed.get();
-            Callback::new(move |task: TaskModel| task.completed_at.is_none() || show)
+            let pinned = keep_completed_signal.map(|s| s.get()).unwrap_or_default();
+            Callback::new(move |task: TaskModel| {
+                task.completed_at.is_none() || show || pinned.contains(&task.id)
+            })
         });
 
         Self {
@@ -35,6 +41,7 @@ impl TaskDetailModalController {
             extra_visible_ids,
             title_draft: RwSignal::new(String::new()),
             body_draft: RwSignal::new(String::new()),
+            body_editing: RwSignal::new(false),
             focused_task_id: RwSignal::new(None),
             subtask_show_completed,
             subtask_filter,
@@ -108,9 +115,20 @@ impl TaskDetailModalController {
     // --- Mutations ---
 
     pub fn save(&self) {
-        let t = self.title_draft.get_untracked();
-        let b = self.body_draft.get_untracked();
+        let Some(t) = self.title_draft.try_get_untracked() else {
+            return;
+        };
+        let Some(b) = self.body_draft.try_get_untracked() else {
+            return;
+        };
         let b = if b.trim().is_empty() { None } else { Some(b) };
+
+        if let Some(task) = untrack(|| self.store.task()) {
+            if task.title == t && task.body == b {
+                return;
+            }
+        }
+
         self.store.update(t, b);
     }
 
@@ -175,13 +193,18 @@ impl TaskDetailModalController {
     }
 
     pub fn sync_drafts(&self, title: String, body: Option<String>) {
-        self.title_draft.set(title);
-        self.body_draft.set(body.unwrap_or_default());
+        let body = body.unwrap_or_default();
+        if self.title_draft.try_get_untracked().as_ref() != Some(&title) {
+            let _ = self.title_draft.try_set(title);
+        }
+        if self.body_draft.try_get_untracked().as_ref() != Some(&body) {
+            let _ = self.body_draft.try_set(body);
+        }
     }
 
     pub fn focus_if_new_task(&self, task_id: i64) -> bool {
-        if self.focused_task_id.get_untracked() != Some(task_id) {
-            self.focused_task_id.set(Some(task_id));
+        if self.focused_task_id.try_get_untracked() != Some(Some(task_id)) {
+            let _ = self.focused_task_id.try_set(Some(task_id));
             return true;
         }
         false

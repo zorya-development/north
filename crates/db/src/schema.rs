@@ -100,6 +100,7 @@ diesel::table! {
         recurrence_type -> Nullable<RecurrenceType>,
         recurrence_rule -> Nullable<Varchar>,
         is_url_fetching -> Nullable<Timestamptz>,
+        someday -> Bool,
     }
 }
 

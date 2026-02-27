@@ -10,6 +10,7 @@ pub enum DropZone {
 #[derive(Clone, Copy)]
 pub struct DragDropContext {
     pub dragging_task_id: RwSignal<Option<i64>>,
+    pub dragging_is_someday: RwSignal<bool>,
     pub drop_target: RwSignal<Option<(i64, DropZone)>>,
 }
 
@@ -23,6 +24,7 @@ impl DragDropContext {
     pub fn new() -> Self {
         Self {
             dragging_task_id: RwSignal::new(None),
+            dragging_is_someday: RwSignal::new(false),
             drop_target: RwSignal::new(None),
         }
     }

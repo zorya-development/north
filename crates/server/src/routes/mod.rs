@@ -1,9 +1,10 @@
 mod auth;
+mod filters;
 mod projects;
 mod stats;
 mod tasks;
 
-use axum::routing::{get, patch, post};
+use axum::routing::{delete, get, post};
 use axum::{middleware, Router};
 
 use crate::auth::middleware::auth_middleware;
@@ -25,7 +26,6 @@ pub fn protected_api_router(state: AppState) -> Router<AppState> {
                 .patch(tasks::update_task)
                 .delete(tasks::delete_task),
         )
-        .route("/tasks/:id/review", patch(tasks::review_task))
         // Project routes
         .route(
             "/projects",
@@ -33,8 +33,13 @@ pub fn protected_api_router(state: AppState) -> Router<AppState> {
         )
         .route(
             "/projects/:id",
-            get(projects::get_project).patch(projects::update_project),
+            get(projects::get_project)
+                .patch(projects::update_project)
+                .delete(projects::delete_project),
         )
+        // Filter routes
+        .route("/filters", get(filters::list_filters))
+        .route("/filters/:id", delete(filters::delete_filter))
         // Stats routes
         .route("/stats", get(stats::get_stats))
         // Auth middleware layer
