@@ -11,7 +11,7 @@ RUN curl -L --proto '=https' --tlsv1.2 -sSf \
     https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
 
 # Install tools
-RUN cargo binstall -y cargo-leptos
+RUN cargo binstall -y cargo-leptos sccache
 RUN cargo install diesel_cli --no-default-features --features postgres
 
 # WASM target for Leptos client-side

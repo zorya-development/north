@@ -96,9 +96,6 @@ jobs:
           key: sccache-build-${{ hashFiles('Cargo.lock') }}
           restore-keys: sccache-build-
 
-      - name: Install sccache
-        run: cargo binstall -y sccache
-
       - name: Start sccache server
         run: sccache --start-server
 
@@ -162,9 +159,6 @@ jobs:
           path: /sccache
           key: sccache-check-${{ hashFiles('Cargo.lock') }}
           restore-keys: sccache-check-
-
-      - name: Install sccache
-        run: cargo binstall -y sccache
 
       - name: Start sccache server
         run: sccache --start-server

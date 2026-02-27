@@ -65,9 +65,6 @@ jobs:
           key: sccache-release-${{ hashFiles('Cargo.lock') }}
           restore-keys: sccache-release-
 
-      - name: Install sccache
-        run: cargo binstall -y sccache
-
       - name: Start sccache server
         run: sccache --start-server
 
