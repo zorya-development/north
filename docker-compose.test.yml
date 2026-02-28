@@ -5,8 +5,6 @@ services:
       POSTGRES_DB: north_test
       POSTGRES_USER: north
       POSTGRES_PASSWORD: north
-    tmpfs:
-      - /var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U north -d north_test"]
       interval: 5s

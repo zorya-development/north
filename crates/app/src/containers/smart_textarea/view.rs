@@ -120,7 +120,7 @@ pub fn SmartTextareaView(
     };
 
     view! {
-        <div class="relative">
+        <div class="relative flex-1 min-w-0">
             {mirror_overlay.then(|| {
                 view! { <MirrorOverlay value=Signal::derive(move || value.try_get().unwrap_or_default()) /> }
             })}

@@ -335,4 +335,40 @@ test.describe("Keyboard Navigation", () => {
     // Both tasks should still be present (Space didn't complete the task)
     await expect(page.locator('[data-testid="task-row"]')).toHaveCount(2);
   });
+
+  test("inline edit textarea uses full container width", async ({
+    authenticatedPage: page,
+  }) => {
+    await api.createTask({
+      title:
+        "This is a long task title that should span the full width of the inline edit container",
+    });
+
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    // Select task and open inline editor
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+
+    const editInput = page.locator('[data-testid="inline-edit-input"]');
+    await expect(editInput).toBeVisible();
+
+    // The textarea should span most of the container width (not just 1/3).
+    const containerBox = await page
+      .locator('[data-testid="task-list"]')
+      .boundingBox();
+    const inputBox = await editInput.boundingBox();
+
+    expect(containerBox).not.toBeNull();
+    expect(inputBox).not.toBeNull();
+
+    // Textarea should use at least 70% of the container width
+    const ratio = inputBox!.width / containerBox!.width;
+    expect(ratio).toBeGreaterThan(0.7);
+
+    await editInput.press("Escape");
+  });
 });
