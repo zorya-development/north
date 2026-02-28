@@ -49,7 +49,7 @@ playwright-exec *args='':
     docker compose {{ compose-test }} exec playwright npx playwright test {{ args }}
 
 playwright-down:
-    docker compose {{ compose-test }} down -v
+    docker compose {{ compose-test }} down
 
 # Bump base image version: just bump-base {major,minor,patch}
 bump-base part:

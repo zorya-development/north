@@ -55,6 +55,17 @@ impl ProjectController {
 
         // Track tasks that disappear from the base filter and keep them visible.
         let prev_filtered_ids: RwSignal<Vec<i64>> = RwSignal::new(vec![]);
+
+        // Clear extra visible IDs and prev tracking when navigating to a
+        // different project, so tasks from the previous project don't bleed through.
+        Effect::new(move |prev_pid: Option<i64>| {
+            let pid = project_id.get();
+            if prev_pid.is_some_and(|p| p != pid) {
+                extra_show_ids.set(vec![]);
+                prev_filtered_ids.set(vec![]);
+            }
+            pid
+        });
         Effect::new(move |_| {
             let current: Vec<i64> = root_tasks.get().iter().map(|t| t.id).collect();
             let prev = prev_filtered_ids.get_untracked();
