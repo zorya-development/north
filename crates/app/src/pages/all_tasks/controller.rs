@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskModel, TaskStoreFilter};
 
+use crate::containers::traversable_task_list::{ActionableToggle, CompletedToggle, ToolbarConfig};
 use crate::libs::{is_actionable, KeepCompletedVisible};
 
 const HIDE_NON_ACTIONABLE_KEY: &str = "north:hide-non-actionable:all_tasks";
@@ -13,6 +14,7 @@ pub struct AllTasksController {
     pub completed_count: Memo<usize>,
     pub is_loaded: Signal<bool>,
     pub hide_non_actionable: Signal<bool>,
+    pub actionable_count: Memo<usize>,
     pub node_filter: Signal<Callback<north_stores::TaskModel, bool>>,
     app_store: AppStore,
 }
@@ -54,6 +56,14 @@ impl AllTasksController {
 
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
 
+        let actionable_count = Memo::new(move |_| {
+            let tasks = all_tasks.get();
+            tasks
+                .iter()
+                .filter(|t| t.completed_at.is_none() && is_actionable(t, &tasks))
+                .count()
+        });
+
         let keep_completed_signal = keep_completed.signal();
         let node_filter = Signal::derive(move || {
             let hide = hide_non_actionable.get();
@@ -77,6 +87,7 @@ impl AllTasksController {
             completed_count,
             is_loaded,
             hide_non_actionable,
+            actionable_count,
             node_filter,
             app_store,
         }
@@ -93,9 +104,31 @@ impl AllTasksController {
             .reorder_task(task_id, sort_key, parent_id);
     }
 
-    pub fn toggle_actionable_visibility(&self) {
-        self.app_store
-            .browser_storage
-            .toggle_bool(HIDE_NON_ACTIONABLE_KEY);
+    pub fn toolbar_config(&self) -> ToolbarConfig {
+        let show_completed = self.show_completed;
+        let completed_count = self.completed_count;
+        let hide_non_actionable = self.hide_non_actionable;
+        let actionable_count = self.actionable_count;
+        let app_store = self.app_store;
+        ToolbarConfig {
+            enabled: true,
+            show_add_task: true,
+            completed: Some(CompletedToggle {
+                is_active: show_completed.into(),
+                count: completed_count,
+                on_toggle: Callback::new(move |()| {
+                    show_completed.update(|v| *v = !*v);
+                }),
+            }),
+            actionable: Some(ActionableToggle {
+                is_active: hide_non_actionable,
+                count: actionable_count,
+                on_toggle: Callback::new(move |()| {
+                    app_store
+                        .browser_storage
+                        .toggle_bool(HIDE_NON_ACTIONABLE_KEY);
+                }),
+            }),
+        }
     }
 }

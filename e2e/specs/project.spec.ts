@@ -63,7 +63,7 @@ test.describe("Project Page", () => {
       .waitFor({ state: "visible" });
 
     // Click "+ Add task"
-    await page.locator('[data-testid="project-add-task"]').click();
+    await page.locator('[data-testid="ttl-add-task"]').click();
 
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();

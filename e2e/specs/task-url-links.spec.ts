@@ -45,7 +45,7 @@ test.describe("Task URL links", () => {
 
     // Create task via inline input — this goes through create_with_tokens
     // which triggers background URL resolution
-    await page.locator('[data-testid="inbox-add-task"]').click();
+    await page.locator('[data-testid="ttl-add-task"]').click();
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();
     await input.fill(youtubeUrl);

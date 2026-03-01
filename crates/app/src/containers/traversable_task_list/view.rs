@@ -4,11 +4,14 @@ use north_ui::Spinner;
 use wasm_bindgen::JsCast;
 
 use super::controller::TraversableTaskListController;
+use super::toolbar_config::ToolbarConfig;
 use super::tree::*;
-use crate::atoms::{Text, TextColor, TextTag, TextVariant};
+use crate::atoms::{Text, TextColor, TextTag, TextVariant, Toolbar, ToolbarSeparator};
 use crate::components::drag_drop::{DragDropContext, DropZone};
+use crate::components::keybindings_modal::KeybindingsModal;
 use crate::containers::smart_textarea::SmartTextarea;
 use crate::containers::task_list_item::{ItemConfig, TaskListItem};
+use crate::containers::traversable_task_list::components::{SearchInput, TagFilterRow};
 
 #[component]
 pub fn TraversableTaskListView(
@@ -17,6 +20,7 @@ pub fn TraversableTaskListView(
     #[prop(default = "No tasks.")] empty_message: &'static str,
     is_loaded: Signal<bool>,
     #[prop(default = false)] scoped: bool,
+    #[prop(default = ToolbarConfig::none())] toolbar: ToolbarConfig,
 ) -> impl IntoView {
     let flat_nodes = ctrl.flat_nodes;
     let cursor_task_id = ctrl.cursor_task_id;
@@ -26,6 +30,13 @@ pub fn TraversableTaskListView(
     let drag_ctx = use_context::<DragDropContext>();
     let app_store = north_stores::use_app_store();
     let all_tasks_for_drop = app_store.tasks.filtered(TaskStoreFilter::default());
+
+    let show_keybindings_help = ctrl.show_keybindings_help;
+    let has_toolbar = toolbar.enabled;
+
+    let search_query = ctrl.search_query;
+    let active_tag_names = ctrl.active_tag_names;
+    let available_tags = ctrl.available_tags;
 
     if !scoped {
         // Global keyboard listener — works regardless of focus.
@@ -58,21 +69,122 @@ pub fn TraversableTaskListView(
         ctrl.handle_keydown(&ev);
     };
 
-    let on_container_click = move |_: web_sys::MouseEvent| {
-        if scoped {
+    let on_container_click = move |ev: web_sys::MouseEvent| {
+        if scoped && matches!(inline_mode.get_untracked(), InlineMode::None) {
+            // Don't steal focus from interactive elements (e.g. toolbar search input)
+            if let Some(target) = ev.target() {
+                let tag = target.unchecked_ref::<web_sys::HtmlElement>().tag_name();
+                if tag == "INPUT" || tag == "TEXTAREA" || tag == "BUTTON" || tag == "SELECT" {
+                    return;
+                }
+            }
             if let Some(el) = container_ref.get() {
                 let _ = el.focus();
             }
         }
     };
 
-    let on_focus = move |_: web_sys::FocusEvent| {
-        if scoped && cursor_task_id.get_untracked().is_none() {
+    let on_focus = move |ev: web_sys::FocusEvent| {
+        // Only auto-select first task when the container itself is focused,
+        // not when a child element (e.g. toolbar search input) receives focus.
+        let is_container = container_ref
+            .get()
+            .and_then(|el| {
+                ev.target()
+                    .map(|t| std::ptr::eq(el.as_ref(), t.unchecked_ref::<web_sys::HtmlElement>()))
+            })
+            .unwrap_or(false);
+        if scoped && is_container && cursor_task_id.get_untracked().is_none() {
             if let Some(first) = flat_nodes.get_untracked().first() {
                 cursor_task_id.set(Some(first.task_id));
             }
         }
     };
+
+    // Toolbar rendering (when enabled)
+    let toolbar_view = has_toolbar.then(|| {
+        let completed = toolbar.completed;
+        let actionable = toolbar.actionable;
+        let show_add = toolbar.show_add_task;
+
+        view! {
+            <div class="mb-2">
+                <Toolbar class="mb-1">
+                    {show_add.then(|| view! {
+                        <button
+                            data-testid="ttl-add-task"
+                            on:click=move |_| ctrl.start_create_top()
+                            class="text-xs text-text-secondary hover:text-text-primary \
+                                   transition-colors cursor-pointer"
+                        >
+                            "+" " Add task"
+                        </button>
+                        <ToolbarSeparator />
+                    })}
+                    {completed.as_ref().map(|c| {
+                        let is_active = c.is_active;
+                        let count = c.count;
+                        let on_toggle = c.on_toggle;
+                        view! {
+                            <button
+                                data-testid="ttl-toggle-completed"
+                                on:click=move |_| on_toggle.run(())
+                                class=move || {
+                                    if is_active.get() {
+                                        "text-xs text-accent cursor-pointer transition-colors"
+                                    } else {
+                                        "text-xs text-text-secondary hover:text-text-primary \
+                                         cursor-pointer transition-colors"
+                                    }
+                                }
+                            >
+                                {move || format!("Completed ({})", count.get())}
+                            </button>
+                            <ToolbarSeparator />
+                        }
+                    })}
+                    {actionable.as_ref().map(|a| {
+                        let is_active = a.is_active;
+                        let count = a.count;
+                        let on_toggle = a.on_toggle;
+                        view! {
+                            <button
+                                data-testid="ttl-toggle-actionable"
+                                on:click=move |_| on_toggle.run(())
+                                class=move || {
+                                    if is_active.get() {
+                                        "text-xs text-accent cursor-pointer transition-colors"
+                                    } else {
+                                        "text-xs text-text-secondary hover:text-text-primary \
+                                         cursor-pointer transition-colors"
+                                    }
+                                }
+                            >
+                                {move || format!("Actionable ({})", count.get())}
+                            </button>
+                            <ToolbarSeparator />
+                        }
+                    })}
+                    <SearchInput query=search_query />
+                </Toolbar>
+                <TagFilterRow
+                    available_tags=available_tags
+                    active_tag_names=active_tag_names
+                    on_toggle=Callback::new(move |name: String| {
+                        active_tag_names.update(|tags| {
+                            if let Some(pos) = tags.iter().position(|t| *t == name) {
+                                tags.remove(pos);
+                            } else {
+                                tags.push(name);
+                            }
+                        });
+                    })
+                />
+            </div>
+        }
+    });
+
+    let (help_read, help_write) = show_keybindings_help.split();
 
     view! {
         <div
@@ -94,6 +206,9 @@ pub fn TraversableTaskListView(
                 }
             }
         >
+            // Toolbar (when provided)
+            {toolbar_view}
+
             // Loading spinner
             <Show when=move || !is_loaded.get()>
                 <Spinner/>
@@ -254,6 +369,11 @@ pub fn TraversableTaskListView(
                 }
             />
             </div>
+
+            // Keybindings modal (when toolbar is present, TTL owns it)
+            {has_toolbar.then(|| view! {
+                <KeybindingsModal open=help_read set_open=help_write />
+            })}
         </div>
     }
 }

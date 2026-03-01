@@ -36,7 +36,7 @@ test.describe("SmartTextarea Autocomplete", () => {
       .first()
       .waitFor({ state: "visible" });
 
-    await page.locator('[data-testid="inbox-add-task"]').click();
+    await page.locator('[data-testid="ttl-add-task"]').click();
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();
 
@@ -61,7 +61,7 @@ test.describe("SmartTextarea Autocomplete", () => {
       .first()
       .waitFor({ state: "visible" });
 
-    await page.locator('[data-testid="inbox-add-task"]').click();
+    await page.locator('[data-testid="ttl-add-task"]').click();
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();
 
@@ -103,7 +103,7 @@ test.describe("SmartTextarea Autocomplete", () => {
       .first()
       .waitFor({ state: "visible" });
 
-    await page.locator('[data-testid="inbox-add-task"]').click();
+    await page.locator('[data-testid="ttl-add-task"]').click();
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();
 
@@ -133,7 +133,7 @@ test.describe("SmartTextarea Autocomplete", () => {
       .first()
       .waitFor({ state: "visible" });
 
-    await page.locator('[data-testid="inbox-add-task"]').click();
+    await page.locator('[data-testid="ttl-add-task"]').click();
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();
 
@@ -157,7 +157,7 @@ test.describe("SmartTextarea Autocomplete", () => {
       .first()
       .waitFor({ state: "visible" });
 
-    await page.locator('[data-testid="inbox-add-task"]').click();
+    await page.locator('[data-testid="ttl-add-task"]').click();
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();
 
@@ -196,10 +196,11 @@ test.describe("SmartTextarea Autocomplete", () => {
       .locator('[data-testid="task-detail-modal"]')
       .waitFor({ state: "visible" });
 
-    // Click "Add subtask"
-    await page.locator('[data-testid="task-detail-subtask-btn"]').click();
-    const subtaskInput = page.locator(
-      '[data-testid="task-detail-subtask-input"]',
+    // Click "Add subtask" (scoped to modal — page also has ttl-add-task)
+    const modal = page.locator('[data-testid="task-detail-modal"]');
+    await modal.locator('[data-testid="ttl-add-task"]').click();
+    const subtaskInput = modal.locator(
+      '[data-testid="inline-create-input"]',
     );
     await expect(subtaskInput).toBeVisible();
 
@@ -223,7 +224,7 @@ test.describe("SmartTextarea Autocomplete", () => {
       .first()
       .waitFor({ state: "visible" });
 
-    await page.locator('[data-testid="inbox-add-task"]').click();
+    await page.locator('[data-testid="ttl-add-task"]').click();
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();
 

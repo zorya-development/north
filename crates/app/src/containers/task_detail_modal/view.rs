@@ -7,7 +7,6 @@ use crate::atoms::{Text, TextColor, TextVariant};
 use crate::components::date_picker::DateTimePicker;
 use crate::components::enriched_markdown::EnrichedMarkdownView;
 use crate::components::recurrence_modal::RecurrenceModal;
-use crate::containers::inline_task_input::InlineTaskInput;
 use crate::containers::project_picker::ProjectPicker;
 use crate::containers::smart_textarea::SmartTextarea;
 use crate::containers::tag_picker::TagPicker;
@@ -21,10 +20,7 @@ pub fn TaskDetailModalView(
     ctrl: TaskDetailModalController,
     subtask_item_config: ItemConfig,
 ) -> impl IntoView {
-    let subtask_show_completed = ctrl.subtask_show_completed;
     let subtask_filter = ctrl.subtask_filter;
-    let (show_inline_input, set_show_inline_input) = signal(false);
-    let input_value = RwSignal::new(String::new());
     let title_input_ref = NodeRef::<leptos::html::Textarea>::new();
     let subtask_cursor = RwSignal::new(None::<i64>);
 
@@ -70,9 +66,13 @@ pub fn TaskDetailModalView(
 
                     let subtask_ids = ctrl.subtask_ids(task_id);
                     let completed_count = ctrl.completed_subtask_count(task_id);
-                    let total_count = ctrl.total_subtask_count(task_id);
                     let default_project_signal =
                         ctrl.default_project_signal(project_id);
+
+                    let default_parent_signal =
+                        Signal::derive(move || Some(task_id));
+
+                    let subtask_toolbar = ctrl.subtask_toolbar_config(completed_count);
 
                     Some(view! {
                         // Header
@@ -251,77 +251,12 @@ pub fn TaskDetailModalView(
                                             },
                                         )
                                         default_project_id=default_project_signal
+                                        default_parent_id=default_parent_signal
                                         empty_message="No subtasks."
                                         allow_reorder=true
                                         cursor_task_id=subtask_cursor
+                                        toolbar=subtask_toolbar
                                     />
-                                    // Inline task input
-                                    <Show when=move || show_inline_input.get()>
-                                        <InlineTaskInput
-                                            parent_id=task_id
-                                            value=input_value
-                                            on_created=Callback::new(
-                                                move |id| {
-                                                    ctrl.track_created_subtask(id);
-                                                },
-                                            )
-                                            on_close=Callback::new(
-                                                move |()| {
-                                                    set_show_inline_input.set(false);
-                                                },
-                                            )
-                                        />
-                                    </Show>
-                                    <Show when=move || !show_inline_input.get()>
-                                        <button
-                                            data-testid="task-detail-subtask-btn"
-                                            class="my-3 text-xs text-accent \
-                                                   hover:text-accent-hover \
-                                                   hover:underline cursor-pointer \
-                                                   transition-colors"
-                                            on:click=move |_| {
-                                                set_show_inline_input.set(true);
-                                            }
-                                        >
-                                            "+ Add subtask"
-                                        </button>
-                                    </Show>
-                                    // Toggle bar
-                                    <Show when=move || {
-                                        completed_count.get() > 0usize
-                                    }>
-                                        <div class="py-1 flex items-center \
-                                                    gap-2 text-xs">
-                                            <button
-                                                class="text-accent \
-                                                       hover:text-accent-hover \
-                                                       hover:underline \
-                                                       cursor-pointer \
-                                                       transition-colors"
-                                                on:click=move |_| {
-                                                    subtask_show_completed
-                                                        .update(|v| *v = !*v);
-                                                }
-                                            >
-                                                {move || {
-                                                    if subtask_show_completed.get() {
-                                                        "Hide Completed".to_string()
-                                                    } else {
-                                                        format!(
-                                                            "Show Completed ({})",
-                                                            completed_count.get(),
-                                                        )
-                                                    }
-                                                }}
-                                            </button>
-                                            <span class="text-text-tertiary">
-                                                {move || format!(
-                                                    "Total: {}",
-                                                    total_count.get(),
-                                                )}
-                                            </span>
-                                        </div>
-                                    </Show>
                                 </div>
                             </div>
 

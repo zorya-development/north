@@ -191,11 +191,11 @@ test.describe("Task Detail Modal", () => {
     await expect(modal).toBeVisible();
 
     // Click "+ Add subtask"
-    await modal.locator('[data-testid="task-detail-subtask-btn"]').click();
+    await modal.locator('[data-testid="ttl-add-task"]').click();
 
     // Fill in subtask
     const subtaskInput = modal.locator(
-      '[data-testid="task-detail-subtask-input"]',
+      '[data-testid="inline-create-input"]',
     );
     await expect(subtaskInput).toBeVisible();
     await subtaskInput.fill("My Subtask");
@@ -274,9 +274,11 @@ test.describe("Task Detail Modal", () => {
     await expect(modal).toContainText("Work");
 
     // Close and reopen to verify persistence
-    await page.locator('[data-testid="task-detail-close"]').click();
+    await page.keyboard.press("Escape");
     await expect(modal).not.toBeVisible();
 
+    // Re-select the task (cursor lost after modal close)
+    await page.keyboard.press("ArrowDown");
     await page.keyboard.press("e");
     await expect(modal).toBeVisible();
     await expect(modal).toContainText("Work");
@@ -545,10 +547,10 @@ test.describe("Task Detail Modal", () => {
     await expect(modal).toBeVisible();
 
     // Click "+ Add subtask"
-    await modal.locator('[data-testid="task-detail-subtask-btn"]').click();
+    await modal.locator('[data-testid="ttl-add-task"]').click();
 
     const subtaskInput = modal.locator(
-      '[data-testid="task-detail-subtask-input"]',
+      '[data-testid="inline-create-input"]',
     );
     await expect(subtaskInput).toBeVisible();
 
@@ -598,11 +600,11 @@ test.describe("Task Detail Modal", () => {
     const modal = page.locator('[data-testid="task-detail-modal"]');
     await expect(modal).toBeVisible();
 
-    await modal.locator('[data-testid="task-detail-subtask-btn"]').click();
+    await modal.locator('[data-testid="ttl-add-task"]').click();
 
     // Verify the subtask input is a textarea element
     const subtaskInput = modal.locator(
-      '[data-testid="task-detail-subtask-input"]',
+      '[data-testid="inline-create-input"]',
     );
     await expect(subtaskInput).toBeVisible();
 

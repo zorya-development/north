@@ -38,7 +38,7 @@ test.describe("Inbox", () => {
       .waitFor({ state: "visible" });
 
     // Click "+ Add task" to open inline input
-    await page.locator('[data-testid="inbox-add-task"]').click();
+    await page.locator('[data-testid="ttl-add-task"]').click();
 
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();
@@ -60,7 +60,7 @@ test.describe("Inbox", () => {
       .waitFor({ state: "visible" });
 
     // Create anchor task via UI so it gets a valid FractionalIndex sort key
-    await page.locator('[data-testid="inbox-add-task"]').click();
+    await page.locator('[data-testid="ttl-add-task"]').click();
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();
     await input.fill("Anchor Task");
@@ -125,7 +125,7 @@ test.describe("Inbox", () => {
     await page.goto("/inbox");
 
     // Toggle "Show completed"
-    await page.locator('[data-testid="inbox-toggle-completed"]').click();
+    await page.locator('[data-testid="ttl-toggle-completed"]').click();
 
     // Task should be visible and have line-through styling
     const rows = page.locator('[data-testid="task-row"]');
@@ -190,7 +190,7 @@ test.describe("Inbox", () => {
     await expect(page.locator('[data-testid="task-row"]')).toHaveCount(4);
 
     // Toggle hide non-actionable
-    await page.locator('[data-testid="inbox-toggle-actionable"]').click();
+    await page.locator('[data-testid="ttl-toggle-actionable"]').click();
 
     // Only parent + 1 actionable child should be visible
     await expect(page.locator('[data-testid="task-row"]')).toHaveCount(2);
@@ -204,7 +204,7 @@ test.describe("Inbox", () => {
     await expect(page.locator('[data-testid="task-row"]')).toHaveCount(2);
 
     // Toggle back to show all
-    await page.locator('[data-testid="inbox-toggle-actionable"]').click();
+    await page.locator('[data-testid="ttl-toggle-actionable"]').click();
     await expect(page.locator('[data-testid="task-row"]')).toHaveCount(4);
   });
 
@@ -250,7 +250,7 @@ test.describe("Inbox", () => {
       .waitFor({ state: "visible" });
 
     // Toggle hide non-actionable
-    await page.locator('[data-testid="inbox-toggle-actionable"]').click();
+    await page.locator('[data-testid="ttl-toggle-actionable"]').click();
 
     // Parent + 2 actionable children (Sub A and Sub B) should be visible
     await expect(page.locator('[data-testid="task-row"]')).toHaveCount(3);
@@ -269,7 +269,7 @@ test.describe("Inbox", () => {
       .locator('[data-testid="empty-task-list"]')
       .waitFor({ state: "visible" });
 
-    await page.locator('[data-testid="inbox-add-task"]').click();
+    await page.locator('[data-testid="ttl-add-task"]').click();
 
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();
@@ -286,7 +286,7 @@ test.describe("Inbox", () => {
       .locator('[data-testid="empty-task-list"]')
       .waitFor({ state: "visible" });
 
-    await page.locator('[data-testid="inbox-add-task"]').click();
+    await page.locator('[data-testid="ttl-add-task"]').click();
 
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();
@@ -333,7 +333,7 @@ test.describe("Inbox", () => {
       .locator('[data-testid="empty-task-list"]')
       .waitFor({ state: "visible" });
 
-    await page.locator('[data-testid="inbox-add-task"]').click();
+    await page.locator('[data-testid="ttl-add-task"]').click();
 
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();

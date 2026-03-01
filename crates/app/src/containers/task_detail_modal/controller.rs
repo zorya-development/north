@@ -4,7 +4,7 @@ use north_stores::{
     AppStore, IdFilter, ModalStore, TaskDetailModalStore, TaskModel, TaskStoreFilter,
 };
 
-use crate::containers::traversable_task_list::ExtraVisibleIds;
+use crate::containers::traversable_task_list::{CompletedToggle, ToolbarConfig};
 use crate::libs::KeepCompletedVisible;
 
 #[derive(Clone, Copy)]
@@ -12,7 +12,6 @@ pub struct TaskDetailModalController {
     store: TaskDetailModalStore,
     app_store: AppStore,
     modal: ModalStore,
-    extra_visible_ids: RwSignal<Vec<i64>>,
     pub title_draft: RwSignal<String>,
     pub body_draft: RwSignal<String>,
     pub body_editing: RwSignal<bool>,
@@ -23,7 +22,6 @@ pub struct TaskDetailModalController {
 
 impl TaskDetailModalController {
     pub fn new(app_store: AppStore) -> Self {
-        let extra_visible_ids = expect_context::<ExtraVisibleIds>().0;
         let subtask_show_completed = RwSignal::new(false);
         let keep_completed_signal = use_context::<KeepCompletedVisible>().map(|kc| kc.signal());
         let subtask_filter = Signal::derive(move || {
@@ -38,7 +36,6 @@ impl TaskDetailModalController {
             store: app_store.task_detail_modal,
             app_store,
             modal: app_store.modal,
-            extra_visible_ids,
             title_draft: RwSignal::new(String::new()),
             body_draft: RwSignal::new(String::new()),
             body_editing: RwSignal::new(false),
@@ -75,11 +72,6 @@ impl TaskDetailModalController {
                 .filter(|t| t.completed_at.is_some())
                 .count()
         })
-    }
-
-    pub fn total_subtask_count(&self, task_id: i64) -> Memo<usize> {
-        let all = self.all_subtasks(task_id);
-        Memo::new(move |_| all.get().len())
     }
 
     pub fn default_project_signal(&self, project_id: Option<i64>) -> Signal<Option<i64>> {
@@ -184,14 +176,6 @@ impl TaskDetailModalController {
         self.app_store.tasks.reorder_task(id, key, parent);
     }
 
-    pub fn track_created_subtask(&self, id: i64) {
-        self.extra_visible_ids.update(|ids| {
-            if !ids.contains(&id) {
-                ids.push(id);
-            }
-        });
-    }
-
     pub fn sync_drafts(&self, title: String, body: Option<String>) {
         let body = body.unwrap_or_default();
         if self.title_draft.try_get_untracked().as_ref() != Some(&title) {
@@ -208,6 +192,22 @@ impl TaskDetailModalController {
             return true;
         }
         false
+    }
+
+    pub fn subtask_toolbar_config(&self, completed_count: Memo<usize>) -> ToolbarConfig {
+        let subtask_show_completed = self.subtask_show_completed;
+        ToolbarConfig {
+            enabled: true,
+            show_add_task: true,
+            completed: Some(CompletedToggle {
+                is_active: subtask_show_completed.into(),
+                count: completed_count,
+                on_toggle: Callback::new(move |()| {
+                    subtask_show_completed.update(|v| *v = !*v);
+                }),
+            }),
+            actionable: None,
+        }
     }
 
     // --- Private ---
