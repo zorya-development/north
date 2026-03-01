@@ -15,6 +15,7 @@ pub fn ReviewPage() -> impl IntoView {
             reviewed_task_ids=ctrl.reviewed_task_ids
             is_loaded=ctrl.is_loaded
             hide_non_actionable=ctrl.hide_non_actionable
+            actionable_count=ctrl.actionable_count
             pending_filter=ctrl.pending_filter
             reviewed_filter=ctrl.reviewed_filter
             show_reviewed=ctrl.show_reviewed.0

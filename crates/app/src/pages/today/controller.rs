@@ -14,6 +14,7 @@ pub struct TodayController {
     pub completed_count: Memo<usize>,
     pub is_loaded: Signal<bool>,
     pub hide_non_actionable: Signal<bool>,
+    pub actionable_count: Memo<usize>,
     pub node_filter: Signal<Callback<north_stores::TaskModel, bool>>,
     app_store: AppStore,
 }
@@ -72,6 +73,14 @@ impl TodayController {
 
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
 
+        let actionable_count = Memo::new(move |_| {
+            let tasks = all_tasks.get();
+            tasks
+                .iter()
+                .filter(|t| t.completed_at.is_none() && is_actionable(t, &tasks))
+                .count()
+        });
+
         let keep_completed_signal = keep_completed.signal();
         let node_filter = Signal::derive(move || {
             let hide = hide_non_actionable.get();
@@ -95,6 +104,7 @@ impl TodayController {
             completed_count,
             is_loaded,
             hide_non_actionable,
+            actionable_count,
             node_filter,
             app_store,
         }

@@ -16,6 +16,7 @@ pub struct ReviewController {
     pub is_loaded: Signal<bool>,
     pub show_reviewed: (ReadSignal<bool>, WriteSignal<bool>),
     pub hide_non_actionable: Signal<bool>,
+    pub actionable_count: Memo<usize>,
     pub pending_filter: Signal<Callback<north_stores::TaskModel, bool>>,
     pub reviewed_filter: Signal<Callback<north_stores::TaskModel, bool>>,
 }
@@ -110,6 +111,14 @@ impl ReviewController {
 
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
 
+        let actionable_count = Memo::new(move |_| {
+            let tasks = all_tasks.get();
+            tasks
+                .iter()
+                .filter(|t| t.completed_at.is_none() && is_actionable(t, &tasks))
+                .count()
+        });
+
         let keep_completed_signal = keep_completed.signal();
         let pending_filter = Signal::derive(move || {
             let hide = hide_non_actionable.get();
@@ -142,6 +151,7 @@ impl ReviewController {
             is_loaded,
             show_reviewed,
             hide_non_actionable,
+            actionable_count,
             pending_filter,
             reviewed_filter,
         }

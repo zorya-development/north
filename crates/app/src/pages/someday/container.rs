@@ -14,6 +14,7 @@ pub fn SomedayPage() -> impl IntoView {
             root_task_ids=ctrl.root_task_ids
             is_loaded=ctrl.is_loaded
             hide_non_actionable=ctrl.hide_non_actionable
+            actionable_count=ctrl.actionable_count
             node_filter=ctrl.node_filter
             on_task_click=Callback::new(move |id| ctrl.open_detail(id))
             on_reorder=Callback::new(move |(id, key, parent)| {

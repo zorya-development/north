@@ -1,9 +1,7 @@
 use leptos::prelude::*;
 
-use crate::atoms::{Text, TextColor, TextVariant};
-
 #[component]
-pub fn TagFilterBar(
+pub fn TagFilterRow(
     available_tags: Memo<Vec<(String, String)>>,
     active_tag_names: RwSignal<Vec<String>>,
     on_toggle: Callback<String>,
@@ -14,11 +12,8 @@ pub fn TagFilterBar(
         <Show when=move || has_tags.get()>
             <div
                 data-testid="tag-filter-bar"
-                class="flex flex-wrap items-center gap-2 px-1 py-1.5"
+                class="flex flex-wrap items-center gap-2"
             >
-                <Text variant=TextVariant::BodySm color=TextColor::Secondary>
-                    "Filter:"
-                </Text>
                 <For
                     each=move || available_tags.get()
                     key=|(name, _)| name.clone()

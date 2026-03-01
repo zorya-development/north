@@ -1,2 +1,5 @@
-mod tag_filter_bar;
-pub use tag_filter_bar::TagFilterBar;
+mod search_input;
+mod tag_filter_row;
+
+pub use search_input::SearchInput;
+pub use tag_filter_row::TagFilterRow;

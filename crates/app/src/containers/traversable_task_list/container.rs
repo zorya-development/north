@@ -16,6 +16,10 @@ impl TtlHandle {
     pub fn start_create_top(&self) {
         self.0.start_create_top();
     }
+
+    pub fn available_tags(&self) -> Memo<Vec<(String, String)>> {
+        self.0.available_tags
+    }
 }
 
 #[component]
@@ -39,6 +43,8 @@ pub fn TraversableTaskList(
     #[prop(optional)] cursor_task_id: Option<RwSignal<Option<i64>>>,
     #[prop(optional)] handle: Option<RwSignal<Option<TtlHandle>>>,
     #[prop(optional)] node_filter: Option<Signal<Callback<north_stores::TaskModel, bool>>>,
+    #[prop(optional)] search_query: Option<RwSignal<String>>,
+    #[prop(optional)] active_tag_names: Option<RwSignal<Vec<String>>>,
 ) -> impl IntoView {
     let app_store = use_app_store();
     if item_config.draggable {
@@ -63,6 +69,8 @@ pub fn TraversableTaskList(
         scoped,
         cursor_task_id,
         node_filter,
+        search_query,
+        active_tag_names,
     );
 
     if let Some(handle) = handle {

@@ -35,7 +35,6 @@ pub fn TaskDetailModal() -> impl IntoView {
                 let ctrl = TaskDetailModalController::new(app_store);
                 let subtask_item_config = ItemConfig {
                     show_project: false,
-                    show_inline_tags: false,
                     ..Default::default()
                 };
 

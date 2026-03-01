@@ -11,6 +11,7 @@ pub struct SomedayController {
     pub root_task_ids: Memo<Vec<i64>>,
     pub is_loaded: Signal<bool>,
     pub hide_non_actionable: Signal<bool>,
+    pub actionable_count: Memo<usize>,
     pub node_filter: Signal<Callback<TaskModel, bool>>,
     app_store: AppStore,
 }
@@ -42,6 +43,14 @@ impl SomedayController {
 
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
 
+        let actionable_count = Memo::new(move |_| {
+            let tasks = all_tasks.get();
+            tasks
+                .iter()
+                .filter(|t| t.completed_at.is_none() && is_actionable(t, &tasks))
+                .count()
+        });
+
         let keep_completed_signal = keep_completed.signal();
         let node_filter = Signal::derive(move || {
             let hide = hide_non_actionable.get();
@@ -62,6 +71,7 @@ impl SomedayController {
             root_task_ids,
             is_loaded,
             hide_non_actionable,
+            actionable_count,
             node_filter,
             app_store,
         }

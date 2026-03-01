@@ -31,6 +31,7 @@ pub struct TraversableTaskListController {
     pub pending_delete: RwSignal<bool>,
     pub show_keybindings_help: RwSignal<bool>,
     pub item_config: ItemConfig,
+    pub search_query: RwSignal<String>,
     pub active_tag_names: RwSignal<Vec<String>>,
     pub available_tags: Memo<Vec<(String, String)>>,
     app_store: AppStore,
@@ -62,9 +63,14 @@ impl TraversableTaskListController {
         scoped: bool,
         cursor_task_id: Option<RwSignal<Option<i64>>>,
         node_filter: Option<Signal<Callback<TaskModel, bool>>>,
+        search_query: Option<RwSignal<String>>,
+        active_tag_names: Option<RwSignal<Vec<String>>>,
     ) -> Self {
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
-        let active_tag_names: RwSignal<Vec<String>> = RwSignal::new(vec![]);
+        let search_query: RwSignal<String> =
+            search_query.unwrap_or_else(|| RwSignal::new(String::new()));
+        let active_tag_names: RwSignal<Vec<String>> =
+            active_tag_names.unwrap_or_else(|| RwSignal::new(vec![]));
 
         // Compute available tags from all tasks reachable from root_task_ids.
         let available_tags = Memo::new(move |_| {
@@ -108,39 +114,64 @@ impl TraversableTaskListController {
             let roots = root_task_ids.get();
             let tasks = all_tasks.get();
             let active_tags = active_tag_names.get();
+            let query = search_query.get().trim().to_lowercase();
 
-            // When tag filters are active, precompute the full set of visible
-            // task IDs: tasks that match ALL active tags (and pass node_filter)
-            // plus all their ancestors (so the tree trace is preserved).
-            let tag_visible: Option<HashSet<i64>> = if active_tags.is_empty() {
+            let has_tag_filter = !active_tags.is_empty();
+            let has_search = !query.is_empty();
+
+            // When local filters are active (tags and/or search), precompute
+            // the full set of visible task IDs: matching tasks plus all their
+            // ancestors so the tree trace is preserved.
+            let local_visible: Option<HashSet<i64>> = if !has_tag_filter && !has_search {
                 None
             } else {
                 let passes_filter =
                     |t: &TaskModel| filter.as_ref().map(|f| f.run(t.clone())).unwrap_or(true);
+
+                let add_ancestors = |visible: &mut HashSet<i64>, task: &TaskModel| {
+                    let mut pid = task.parent_id;
+                    while let Some(parent_id) = pid {
+                        if !visible.insert(parent_id) {
+                            break;
+                        }
+                        pid = tasks
+                            .iter()
+                            .find(|t| t.id == parent_id)
+                            .and_then(|t| t.parent_id);
+                    }
+                };
+
                 let mut visible = HashSet::new();
                 for task in &tasks {
                     if !passes_filter(task) {
                         continue;
                     }
-                    let tag_names: Vec<&str> =
-                        task.tags.iter().map(|tag| tag.name.as_str()).collect();
-                    if active_tags
-                        .iter()
-                        .all(|req| tag_names.contains(&req.as_str()))
-                    {
-                        visible.insert(task.id);
-                        // Walk up ancestor chain
-                        let mut pid = task.parent_id;
-                        while let Some(parent_id) = pid {
-                            if !visible.insert(parent_id) {
-                                break; // already visited
-                            }
-                            pid = tasks
-                                .iter()
-                                .find(|t| t.id == parent_id)
-                                .and_then(|t| t.parent_id);
+
+                    // Tag filter: must have ALL active tags
+                    if has_tag_filter {
+                        let tag_names: Vec<&str> =
+                            task.tags.iter().map(|tag| tag.name.as_str()).collect();
+                        if !active_tags
+                            .iter()
+                            .all(|req| tag_names.contains(&req.as_str()))
+                        {
+                            continue;
                         }
                     }
+
+                    // Text search: title or body must contain query
+                    if has_search
+                        && !task.title.to_lowercase().contains(&query)
+                        && !task
+                            .body
+                            .as_ref()
+                            .is_some_and(|b| b.to_lowercase().contains(&query))
+                    {
+                        continue;
+                    }
+
+                    visible.insert(task.id);
+                    add_ancestors(&mut visible, task);
                 }
                 Some(visible)
             };
@@ -150,7 +181,7 @@ impl TraversableTaskListController {
                 if !passes {
                     return false;
                 }
-                if let Some(ref vis) = tag_visible {
+                if let Some(ref vis) = local_visible {
                     vis.contains(&t.id)
                 } else {
                     true
@@ -186,6 +217,7 @@ impl TraversableTaskListController {
             pending_delete,
             show_keybindings_help,
             item_config,
+            search_query,
             active_tag_names,
             available_tags,
             app_store,
@@ -278,18 +310,6 @@ impl TraversableTaskListController {
             blur_active_element();
             self.inline_mode.set(InlineMode::None);
         }
-    }
-
-    // ── Tag filter ─────────────────────────────────────────────
-
-    pub fn toggle_tag(&self, name: String) {
-        self.active_tag_names.update(|tags| {
-            if let Some(pos) = tags.iter().position(|t| *t == name) {
-                tags.remove(pos);
-            } else {
-                tags.push(name);
-            }
-        });
     }
 
     // ── Inline create ──────────────────────────────────────────

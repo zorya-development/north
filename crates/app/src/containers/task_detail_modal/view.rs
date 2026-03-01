@@ -13,7 +13,8 @@ use crate::containers::smart_textarea::SmartTextarea;
 use crate::containers::tag_picker::TagPicker;
 use crate::containers::task_checkbox::TaskCheckbox;
 use crate::containers::task_list_item::ItemConfig;
-use crate::containers::traversable_task_list::TraversableTaskList;
+use crate::containers::traversable_task_list::components::{SearchInput, TagFilterRow};
+use crate::containers::traversable_task_list::{TraversableTaskList, TtlHandle};
 use north_ui::{Icon, IconKind};
 
 #[component]
@@ -27,6 +28,15 @@ pub fn TaskDetailModalView(
     let input_value = RwSignal::new(String::new());
     let title_input_ref = NodeRef::<leptos::html::Textarea>::new();
     let subtask_cursor = RwSignal::new(None::<i64>);
+    let subtask_search_query = RwSignal::new(String::new());
+    let subtask_active_tag_names: RwSignal<Vec<String>> = RwSignal::new(vec![]);
+    let subtask_ttl_handle = RwSignal::new(None::<TtlHandle>);
+    let subtask_available_tags = Memo::new(move |_| {
+        subtask_ttl_handle
+            .get()
+            .map(|h| h.available_tags().get())
+            .unwrap_or_default()
+    });
 
     view! {
         <div class="fixed inset-0 z-50 flex items-center justify-center">
@@ -234,6 +244,24 @@ pub fn TaskDetailModalView(
 
                                 // Subtask area
                                 <div class="ml-6">
+                                    <div class="flex flex-col gap-1 py-1">
+                                        <div class="flex items-center gap-3">
+                                            <SearchInput query=subtask_search_query />
+                                        </div>
+                                        <TagFilterRow
+                                            available_tags=subtask_available_tags
+                                            active_tag_names=subtask_active_tag_names
+                                            on_toggle=Callback::new(move |name: String| {
+                                                subtask_active_tag_names.update(|tags| {
+                                                    if let Some(pos) = tags.iter().position(|t| *t == name) {
+                                                        tags.remove(pos);
+                                                    } else {
+                                                        tags.push(name);
+                                                    }
+                                                });
+                                            })
+                                        />
+                                    </div>
                                     <TraversableTaskList
                                         root_task_ids=subtask_ids
                                         node_filter=subtask_filter
@@ -254,6 +282,9 @@ pub fn TaskDetailModalView(
                                         empty_message="No subtasks."
                                         allow_reorder=true
                                         cursor_task_id=subtask_cursor
+                                        handle=subtask_ttl_handle
+                                        search_query=subtask_search_query
+                                        active_tag_names=subtask_active_tag_names
                                     />
                                     // Inline task input
                                     <Show when=move || show_inline_input.get()>

@@ -1,4 +1,4 @@
-mod components;
+pub mod components;
 mod container;
 mod controller;
 pub mod tree;
