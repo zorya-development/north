@@ -3,6 +3,7 @@ use leptos::prelude::*;
 use north_dto::ProjectStatus;
 use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskModel, TaskStoreFilter};
 
+use crate::containers::traversable_task_list::{ActionableToggle, ToolbarConfig};
 use crate::libs::{is_actionable, KeepCompletedVisible};
 
 const HIDE_NON_ACTIONABLE_KEY: &str = "north:hide-non-actionable:review";
@@ -162,9 +163,23 @@ impl ReviewController {
         self.task_detail_modal_store.open(task_id, task_ids);
     }
 
-    pub fn toggle_actionable_visibility(&self) {
-        self.app_store
-            .browser_storage
-            .toggle_bool(HIDE_NON_ACTIONABLE_KEY);
+    pub fn toolbar_config(&self) -> ToolbarConfig {
+        let hide_non_actionable = self.hide_non_actionable;
+        let actionable_count = self.actionable_count;
+        let app_store = self.app_store;
+        ToolbarConfig {
+            enabled: true,
+            show_add_task: false,
+            completed: None,
+            actionable: Some(ActionableToggle {
+                is_active: hide_non_actionable,
+                count: actionable_count,
+                on_toggle: Callback::new(move |()| {
+                    app_store
+                        .browser_storage
+                        .toggle_bool(HIDE_NON_ACTIONABLE_KEY);
+                }),
+            }),
+        }
     }
 }

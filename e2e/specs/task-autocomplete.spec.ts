@@ -32,7 +32,7 @@ test.describe("Task Inline Autocomplete", () => {
       .waitFor({ state: "visible" });
 
     // Create task with @project token
-    await page.locator('[data-testid="inbox-add-task"]').click();
+    await page.locator('[data-testid="ttl-add-task"]').click();
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();
     await input.fill("Buy supplies @Work ");
@@ -56,7 +56,7 @@ test.describe("Task Inline Autocomplete", () => {
       .waitFor({ state: "visible" });
 
     // Create task with @project token
-    await page.locator('[data-testid="inbox-add-task"]').click();
+    await page.locator('[data-testid="ttl-add-task"]').click();
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();
     await input.fill("Buy supplies @Work ");

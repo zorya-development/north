@@ -81,7 +81,7 @@ test.describe("All Tasks Page", () => {
       .first()
       .waitFor({ state: "visible" });
 
-    await page.locator('[data-testid="all-tasks-add-task"]').click();
+    await page.locator('[data-testid="ttl-add-task"]').click();
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();
     await input.fill("Tagged Task #urgent");
@@ -150,7 +150,7 @@ test.describe("All Tasks Page", () => {
       .waitFor({ state: "visible" });
 
     // Click "+ Add task"
-    await page.locator('[data-testid="all-tasks-add-task"]').click();
+    await page.locator('[data-testid="ttl-add-task"]').click();
 
     const input = page.locator('[data-testid="inline-create-input"]');
     await expect(input).toBeVisible();

@@ -6,7 +6,7 @@ export default defineConfig({
   testDir: "./specs",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  retries: 1,
   workers: 1,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {

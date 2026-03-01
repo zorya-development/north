@@ -13,16 +13,13 @@ pub fn SomedayPage() -> impl IntoView {
         <SomedayView
             root_task_ids=ctrl.root_task_ids
             is_loaded=ctrl.is_loaded
-            hide_non_actionable=ctrl.hide_non_actionable
-            actionable_count=ctrl.actionable_count
             node_filter=ctrl.node_filter
             on_task_click=Callback::new(move |id| ctrl.open_detail(id))
             on_reorder=Callback::new(move |(id, key, parent)| {
                 ctrl.reorder_task(id, key, parent)
             })
-            on_toggle_visibility=Callback::new(move |()| {
-                ctrl.toggle_actionable_visibility()
-            })
+            toolbar=ctrl.toolbar_config()
+            show_keybindings_help=RwSignal::new(false)
         />
     }
 }

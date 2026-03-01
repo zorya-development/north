@@ -40,6 +40,7 @@ pub struct TraversableTaskListController {
     allow_reorder: bool,
     scoped: bool,
     default_project_id: Option<Signal<Option<i64>>>,
+    default_parent_id: Option<Signal<Option<i64>>>,
     keep_visible: Option<KeepTaskVisible>,
     keep_completed: Option<KeepCompletedVisible>,
     on_task_click: Option<Callback<i64>>,
@@ -59,18 +60,15 @@ impl TraversableTaskListController {
         allow_reorder: bool,
         item_config: ItemConfig,
         default_project_id: Option<Signal<Option<i64>>>,
+        default_parent_id: Option<Signal<Option<i64>>>,
         flat: bool,
         scoped: bool,
         cursor_task_id: Option<RwSignal<Option<i64>>>,
         node_filter: Option<Signal<Callback<TaskModel, bool>>>,
-        search_query: Option<RwSignal<String>>,
-        active_tag_names: Option<RwSignal<Vec<String>>>,
     ) -> Self {
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
-        let search_query: RwSignal<String> =
-            search_query.unwrap_or_else(|| RwSignal::new(String::new()));
-        let active_tag_names: RwSignal<Vec<String>> =
-            active_tag_names.unwrap_or_else(|| RwSignal::new(vec![]));
+        let search_query: RwSignal<String> = RwSignal::new(String::new());
+        let active_tag_names: RwSignal<Vec<String>> = RwSignal::new(vec![]);
 
         // Compute available tags from all tasks reachable from root_task_ids.
         let available_tags = Memo::new(move |_| {
@@ -202,6 +200,14 @@ impl TraversableTaskListController {
             nodes.iter().position(|n| n.task_id == id)
         });
 
+        // Clear cursor when the selected task is no longer in the visible list
+        // (e.g. after toggling completed/actionable filter).
+        Effect::new(move |_| {
+            if cursor_index.get().is_none() {
+                cursor_task_id.set(None);
+            }
+        });
+
         let inline_mode = RwSignal::new(InlineMode::None);
         let create_input_value = RwSignal::new(String::new());
         let pending_delete = RwSignal::new(false);
@@ -226,6 +232,7 @@ impl TraversableTaskListController {
             allow_reorder,
             scoped,
             default_project_id,
+            default_parent_id,
             keep_visible,
             keep_completed,
             on_task_click,
@@ -446,19 +453,28 @@ impl TraversableTaskListController {
         let all_tasks = self.app_store.tasks.filtered(TaskStoreFilter::default());
         let tasks = all_tasks.get_untracked();
 
-        // Sort key: before the first root task.
+        let parent_id = self.default_parent_id.and_then(|s| s.get_untracked());
+
+        // Sort key: before the first root task (root = matching parent_id).
         let first_root_key = nodes
             .iter()
-            .find(|n| n.parent_id.is_none())
+            .find(|n| n.parent_id == parent_id)
             .and_then(|n| task_sort_key(&tasks, n.task_id));
         let sort_key = north_dto::sort_key_between(None, first_root_key.as_deref());
 
-        let project_id = self.default_project_id.and_then(|s| s.get_untracked());
+        let project_id = parent_id
+            .and_then(|pid| {
+                tasks
+                    .iter()
+                    .find(|t| t.id == pid)
+                    .and_then(|t| t.project_id)
+            })
+            .or_else(|| self.default_project_id.and_then(|s| s.get_untracked()));
 
         let input = CreateTask {
             title,
             body,
-            parent_id: None,
+            parent_id,
             project_id,
             sort_key: Some(sort_key),
             ..Default::default()
@@ -480,7 +496,7 @@ impl TraversableTaskListController {
                 inline_mode.set(InlineMode::Create {
                     anchor_task_id: task.id,
                     placement: Placement::After,
-                    parent_id: None,
+                    parent_id,
                     depth: 0,
                 });
             }

@@ -26,20 +26,15 @@ pub fn ProjectPage() -> impl IntoView {
         <ProjectView
             project=ctrl.project
             root_task_ids=ctrl.root_task_ids
-            show_completed=ctrl.show_completed
-            completed_count=ctrl.completed_count
             is_loaded=ctrl.is_loaded
-            hide_non_actionable=ctrl.hide_non_actionable
-            actionable_count=ctrl.actionable_count
             node_filter=ctrl.node_filter
             default_project_id=default_project_id
             on_task_click=Callback::new(move |id| ctrl.open_detail(id))
             on_reorder=Callback::new(move |(id, key, parent)| {
                 ctrl.reorder_task(id, key, parent)
             })
-            on_toggle_visibility=Callback::new(move |()| {
-                ctrl.toggle_actionable_visibility()
-            })
+            toolbar=ctrl.toolbar_config()
+            show_keybindings_help=RwSignal::new(false)
         />
     }
 }

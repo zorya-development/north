@@ -31,7 +31,7 @@ test.describe("Tag filter bar", () => {
     await expect(buttons).toHaveCount(2);
 
     const names = await buttons.allTextContents();
-    expect(names.map((n) => n.trim()).sort()).toEqual(["feature", "urgent"]);
+    expect(names.map((n) => n.trim()).sort()).toEqual(["#feature", "#urgent"]);
   });
 
   test("clicking a tag filters tasks to only matching ones", async ({

@@ -2,25 +2,13 @@ use leptos::prelude::*;
 use north_stores::use_app_store;
 
 use super::controller::TraversableTaskListController;
+use super::toolbar_config::ToolbarConfig;
 use super::view::TraversableTaskListView;
 use crate::components::drag_drop::DragDropContext;
 use crate::containers::task_list_item::ItemConfig;
 
 #[derive(Clone, Copy)]
 pub struct ExtraVisibleIds(pub RwSignal<Vec<i64>>);
-
-#[derive(Clone, Copy)]
-pub struct TtlHandle(TraversableTaskListController);
-
-impl TtlHandle {
-    pub fn start_create_top(&self) {
-        self.0.start_create_top();
-    }
-
-    pub fn available_tags(&self) -> Memo<Vec<(String, String)>> {
-        self.0.available_tags
-    }
-}
 
 #[component]
 pub fn TraversableTaskList(
@@ -34,17 +22,16 @@ pub fn TraversableTaskList(
         Option<Option<i64>>,
     )>,
     is_loaded: Signal<bool>,
-    #[prop(optional)] show_keybindings_help: Option<RwSignal<bool>>,
     #[prop(default = true)] allow_create: bool,
     #[prop(default = true)] allow_reorder: bool,
     #[prop(optional)] default_project_id: Option<Signal<Option<i64>>>,
+    #[prop(optional)] default_parent_id: Option<Signal<Option<i64>>>,
     #[prop(default = false)] flat: bool,
     #[prop(default = false)] scoped: bool,
     #[prop(optional)] cursor_task_id: Option<RwSignal<Option<i64>>>,
-    #[prop(optional)] handle: Option<RwSignal<Option<TtlHandle>>>,
     #[prop(optional)] node_filter: Option<Signal<Callback<north_stores::TaskModel, bool>>>,
-    #[prop(optional)] search_query: Option<RwSignal<String>>,
-    #[prop(optional)] active_tag_names: Option<RwSignal<Vec<String>>>,
+    #[prop(default = ToolbarConfig::none())] toolbar: ToolbarConfig,
+    #[prop(optional)] show_keybindings_help: Option<RwSignal<bool>>,
 ) -> impl IntoView {
     let app_store = use_app_store();
     if item_config.draggable {
@@ -65,17 +52,12 @@ pub fn TraversableTaskList(
         allow_reorder,
         item_config,
         default_project_id,
+        default_parent_id,
         flat,
         scoped,
         cursor_task_id,
         node_filter,
-        search_query,
-        active_tag_names,
     );
-
-    if let Some(handle) = handle {
-        handle.set(Some(TtlHandle(ctrl)));
-    }
 
     view! {
         <TraversableTaskListView
@@ -84,6 +66,7 @@ pub fn TraversableTaskList(
             empty_message=empty_message
             is_loaded=is_loaded
             scoped=scoped
+            toolbar=toolbar
         />
     }
 }
