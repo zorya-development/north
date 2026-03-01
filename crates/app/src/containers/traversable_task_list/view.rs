@@ -3,6 +3,7 @@ use north_stores::{TaskModel, TaskStoreFilter};
 use north_ui::Spinner;
 use wasm_bindgen::JsCast;
 
+use super::components::TagFilterBar;
 use super::controller::TraversableTaskListController;
 use super::tree::*;
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
@@ -98,6 +99,13 @@ pub fn TraversableTaskListView(
             <Show when=move || !is_loaded.get()>
                 <Spinner/>
             </Show>
+
+            // Tag filter bar
+            <TagFilterBar
+                available_tags=ctrl.available_tags
+                active_tag_names=ctrl.active_tag_names
+                on_toggle=Callback::new(move |name: String| ctrl.toggle_tag(name))
+            />
 
             // CreateTop input (shown above the list or above empty state)
             <Show when=move || {

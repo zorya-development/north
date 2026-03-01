@@ -1,3 +1,5 @@
+use std::collections::{BTreeMap, HashSet};
+
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos::wasm_bindgen::JsCast;
@@ -29,6 +31,8 @@ pub struct TraversableTaskListController {
     pub pending_delete: RwSignal<bool>,
     pub show_keybindings_help: RwSignal<bool>,
     pub item_config: ItemConfig,
+    pub active_tag_names: RwSignal<Vec<String>>,
+    pub available_tags: Memo<Vec<(String, String)>>,
     app_store: AppStore,
     modal: ModalStore,
     allow_create: bool,
@@ -60,12 +64,98 @@ impl TraversableTaskListController {
         node_filter: Option<Signal<Callback<TaskModel, bool>>>,
     ) -> Self {
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
+        let active_tag_names: RwSignal<Vec<String>> = RwSignal::new(vec![]);
+
+        // Compute available tags from all tasks reachable from root_task_ids.
+        let available_tags = Memo::new(move |_| {
+            let roots = root_task_ids.get();
+            let tasks = all_tasks.get();
+            let mut tag_map = BTreeMap::<String, String>::new();
+
+            fn collect_tags(
+                task_id: i64,
+                tasks: &[TaskModel],
+                tag_map: &mut BTreeMap<String, String>,
+            ) {
+                if let Some(t) = tasks.iter().find(|t| t.id == task_id) {
+                    for tag in &t.tags {
+                        tag_map
+                            .entry(tag.name.clone())
+                            .or_insert_with(|| tag.color.clone());
+                    }
+                    // Recurse into children
+                    for child in tasks.iter().filter(|c| c.parent_id == Some(task_id)) {
+                        collect_tags(child.id, tasks, tag_map);
+                    }
+                }
+            }
+
+            for &root_id in &roots {
+                collect_tags(root_id, &tasks, &mut tag_map);
+            }
+
+            // Clean up active tags that no longer exist
+            let available_names: Vec<String> = tag_map.keys().cloned().collect();
+            active_tag_names.update(|active| {
+                active.retain(|name| available_names.contains(name));
+            });
+
+            tag_map.into_iter().collect::<Vec<_>>()
+        });
 
         let flat_nodes = Memo::new(move |_| {
             let filter = node_filter.map(|s| s.get());
             let roots = root_task_ids.get();
             let tasks = all_tasks.get();
-            let include = |t: &TaskModel| filter.as_ref().map(|f| f.run(t.clone())).unwrap_or(true);
+            let active_tags = active_tag_names.get();
+
+            // When tag filters are active, precompute the full set of visible
+            // task IDs: tasks that match ALL active tags (and pass node_filter)
+            // plus all their ancestors (so the tree trace is preserved).
+            let tag_visible: Option<HashSet<i64>> = if active_tags.is_empty() {
+                None
+            } else {
+                let passes_filter =
+                    |t: &TaskModel| filter.as_ref().map(|f| f.run(t.clone())).unwrap_or(true);
+                let mut visible = HashSet::new();
+                for task in &tasks {
+                    if !passes_filter(task) {
+                        continue;
+                    }
+                    let tag_names: Vec<&str> =
+                        task.tags.iter().map(|tag| tag.name.as_str()).collect();
+                    if active_tags
+                        .iter()
+                        .all(|req| tag_names.contains(&req.as_str()))
+                    {
+                        visible.insert(task.id);
+                        // Walk up ancestor chain
+                        let mut pid = task.parent_id;
+                        while let Some(parent_id) = pid {
+                            if !visible.insert(parent_id) {
+                                break; // already visited
+                            }
+                            pid = tasks
+                                .iter()
+                                .find(|t| t.id == parent_id)
+                                .and_then(|t| t.parent_id);
+                        }
+                    }
+                }
+                Some(visible)
+            };
+
+            let include = |t: &TaskModel| {
+                let passes = filter.as_ref().map(|f| f.run(t.clone())).unwrap_or(true);
+                if !passes {
+                    return false;
+                }
+                if let Some(ref vis) = tag_visible {
+                    vis.contains(&t.id)
+                } else {
+                    true
+                }
+            };
             if flat {
                 flatten_flat(&roots, &tasks, &include)
             } else {
@@ -96,6 +186,8 @@ impl TraversableTaskListController {
             pending_delete,
             show_keybindings_help,
             item_config,
+            active_tag_names,
+            available_tags,
             app_store,
             modal,
             allow_create,
@@ -186,6 +278,18 @@ impl TraversableTaskListController {
             blur_active_element();
             self.inline_mode.set(InlineMode::None);
         }
+    }
+
+    // ── Tag filter ─────────────────────────────────────────────
+
+    pub fn toggle_tag(&self, name: String) {
+        self.active_tag_names.update(|tags| {
+            if let Some(pos) = tags.iter().position(|t| *t == name) {
+                tags.remove(pos);
+            } else {
+                tags.push(name);
+            }
+        });
     }
 
     // ── Inline create ──────────────────────────────────────────
