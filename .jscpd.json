@@ -1,0 +1,23 @@
+{
+  "threshold": 5,
+  "reporters": ["console"],
+  "ignore": [
+    "**/target/**",
+    "**/node_modules/**",
+    "**/migrations/**",
+    "**/schema.rs",
+    "**/*.lock",
+    "**/public/**",
+    "**/uploads/**",
+    "**/chart/**",
+    "**/.github/**",
+    "**/e2e/**"
+  ],
+  "format": ["rust"],
+  "minTokens": 50,
+  "minLines": 5,
+  "maxLines": 5000,
+  "maxSize": "200kb",
+  "gitignore": true,
+  "absolute": false
+}

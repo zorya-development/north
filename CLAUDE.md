@@ -30,6 +30,7 @@ just migrate-redo      # Revert + reapply last migration
 just build             # Release build
 just seed              # Seed admin account
 just check             # fmt + lint + test
+just dupes             # Detect duplicated code (jscpd via npx, runs on host)
 ```
 
 E2E tests (Playwright, run from host — not inside app container):
