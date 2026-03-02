@@ -6,6 +6,7 @@ pub mod filter_autocomplete;
 pub mod keybindings_modal;
 pub mod layout;
 pub mod mirror_overlay;
+pub mod page_header;
 pub mod recurrence_modal;
 pub mod rich_title;
 pub mod status_bar;

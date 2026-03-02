@@ -138,15 +138,16 @@ impl TaskService {
     }
 
     pub async fn get_by_id(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<Task> {
-        let mut conn = pool.get().await?;
-        let row = tasks::table
-            .filter(tasks::id.eq(id))
-            .filter(tasks::user_id.eq(user_id))
-            .select(TaskRow::as_select())
-            .first(&mut conn)
-            .await
-            .optional()?
-            .ok_or_else(|| ServiceError::NotFound("Task not found".into()))?;
+        let row = crate::helpers::get_owned!(
+            pool,
+            tasks::table,
+            tasks::id,
+            tasks::user_id,
+            id,
+            user_id,
+            TaskRow,
+            "Task"
+        )?;
         let results = Self::load_with_meta(pool, vec![row]).await?;
 
         results
@@ -179,36 +180,15 @@ impl TaskService {
         let sort_key = if let Some(ref sk) = input.sort_key {
             sk.clone()
         } else {
-            let last_key: Option<String> = if input.parent_id.is_some() {
-                tasks::table
-                    .filter(tasks::parent_id.eq(input.parent_id))
-                    .filter(tasks::user_id.eq(user_id))
-                    .order(tasks::sort_key.desc())
-                    .select(tasks::sort_key)
-                    .first(&mut conn)
-                    .await
-                    .optional()?
-            } else if resolved_project_id.is_some() {
-                tasks::table
-                    .filter(tasks::project_id.eq(resolved_project_id))
-                    .filter(tasks::parent_id.is_null())
-                    .filter(tasks::user_id.eq(user_id))
-                    .order(tasks::sort_key.desc())
-                    .select(tasks::sort_key)
-                    .first(&mut conn)
-                    .await
-                    .optional()?
-            } else {
-                tasks::table
-                    .filter(tasks::project_id.is_null())
-                    .filter(tasks::parent_id.is_null())
-                    .filter(tasks::user_id.eq(user_id))
-                    .order(tasks::sort_key.desc())
-                    .select(tasks::sort_key)
-                    .first(&mut conn)
-                    .await
-                    .optional()?
-            };
+            let last_key = Self::last_sort_key(
+                pool,
+                user_id,
+                input.parent_id,
+                resolved_project_id,
+                None,
+                false,
+            )
+            .await?;
             north_dto::sort_key_after(last_key.as_deref())
         };
 
@@ -309,29 +289,13 @@ impl TaskService {
 
         // Resolve bare URLs in background
         if has_urls {
-            let bg_pool = pool.clone();
-            let task_id = task.id;
-            let bg_title = task.title.clone();
-            let bg_body = task.body.clone();
-            tokio::spawn(async move {
-                let resolved_title = crate::url_service::resolve_urls_in_text(&bg_title).await;
-                let resolved_body = match bg_body {
-                    Some(ref body) => Some(crate::url_service::resolve_urls_in_text(body).await),
-                    None => None,
-                };
-
-                let update_input = UpdateTask {
-                    title: Some(resolved_title),
-                    body: Some(resolved_body),
-                    is_url_fetching: Some(None),
-                    ..Default::default()
-                };
-                if let Err(e) =
-                    TaskService::update_raw(&bg_pool, user_id, task_id, &update_input).await
-                {
-                    tracing::error!(task_id, error = %e, "Background URL resolution failed");
-                }
-            });
+            Self::spawn_background_url_resolve(
+                pool,
+                user_id,
+                task.id,
+                task.title.clone(),
+                task.body.clone(),
+            );
         }
 
         Ok(task)
@@ -392,39 +356,15 @@ impl TaskService {
         let project_changed =
             resolved_project != existing.project_id || resolved_parent != existing.parent_id;
         if project_changed && resolved_input.sort_key.is_none() {
-            let last_key: Option<String> = if let Some(pid) = resolved_parent {
-                tasks::table
-                    .filter(tasks::parent_id.eq(pid))
-                    .filter(tasks::user_id.eq(user_id))
-                    .filter(tasks::id.ne(id))
-                    .order(tasks::sort_key.desc())
-                    .select(tasks::sort_key)
-                    .first(&mut conn)
-                    .await
-                    .optional()?
-            } else if let Some(proj) = resolved_project {
-                tasks::table
-                    .filter(tasks::project_id.eq(proj))
-                    .filter(tasks::parent_id.is_null())
-                    .filter(tasks::user_id.eq(user_id))
-                    .filter(tasks::id.ne(id))
-                    .order(tasks::sort_key.desc())
-                    .select(tasks::sort_key)
-                    .first(&mut conn)
-                    .await
-                    .optional()?
-            } else {
-                tasks::table
-                    .filter(tasks::project_id.is_null())
-                    .filter(tasks::parent_id.is_null())
-                    .filter(tasks::user_id.eq(user_id))
-                    .filter(tasks::id.ne(id))
-                    .order(tasks::sort_key.desc())
-                    .select(tasks::sort_key)
-                    .first(&mut conn)
-                    .await
-                    .optional()?
-            };
+            let last_key = Self::last_sort_key(
+                pool,
+                user_id,
+                resolved_parent,
+                resolved_project,
+                Some(id),
+                false,
+            )
+            .await?;
             new_sort_key = north_dto::sort_key_after(last_key.as_deref());
             changeset.sort_key = Some(&new_sort_key);
         }
@@ -466,42 +406,15 @@ impl TaskService {
                 }
             } else if let Some(None) = resolved_input.completed_at {
                 if existing.completed_at.is_some() {
-                    let last_key: Option<String> = if let Some(pid) = resolved_parent {
-                        tasks::table
-                            .filter(tasks::parent_id.eq(pid))
-                            .filter(tasks::user_id.eq(user_id))
-                            .filter(tasks::completed_at.is_null())
-                            .filter(tasks::id.ne(id))
-                            .order(tasks::sort_key.desc())
-                            .select(tasks::sort_key)
-                            .first(&mut conn)
-                            .await
-                            .optional()?
-                    } else if let Some(proj) = resolved_project {
-                        tasks::table
-                            .filter(tasks::project_id.eq(proj))
-                            .filter(tasks::parent_id.is_null())
-                            .filter(tasks::user_id.eq(user_id))
-                            .filter(tasks::completed_at.is_null())
-                            .filter(tasks::id.ne(id))
-                            .order(tasks::sort_key.desc())
-                            .select(tasks::sort_key)
-                            .first(&mut conn)
-                            .await
-                            .optional()?
-                    } else {
-                        tasks::table
-                            .filter(tasks::project_id.is_null())
-                            .filter(tasks::parent_id.is_null())
-                            .filter(tasks::user_id.eq(user_id))
-                            .filter(tasks::completed_at.is_null())
-                            .filter(tasks::id.ne(id))
-                            .order(tasks::sort_key.desc())
-                            .select(tasks::sort_key)
-                            .first(&mut conn)
-                            .await
-                            .optional()?
-                    };
+                    let last_key = Self::last_sort_key(
+                        pool,
+                        user_id,
+                        resolved_parent,
+                        resolved_project,
+                        Some(id),
+                        true,
+                    )
+                    .await?;
                     uncomplete_sort_key = north_dto::sort_key_after(last_key.as_deref());
                     changeset.sort_key = Some(&uncomplete_sort_key);
                 }
@@ -567,18 +480,15 @@ impl TaskService {
     }
 
     pub async fn delete(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<()> {
-        let mut conn = pool.get().await?;
-        let affected = diesel::delete(
-            tasks::table
-                .filter(tasks::id.eq(id))
-                .filter(tasks::user_id.eq(user_id)),
+        crate::helpers::delete_owned!(
+            pool,
+            tasks::table,
+            tasks::id,
+            tasks::user_id,
+            id,
+            user_id,
+            "Task"
         )
-        .execute(&mut conn)
-        .await?;
-        if affected == 0 {
-            return Err(ServiceError::NotFound("Task not found".into()));
-        }
-        Ok(())
     }
 
     // ── Recurrence ─────────────────────────────────────────────────
@@ -633,36 +543,15 @@ impl TaskService {
         };
 
         // Compute sort_key for the new task
-        let last_key: Option<String> = if let Some(pid) = completed_task.parent_id {
-            tasks::table
-                .filter(tasks::parent_id.eq(pid))
-                .filter(tasks::user_id.eq(user_id))
-                .order(tasks::sort_key.desc())
-                .select(tasks::sort_key)
-                .first(&mut conn)
-                .await
-                .optional()?
-        } else if let Some(proj) = completed_task.project_id {
-            tasks::table
-                .filter(tasks::project_id.eq(proj))
-                .filter(tasks::parent_id.is_null())
-                .filter(tasks::user_id.eq(user_id))
-                .order(tasks::sort_key.desc())
-                .select(tasks::sort_key)
-                .first(&mut conn)
-                .await
-                .optional()?
-        } else {
-            tasks::table
-                .filter(tasks::project_id.is_null())
-                .filter(tasks::parent_id.is_null())
-                .filter(tasks::user_id.eq(user_id))
-                .order(tasks::sort_key.desc())
-                .select(tasks::sort_key)
-                .first(&mut conn)
-                .await
-                .optional()?
-        };
+        let last_key = Self::last_sort_key(
+            pool,
+            user_id,
+            completed_task.parent_id,
+            completed_task.project_id,
+            None,
+            false,
+        )
+        .await?;
         let sort_key = north_dto::sort_key_after(last_key.as_deref());
 
         let new_row = diesel::insert_into(tasks::table)
@@ -813,6 +702,75 @@ impl TaskService {
 
     // ── Internal helpers ───────────────────────────────────────────
 
+    /// Compute the last sort_key for a given task slot (parent, project, or inbox).
+    async fn last_sort_key(
+        pool: &DbPool,
+        user_id: i64,
+        parent_id: Option<i64>,
+        project_id: Option<i64>,
+        exclude_id: Option<i64>,
+        only_active: bool,
+    ) -> ServiceResult<Option<String>> {
+        let mut conn = pool.get().await?;
+        let mut query = tasks::table.filter(tasks::user_id.eq(user_id)).into_boxed();
+
+        if let Some(pid) = parent_id {
+            query = query.filter(tasks::parent_id.eq(pid));
+        } else if let Some(proj) = project_id {
+            query = query
+                .filter(tasks::project_id.eq(proj))
+                .filter(tasks::parent_id.is_null());
+        } else {
+            query = query
+                .filter(tasks::project_id.is_null())
+                .filter(tasks::parent_id.is_null());
+        }
+
+        if let Some(eid) = exclude_id {
+            query = query.filter(tasks::id.ne(eid));
+        }
+
+        if only_active {
+            query = query.filter(tasks::completed_at.is_null());
+        }
+
+        Ok(query
+            .order(tasks::sort_key.desc())
+            .select(tasks::sort_key)
+            .first(&mut conn)
+            .await
+            .optional()?)
+    }
+
+    /// Spawn a background task to resolve bare URLs in task title/body.
+    fn spawn_background_url_resolve(
+        pool: &DbPool,
+        user_id: i64,
+        task_id: i64,
+        title: String,
+        body: Option<String>,
+    ) {
+        let bg_pool = pool.clone();
+        tokio::spawn(async move {
+            let resolved_title = crate::url_service::resolve_urls_in_text(&title).await;
+            let resolved_body = match body {
+                Some(ref b) => Some(crate::url_service::resolve_urls_in_text(b).await),
+                None => None,
+            };
+
+            let update_input = UpdateTask {
+                title: Some(resolved_title),
+                body: Some(resolved_body),
+                is_url_fetching: Some(None),
+                ..Default::default()
+            };
+            if let Err(e) = TaskService::update_raw(&bg_pool, user_id, task_id, &update_input).await
+            {
+                tracing::error!(task_id, error = %e, "Background URL resolution failed");
+            }
+        });
+    }
+
     async fn maybe_resolve_urls(
         pool: &DbPool,
         user_id: i64,
@@ -834,28 +792,13 @@ impl TaskService {
         };
         task = Self::update_raw(pool, user_id, task.id, &flag_input).await?;
 
-        let bg_pool = pool.clone();
-        let task_id = task.id;
-        let bg_title = task.title.clone();
-        let bg_body = task.body.clone();
-        tokio::spawn(async move {
-            let resolved_title = crate::url_service::resolve_urls_in_text(&bg_title).await;
-            let resolved_body = match bg_body {
-                Some(ref body) => Some(crate::url_service::resolve_urls_in_text(body).await),
-                None => None,
-            };
-
-            let update_input = UpdateTask {
-                title: Some(resolved_title),
-                body: Some(resolved_body),
-                is_url_fetching: Some(None),
-                ..Default::default()
-            };
-            if let Err(e) = TaskService::update_raw(&bg_pool, user_id, task_id, &update_input).await
-            {
-                tracing::error!(task_id, error = %e, "Background URL resolution failed");
-            }
-        });
+        Self::spawn_background_url_resolve(
+            pool,
+            user_id,
+            task.id,
+            task.title.clone(),
+            task.body.clone(),
+        );
 
         Ok(task)
     }

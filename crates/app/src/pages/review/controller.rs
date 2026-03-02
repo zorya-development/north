@@ -1,25 +1,23 @@
 use chrono::Utc;
 use leptos::prelude::*;
 use north_dto::ProjectStatus;
-use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskModel, TaskStoreFilter};
+use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskStoreFilter};
 
-use crate::containers::traversable_task_list::{ActionableToggle, ToolbarConfig};
-use crate::libs::{is_actionable, KeepCompletedVisible};
+use crate::containers::traversable_task_list::ToolbarConfig;
+use crate::controllers::{build_toolbar, ActionableController, NodeFilterController};
 
 const HIDE_NON_ACTIONABLE_KEY: &str = "north:hide-non-actionable:review";
 
 #[derive(Clone, Copy)]
 pub struct ReviewController {
-    app_store: AppStore,
     task_detail_modal_store: TaskDetailModalStore,
     pub review_task_ids: Memo<Vec<i64>>,
     pub reviewed_task_ids: Memo<Vec<i64>>,
     pub is_loaded: Signal<bool>,
     pub show_reviewed: (ReadSignal<bool>, WriteSignal<bool>),
-    pub hide_non_actionable: Signal<bool>,
-    pub actionable_count: Memo<usize>,
     pub pending_filter: Signal<Callback<north_stores::TaskModel, bool>>,
     pub reviewed_filter: Signal<Callback<north_stores::TaskModel, bool>>,
+    actionable: ActionableController,
 }
 
 impl ReviewController {
@@ -99,62 +97,31 @@ impl ReviewController {
                 .collect()
         });
 
-        let is_loaded = app_store.tasks.loaded_signal();
-
-        let hide_non_actionable =
-            Signal::derive(move || app_store.browser_storage.get_bool(HIDE_NON_ACTIONABLE_KEY));
-
-        let keep_completed = KeepCompletedVisible::new();
-        provide_context(keep_completed);
-
-        let show_completed = RwSignal::new(false);
-        let show_completed_reviewed = RwSignal::new(false);
-
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
+        let actionable = ActionableController::new(app_store, all_tasks, HIDE_NON_ACTIONABLE_KEY);
 
-        let actionable_count = Memo::new(move |_| {
-            let tasks = all_tasks.get();
-            tasks
-                .iter()
-                .filter(|t| t.completed_at.is_none() && is_actionable(t, &tasks))
-                .count()
-        });
+        // Pending filter uses NodeFilterController (no completed toggle)
+        let nf = NodeFilterController::new(&actionable, None, all_tasks);
+        let pending_filter = nf.node_filter;
 
-        let keep_completed_signal = keep_completed.signal();
-        let pending_filter = Signal::derive(move || {
-            let hide = hide_non_actionable.get();
-            let show = show_completed.get();
-            let pinned = keep_completed_signal.get();
-            Callback::new(move |task: TaskModel| {
-                if task.completed_at.is_some() {
-                    return show || pinned.contains(&task.id);
-                }
-                if !hide {
-                    return true;
-                }
-                is_actionable(&task, &all_tasks.get_untracked())
-            })
-        });
-
+        // Reviewed filter: simple completed check + keep-completed pinning
+        let keep_completed_signal = nf.keep_completed.signal();
         let reviewed_filter = Signal::derive(move || {
-            let show = show_completed_reviewed.get();
             let pinned = keep_completed_signal.get();
             Callback::new(move |task: north_stores::TaskModel| {
-                task.completed_at.is_none() || show || pinned.contains(&task.id)
+                task.completed_at.is_none() || pinned.contains(&task.id)
             })
         });
 
         Self {
-            app_store,
             task_detail_modal_store,
             review_task_ids,
             reviewed_task_ids,
-            is_loaded,
+            is_loaded: app_store.tasks.loaded_signal(),
             show_reviewed,
-            hide_non_actionable,
-            actionable_count,
             pending_filter,
             reviewed_filter,
+            actionable,
         }
     }
 
@@ -164,22 +131,6 @@ impl ReviewController {
     }
 
     pub fn toolbar_config(&self) -> ToolbarConfig {
-        let hide_non_actionable = self.hide_non_actionable;
-        let actionable_count = self.actionable_count;
-        let app_store = self.app_store;
-        ToolbarConfig {
-            enabled: true,
-            show_add_task: false,
-            completed: None,
-            actionable: Some(ActionableToggle {
-                is_active: hide_non_actionable,
-                count: actionable_count,
-                on_toggle: Callback::new(move |()| {
-                    app_store
-                        .browser_storage
-                        .toggle_bool(HIDE_NON_ACTIONABLE_KEY);
-                }),
-            }),
-        }
+        build_toolbar(false, None, &self.actionable)
     }
 }

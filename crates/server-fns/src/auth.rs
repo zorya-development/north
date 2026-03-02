@@ -12,6 +12,19 @@ pub async fn check_auth() -> Result<(), ServerFnError> {
 }
 
 #[cfg(feature = "ssr")]
+macro_rules! with_auth {
+    ($f:expr) => {{
+        #[allow(clippy::redundant_closure)]
+        let __f = $f;
+        let pool = leptos::prelude::expect_context::<north_core::DbPool>();
+        let uid = crate::auth::get_auth_user_id().await?;
+        __f(&pool, uid)
+            .await
+            .map_err(|e| leptos::prelude::ServerFnError::new(e.to_string()))
+    }};
+}
+
+#[cfg(feature = "ssr")]
 pub async fn get_auth_user_id() -> Result<i64, ServerFnError> {
     use axum_extra::extract::CookieJar;
     use jsonwebtoken::{decode, DecodingKey, Validation};

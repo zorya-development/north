@@ -1,9 +1,10 @@
 use leptos::prelude::*;
 use north_dto::Project;
-use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskModel, TaskStoreFilter};
+use north_stores::{AppStore, IdFilter, TaskDetailModalStore, TaskStoreFilter};
 
-use crate::containers::traversable_task_list::{ActionableToggle, CompletedToggle, ToolbarConfig};
-use crate::libs::{is_actionable, KeepCompletedVisible, KeepTaskVisible};
+use crate::containers::traversable_task_list::ToolbarConfig;
+use crate::controllers::{build_toolbar, ActionableController, NodeFilterController};
+use crate::libs::KeepTaskVisible;
 
 const HIDE_NON_ACTIONABLE_KEY: &str = "north:hide-non-actionable:project";
 
@@ -15,9 +16,8 @@ pub struct ProjectController {
     pub show_completed: RwSignal<bool>,
     pub completed_count: Memo<usize>,
     pub is_loaded: Signal<bool>,
-    pub hide_non_actionable: Signal<bool>,
-    pub actionable_count: Memo<usize>,
     pub node_filter: Signal<Callback<north_stores::TaskModel, bool>>,
+    actionable: ActionableController,
     app_store: AppStore,
 }
 
@@ -51,9 +51,6 @@ impl ProjectController {
         // the project filter (e.g. moved to another project via detail modal).
         let extra_show_ids: RwSignal<Vec<i64>> = RwSignal::new(vec![]);
         provide_context(KeepTaskVisible::new(extra_show_ids));
-
-        let keep_completed = KeepCompletedVisible::new();
-        provide_context(keep_completed);
 
         // Track tasks that disappear from the base filter and keep them visible.
         let prev_filtered_ids: RwSignal<Vec<i64>> = RwSignal::new(vec![]);
@@ -118,38 +115,11 @@ impl ProjectController {
         });
 
         let completed_count = Memo::new(move |_| completed_tasks.get().len());
-
         let show_completed = RwSignal::new(false);
-        let is_loaded = app_store.tasks.loaded_signal();
-
-        let hide_non_actionable =
-            Signal::derive(move || app_store.browser_storage.get_bool(HIDE_NON_ACTIONABLE_KEY));
 
         let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
-
-        let actionable_count = Memo::new(move |_| {
-            let tasks = all_tasks.get();
-            tasks
-                .iter()
-                .filter(|t| t.completed_at.is_none() && is_actionable(t, &tasks))
-                .count()
-        });
-
-        let keep_completed_signal = keep_completed.signal();
-        let node_filter = Signal::derive(move || {
-            let hide = hide_non_actionable.get();
-            let show = show_completed.get();
-            let pinned = keep_completed_signal.get();
-            Callback::new(move |task: TaskModel| {
-                if task.completed_at.is_some() {
-                    return show || pinned.contains(&task.id);
-                }
-                if !hide {
-                    return true;
-                }
-                is_actionable(&task, &all_tasks.get_untracked())
-            })
-        });
+        let actionable = ActionableController::new(app_store, all_tasks, HIDE_NON_ACTIONABLE_KEY);
+        let nf = NodeFilterController::new(&actionable, Some(show_completed.into()), all_tasks);
 
         Self {
             task_detail_modal_store,
@@ -157,10 +127,9 @@ impl ProjectController {
             root_task_ids,
             show_completed,
             completed_count,
-            is_loaded,
-            hide_non_actionable,
-            actionable_count,
-            node_filter,
+            is_loaded: app_store.tasks.loaded_signal(),
+            node_filter: nf.node_filter,
+            actionable,
             app_store,
         }
     }
@@ -177,30 +146,10 @@ impl ProjectController {
     }
 
     pub fn toolbar_config(&self) -> ToolbarConfig {
-        let show_completed = self.show_completed;
-        let completed_count = self.completed_count;
-        let hide_non_actionable = self.hide_non_actionable;
-        let actionable_count = self.actionable_count;
-        let app_store = self.app_store;
-        ToolbarConfig {
-            enabled: true,
-            show_add_task: true,
-            completed: Some(CompletedToggle {
-                is_active: show_completed.into(),
-                count: completed_count,
-                on_toggle: Callback::new(move |()| {
-                    show_completed.update(|v| *v = !*v);
-                }),
-            }),
-            actionable: Some(ActionableToggle {
-                is_active: hide_non_actionable,
-                count: actionable_count,
-                on_toggle: Callback::new(move |()| {
-                    app_store
-                        .browser_storage
-                        .toggle_bool(HIDE_NON_ACTIONABLE_KEY);
-                }),
-            }),
-        }
+        build_toolbar(
+            true,
+            Some((self.show_completed, self.completed_count)),
+            &self.actionable,
+        )
     }
 }

@@ -1,7 +1,6 @@
 use leptos::prelude::*;
-use north_ui::{Icon, IconKind};
 
-use crate::atoms::{Text, TextVariant};
+use crate::components::page_header::PageHeader;
 use crate::containers::task_list_item::ItemConfig;
 use crate::containers::traversable_task_list::{ToolbarConfig, TraversableTaskList};
 
@@ -22,20 +21,7 @@ pub fn InboxView(
 
     view! {
         <div class="space-y-4">
-            <div class="flex items-center justify-between">
-                <Text variant=TextVariant::HeadingLg>"Inbox"</Text>
-                <button
-                    on:click=move |_| show_keybindings_help.set(true)
-                    class="flex items-center gap-1.5 text-xs \
-                           text-text-secondary hover:text-text-primary \
-                           transition-colors cursor-pointer"
-                    title="Keyboard shortcuts"
-                >
-                    <Icon kind=IconKind::Keyboard class="w-3.5 h-3.5" />
-                    <span class="font-mono">"?"</span>
-                    " for help"
-                </button>
-            </div>
+            <PageHeader title="Inbox" show_keybindings_help=show_keybindings_help />
 
             <TraversableTaskList
                 root_task_ids=root_task_ids
