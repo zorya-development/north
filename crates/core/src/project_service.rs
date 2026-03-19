@@ -1,4 +1,3 @@
-use diesel::dsl::max;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use north_db::models::{NewProject, ProjectChangeset, ProjectRow};
@@ -53,7 +52,7 @@ impl ProjectService {
 
         let max_pos: Option<i32> = projects::table
             .filter(projects::user_id.eq(user_id))
-            .select(max(projects::position))
+            .select(diesel::dsl::max(projects::position))
             .first(&mut conn)
             .await?;
         let position = max_pos.unwrap_or(-1) + 1;
