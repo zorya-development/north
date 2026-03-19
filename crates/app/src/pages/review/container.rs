@@ -11,11 +11,8 @@ pub fn ReviewPage() -> impl IntoView {
 
     view! {
         <ReviewView
-            review_task_ids=ctrl.review_task_ids
-            reviewed_task_ids=ctrl.reviewed_task_ids
-            is_loaded=ctrl.is_loaded
-            pending_filter=ctrl.pending_filter
-            reviewed_filter=ctrl.reviewed_filter
+            pending_view=ctrl.pending_view
+            reviewed_view=ctrl.reviewed_view
             show_reviewed=ctrl.show_reviewed.0
             set_show_reviewed=ctrl.show_reviewed.1
             on_task_click=Callback::new(move |id| ctrl.open_detail(id))

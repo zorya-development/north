@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_stores::{TaskModel, TaskStoreFilter};
+use north_stores::TaskTree;
 use north_ui::Spinner;
 use wasm_bindgen::JsCast;
 
@@ -29,7 +29,7 @@ pub fn TraversableTaskListView(
     let container_ref = NodeRef::<leptos::html::Div>::new();
     let drag_ctx = use_context::<DragDropContext>();
     let app_store = north_stores::use_app_store();
-    let all_tasks_for_drop = app_store.tasks.filtered(TaskStoreFilter::default());
+    let tree_for_drop = app_store.tasks.task_tree;
 
     let show_keybindings_help = ctrl.show_keybindings_help;
     let has_toolbar = toolbar.enabled;
@@ -197,8 +197,8 @@ pub fn TraversableTaskListView(
             on:drop=move |ev: web_sys::DragEvent| {
                 ev.prevent_default();
                 let nodes = flat_nodes.get_untracked();
-                let tasks = all_tasks_for_drop.get_untracked();
-                handle_drop(drag_ctx, &nodes, &tasks, ctrl);
+                let tree = tree_for_drop.get_untracked();
+                handle_drop(drag_ctx, &nodes, &tree, ctrl);
             }
             on:dragover=move |ev: web_sys::DragEvent| {
                 if drag_ctx.is_some() {
@@ -378,10 +378,14 @@ pub fn TraversableTaskListView(
     }
 }
 
+fn tree_sort_key(tree: &TaskTree, task_id: i64) -> Option<String> {
+    tree.sort_key(task_id).map(|s| s.to_string())
+}
+
 fn handle_drop(
     drag_ctx: Option<DragDropContext>,
     flat_nodes: &[FlatNode],
-    all_tasks: &[TaskModel],
+    tree: &TaskTree,
     ctrl: TraversableTaskListController,
 ) {
     let Some(ctx) = drag_ctx else { return };
@@ -400,7 +404,7 @@ fn handle_drop(
     }
 
     // Prevent cycles: cannot drop a parent onto its own descendant.
-    if is_descendant_of(flat_nodes, dragging_id, target_id) {
+    if tree.is_descendant(dragging_id, target_id) {
         ctx.dragging_task_id.set(None);
         ctx.drop_target.set(None);
         return;
@@ -430,8 +434,8 @@ fn handle_drop(
             let pos = siblings.iter().position(|&id| id == target_id);
             let above_key = pos
                 .filter(|&p| p > 0)
-                .and_then(|p| task_sort_key(all_tasks, siblings[p - 1]));
-            let below_key = task_sort_key(all_tasks, target_id);
+                .and_then(|p| tree_sort_key(tree, siblings[p - 1]));
+            let below_key = tree_sort_key(tree, target_id);
             let new_key = north_dto::sort_key_between(above_key.as_deref(), below_key.as_deref());
             ctrl.reorder_task(dragging_id, new_key, Some(parent_id));
         }
@@ -447,17 +451,13 @@ fn handle_drop(
                 .map(|n| n.task_id)
                 .collect();
             let pos = siblings.iter().position(|&id| id == target_id);
-            let above_key = task_sort_key(all_tasks, target_id);
-            let below_key = pos.and_then(|p| {
-                siblings
-                    .get(p + 1)
-                    .and_then(|&id| task_sort_key(all_tasks, id))
-            });
+            let above_key = tree_sort_key(tree, target_id);
+            let below_key =
+                pos.and_then(|p| siblings.get(p + 1).and_then(|&id| tree_sort_key(tree, id)));
             let new_key = north_dto::sort_key_between(above_key.as_deref(), below_key.as_deref());
             ctrl.reorder_task(dragging_id, new_key, Some(parent_id));
         }
         DropZone::Nest => {
-            // Become last child of target.
             let last_child_key = flat_nodes
                 .iter()
                 .filter(|n| {
@@ -465,7 +465,7 @@ fn handle_drop(
                         && !n.is_completed
                         && n.is_someday == dragging_is_someday
                 })
-                .filter_map(|n| task_sort_key(all_tasks, n.task_id))
+                .filter_map(|n| tree_sort_key(tree, n.task_id))
                 .next_back();
             let new_key = north_dto::sort_key_after(last_child_key.as_deref());
             ctrl.reorder_task(dragging_id, new_key, Some(Some(target_id)));

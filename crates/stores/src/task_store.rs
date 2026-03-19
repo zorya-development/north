@@ -5,6 +5,8 @@ use north_dto::RecurrenceType;
 use north_dto::{CreateTask, TagInfo, UpdateTask};
 use north_repositories::{TaskModel, TaskRepository};
 
+use crate::task_tree::TaskTree;
+
 #[cfg(feature = "hydrate")]
 const REORDER_DEBOUNCE_MS: i32 = 1000;
 
@@ -19,6 +21,7 @@ struct PendingReorder {
 pub struct TaskStore {
     tasks: RwSignal<Vec<TaskModel>>,
     loaded: RwSignal<bool>,
+    pub task_tree: Memo<TaskTree>,
     #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
     reorder_timeout: RwSignal<i32>,
     #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
@@ -49,9 +52,12 @@ impl Default for TaskStore {
 
 impl TaskStore {
     pub fn new() -> Self {
+        let tasks = RwSignal::new(vec![]);
+        let task_tree = Memo::new(move |_| TaskTree::build(tasks.get()));
         Self {
-            tasks: RwSignal::new(vec![]),
+            tasks,
             loaded: RwSignal::new(false),
+            task_tree,
             reorder_timeout: RwSignal::new(0),
             pending_reorder: RwSignal::new(None),
         }

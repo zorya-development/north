@@ -11,9 +11,7 @@ pub fn TodayPage() -> impl IntoView {
 
     view! {
         <TodayView
-            root_task_ids=ctrl.root_task_ids
-            is_loaded=ctrl.is_loaded
-            node_filter=ctrl.node_filter
+            view=ctrl.view
             on_task_click=Callback::new(move |id| ctrl.open_detail(id))
             toolbar=ctrl.toolbar_config()
             show_keybindings_help=RwSignal::new(false)

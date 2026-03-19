@@ -3,14 +3,12 @@ use leptos::prelude::*;
 use crate::components::page_header::PageHeader;
 use crate::containers::task_list_item::ItemConfig;
 use crate::containers::traversable_task_list::{ToolbarConfig, TraversableTaskList};
+use crate::controllers::TaskTreeView;
 
 #[component]
 pub fn ReviewView(
-    review_task_ids: Memo<Vec<i64>>,
-    reviewed_task_ids: Memo<Vec<i64>>,
-    is_loaded: Signal<bool>,
-    pending_filter: Signal<Callback<north_stores::TaskModel, bool>>,
-    reviewed_filter: Signal<Callback<north_stores::TaskModel, bool>>,
+    pending_view: TaskTreeView,
+    reviewed_view: TaskTreeView,
     show_reviewed: ReadSignal<bool>,
     set_show_reviewed: WriteSignal<bool>,
     on_task_click: Callback<i64>,
@@ -27,10 +25,8 @@ pub fn ReviewView(
             <PageHeader title="Review" show_keybindings_help=show_keybindings_help />
 
             <TraversableTaskList
-                root_task_ids=review_task_ids
-                node_filter=pending_filter
+                view=pending_view
                 item_config=review_config
-                is_loaded=is_loaded
                 allow_create=false
                 allow_reorder=false
                 on_task_click=on_task_click
@@ -59,10 +55,8 @@ pub fn ReviewView(
                 <Show when=move || show_reviewed.get()>
                     <div class="mt-3">
                         <TraversableTaskList
-                            root_task_ids=reviewed_task_ids
-                            node_filter=reviewed_filter
+                            view=reviewed_view
                             item_config=review_config
-                            is_loaded=is_loaded
                             allow_create=false
                             allow_reorder=false
                             on_task_click=on_task_click

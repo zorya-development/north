@@ -4,10 +4,11 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos::wasm_bindgen::JsCast;
 use north_dto::CreateTask;
-use north_stores::{AppStore, ModalStore, StatusBarVariant, TaskModel, TaskStoreFilter};
+use north_stores::{AppStore, ModalStore, StatusBarVariant, TaskModel, TaskTree};
 
 use super::tree::*;
 use crate::containers::task_list_item::ItemConfig;
+use crate::controllers::TaskTreeView;
 use crate::libs::{KeepCompletedVisible, KeepTaskVisible};
 
 /// Blur the currently focused element so that blur handlers fire while
@@ -36,6 +37,8 @@ pub struct TraversableTaskListController {
     pub available_tags: Memo<Vec<(String, String)>>,
     app_store: AppStore,
     modal: ModalStore,
+    /// Shared tree — available when using TaskTreeView, lazily derived otherwise.
+    tree: Memo<TaskTree>,
     allow_create: bool,
     allow_reorder: bool,
     scoped: bool,
@@ -52,7 +55,8 @@ impl TraversableTaskListController {
     pub fn new(
         app_store: AppStore,
         modal: ModalStore,
-        root_task_ids: Memo<Vec<i64>>,
+        view: Option<TaskTreeView>,
+        legacy_root_task_ids: Option<Memo<Vec<i64>>>,
         show_keybindings_help: RwSignal<bool>,
         on_task_click: Option<Callback<i64>>,
         on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
@@ -61,136 +65,195 @@ impl TraversableTaskListController {
         item_config: ItemConfig,
         default_project_id: Option<Signal<Option<i64>>>,
         default_parent_id: Option<Signal<Option<i64>>>,
-        flat: bool,
+        _flat: bool,
         scoped: bool,
         cursor_task_id: Option<RwSignal<Option<i64>>>,
         node_filter: Option<Signal<Callback<TaskModel, bool>>>,
     ) -> Self {
-        let all_tasks = app_store.tasks.filtered(TaskStoreFilter::default());
         let search_query: RwSignal<String> = RwSignal::new(String::new());
         let active_tag_names: RwSignal<Vec<String>> = RwSignal::new(vec![]);
 
-        // Compute available tags from all tasks reachable from root_task_ids.
-        let available_tags = Memo::new(move |_| {
-            let roots = root_task_ids.get();
-            let tasks = all_tasks.get();
-            let mut tag_map = BTreeMap::<String, String>::new();
+        // Use shared tree from TaskStore (always available)
+        let tree = app_store.tasks.task_tree;
 
-            fn collect_tags(
-                task_id: i64,
-                tasks: &[TaskModel],
-                tag_map: &mut BTreeMap<String, String>,
-            ) {
-                if let Some(t) = tasks.iter().find(|t| t.id == task_id) {
-                    for tag in &t.tags {
-                        tag_map
-                            .entry(tag.name.clone())
-                            .or_insert_with(|| tag.color.clone());
-                    }
-                    // Recurse into children
-                    for child in tasks.iter().filter(|c| c.parent_id == Some(task_id)) {
-                        collect_tags(child.id, tasks, tag_map);
+        let (flat_nodes, available_tags) = if let Some(tv) = view {
+            // ── New path: TaskTreeView-based ────────────────────
+            let page_filter = tv.filter;
+            let extra_visible = tv.extra_visible;
+
+            let available_tags = Memo::new(move |_| {
+                let tree = tree.get();
+                let filter = page_filter.get();
+                let mut tag_map = BTreeMap::<String, String>::new();
+
+                fn collect_tags_from_tree(
+                    tree: &TaskTree,
+                    task_id: i64,
+                    tag_map: &mut BTreeMap<String, String>,
+                ) {
+                    if let Some(t) = tree.get(task_id) {
+                        for tag in &t.tags {
+                            tag_map
+                                .entry(tag.name.clone())
+                                .or_insert_with(|| tag.color.clone());
+                        }
+                        let group = tree.children_of(Some(task_id));
+                        for &child_id in group.all_ids() {
+                            collect_tags_from_tree(tree, child_id, tag_map);
+                        }
                     }
                 }
-            }
 
-            for &root_id in &roots {
-                collect_tags(root_id, &tasks, &mut tag_map);
-            }
+                // Collect from root tasks that pass the filter
+                let root_group = tree.children_of(None);
+                for &root_id in root_group.all_ids() {
+                    if let Some(task) = tree.get(root_id) {
+                        if filter.run(task.clone()) {
+                            collect_tags_from_tree(&tree, root_id, &mut tag_map);
+                        }
+                    }
+                }
 
-            // Clean up active tags that no longer exist
-            let available_names: Vec<String> = tag_map.keys().cloned().collect();
-            active_tag_names.update(|active| {
-                active.retain(|name| available_names.contains(name));
+                active_tag_names.update(|active| {
+                    let available_names: Vec<String> = tag_map.keys().cloned().collect();
+                    active.retain(|name| available_names.contains(name));
+                });
+
+                tag_map.into_iter().collect::<Vec<_>>()
             });
 
-            tag_map.into_iter().collect::<Vec<_>>()
-        });
+            let flat_nodes = Memo::new(move |_| {
+                let tree = tree.get();
+                let filter = page_filter.get();
+                let extras = extra_visible.get();
+                let active_tags = active_tag_names.get();
+                let query = search_query.get().trim().to_lowercase();
 
-        let flat_nodes = Memo::new(move |_| {
-            let filter = node_filter.map(|s| s.get());
-            let roots = root_task_ids.get();
-            let tasks = all_tasks.get();
-            let active_tags = active_tag_names.get();
-            let query = search_query.get().trim().to_lowercase();
+                // Step 1: Flatten with page filter + extra_visible
+                let nodes = tree.flatten(|t| filter.run(t.clone()), &extras);
 
-            let has_tag_filter = !active_tags.is_empty();
-            let has_search = !query.is_empty();
+                // Step 2: Apply local filters (tags + search) with ancestor preservation
+                if active_tags.is_empty() && query.is_empty() {
+                    return nodes;
+                }
 
-            // When local filters are active (tags and/or search), precompute
-            // the full set of visible task IDs: matching tasks plus all their
-            // ancestors so the tree trace is preserved.
-            let local_visible: Option<HashSet<i64>> = if !has_tag_filter && !has_search {
-                None
-            } else {
-                let passes_filter =
-                    |t: &TaskModel| filter.as_ref().map(|f| f.run(t.clone())).unwrap_or(true);
-
-                let add_ancestors = |visible: &mut HashSet<i64>, task: &TaskModel| {
-                    let mut pid = task.parent_id;
-                    while let Some(parent_id) = pid {
-                        if !visible.insert(parent_id) {
-                            break;
+                let mut local_visible: HashSet<i64> = HashSet::new();
+                for node in &nodes {
+                    if let Some(task) = tree.get(node.task_id) {
+                        if !active_tags.is_empty() {
+                            let tag_names: Vec<&str> =
+                                task.tags.iter().map(|tag| tag.name.as_str()).collect();
+                            if !active_tags
+                                .iter()
+                                .all(|req| tag_names.contains(&req.as_str()))
+                            {
+                                continue;
+                            }
                         }
-                        pid = tasks
-                            .iter()
-                            .find(|t| t.id == parent_id)
-                            .and_then(|t| t.parent_id);
-                    }
-                };
-
-                let mut visible = HashSet::new();
-                for task in &tasks {
-                    if !passes_filter(task) {
-                        continue;
-                    }
-
-                    // Tag filter: must have ALL active tags
-                    if has_tag_filter {
-                        let tag_names: Vec<&str> =
-                            task.tags.iter().map(|tag| tag.name.as_str()).collect();
-                        if !active_tags
-                            .iter()
-                            .all(|req| tag_names.contains(&req.as_str()))
+                        if !query.is_empty()
+                            && !task.title.to_lowercase().contains(&query)
+                            && !task
+                                .body
+                                .as_ref()
+                                .is_some_and(|b| b.to_lowercase().contains(&query))
                         {
                             continue;
                         }
+                        local_visible.insert(task.id);
+                        for anc_id in tree.ancestors(task.id) {
+                            local_visible.insert(anc_id);
+                        }
                     }
+                }
 
-                    // Text search: title or body must contain query
-                    if has_search
-                        && !task.title.to_lowercase().contains(&query)
-                        && !task
-                            .body
-                            .as_ref()
-                            .is_some_and(|b| b.to_lowercase().contains(&query))
-                    {
-                        continue;
+                nodes
+                    .into_iter()
+                    .filter(|n| local_visible.contains(&n.task_id))
+                    .collect()
+            });
+
+            (flat_nodes, available_tags)
+        } else {
+            // ── Flat-mode path (filter page) ─────────────────────
+            let root_task_ids =
+                legacy_root_task_ids.unwrap_or_else(|| Memo::new(|_| Vec::<i64>::new()));
+
+            let available_tags = Memo::new(move |_| {
+                let tree = tree.get();
+                let roots = root_task_ids.get();
+                let mut tag_map = BTreeMap::<String, String>::new();
+
+                for &root_id in &roots {
+                    if let Some(t) = tree.get(root_id) {
+                        for tag in &t.tags {
+                            tag_map
+                                .entry(tag.name.clone())
+                                .or_insert_with(|| tag.color.clone());
+                        }
                     }
+                }
 
-                    visible.insert(task.id);
-                    add_ancestors(&mut visible, task);
-                }
-                Some(visible)
-            };
+                active_tag_names.update(|active| {
+                    let available_names: Vec<String> = tag_map.keys().cloned().collect();
+                    active.retain(|name| available_names.contains(name));
+                });
 
-            let include = |t: &TaskModel| {
-                let passes = filter.as_ref().map(|f| f.run(t.clone())).unwrap_or(true);
-                if !passes {
-                    return false;
+                tag_map.into_iter().collect::<Vec<_>>()
+            });
+
+            let flat_nodes = Memo::new(move |_| {
+                let filter = node_filter.map(|s| s.get());
+                let roots = root_task_ids.get();
+                let tree = tree.get();
+                let active_tags = active_tag_names.get();
+                let query = search_query.get().trim().to_lowercase();
+
+                let mut nodes = tree.flatten_flat(&roots);
+
+                // Apply node filter (e.g. completed toggle from task detail modal)
+                if let Some(ref f) = filter {
+                    nodes.retain(|n| {
+                        tree.get(n.task_id)
+                            .map(|t| f.run(t.clone()))
+                            .unwrap_or(false)
+                    });
                 }
-                if let Some(ref vis) = local_visible {
-                    vis.contains(&t.id)
-                } else {
-                    true
+
+                // Apply local filters (tags + search)
+                if !active_tags.is_empty() || !query.is_empty() {
+                    nodes.retain(|n| {
+                        if let Some(task) = tree.get(n.task_id) {
+                            if !active_tags.is_empty() {
+                                let tag_names: Vec<&str> =
+                                    task.tags.iter().map(|tag| tag.name.as_str()).collect();
+                                if !active_tags
+                                    .iter()
+                                    .all(|req| tag_names.contains(&req.as_str()))
+                                {
+                                    return false;
+                                }
+                            }
+                            if !query.is_empty()
+                                && !task.title.to_lowercase().contains(&query)
+                                && !task
+                                    .body
+                                    .as_ref()
+                                    .is_some_and(|b| b.to_lowercase().contains(&query))
+                            {
+                                return false;
+                            }
+                            true
+                        } else {
+                            false
+                        }
+                    });
                 }
-            };
-            if flat {
-                flatten_flat(&roots, &tasks, &include)
-            } else {
-                flatten_tree(&roots, &tasks, &include)
-            }
-        });
+
+                nodes
+            });
+
+            (flat_nodes, available_tags)
+        };
 
         let cursor_task_id = cursor_task_id.unwrap_or_else(|| RwSignal::new(None::<i64>));
 
@@ -201,7 +264,6 @@ impl TraversableTaskListController {
         });
 
         // Clear cursor when the selected task is no longer in the visible list
-        // (e.g. after toggling completed/actionable filter).
         Effect::new(move |_| {
             if cursor_index.get().is_none() {
                 cursor_task_id.set(None);
@@ -228,6 +290,7 @@ impl TraversableTaskListController {
             available_tags,
             app_store,
             modal,
+            tree,
             allow_create,
             allow_reorder,
             scoped,
@@ -250,7 +313,6 @@ impl TraversableTaskListController {
                     self.cursor_task_id.set(Some(nodes[idx - 1].task_id));
                 }
             } else if let Some(last) = nodes.last() {
-                // Cursor task no longer in list — recover to last
                 self.cursor_task_id.set(Some(last.task_id));
             }
         } else if let Some(last) = nodes.last() {
@@ -266,7 +328,6 @@ impl TraversableTaskListController {
                     self.cursor_task_id.set(Some(nodes[idx + 1].task_id));
                 }
             } else if let Some(first) = nodes.first() {
-                // Cursor task no longer in list — recover to first
                 self.cursor_task_id.set(Some(first.task_id));
             }
         } else if let Some(first) = nodes.first() {
@@ -391,18 +452,13 @@ impl TraversableTaskListController {
         }
 
         let nodes = self.flat_nodes.get_untracked();
-        let all_tasks = self.app_store.tasks.filtered(TaskStoreFilter::default());
-        let tasks = all_tasks.get_untracked();
+        let tree = self.tree.get_untracked();
 
-        let sort_key = compute_sort_key(&nodes, &tasks, anchor_task_id, placement, parent_id);
+        let sort_key =
+            compute_sort_key_from_tree(&nodes, &tree, anchor_task_id, placement, parent_id);
 
         let project_id = parent_id
-            .and_then(|pid| {
-                tasks
-                    .iter()
-                    .find(|t| t.id == pid)
-                    .and_then(|t| t.project_id)
-            })
+            .and_then(|pid| tree.get(pid).and_then(|t| t.project_id))
             .or_else(|| self.default_project_id.and_then(|s| s.get_untracked()));
 
         let input = CreateTask {
@@ -424,12 +480,7 @@ impl TraversableTaskListController {
                 if let Some(kv) = keep_visible {
                     kv.keep(task.id);
                 }
-                // For After placement, chain: next create goes after the
-                // newly created task. For Before, anchor stays the same.
                 if placement == Placement::After {
-                    // Blur before changing inline_mode to prevent disposed-callback
-                    // panics: the old <Show> scope will tear down, and the browser
-                    // fires blur into handlers whose Callbacks are already disposed.
                     blur_active_element();
                     inline_mode.set(InlineMode::Create {
                         anchor_task_id: task.id,
@@ -450,25 +501,18 @@ impl TraversableTaskListController {
         }
 
         let nodes = self.flat_nodes.get_untracked();
-        let all_tasks = self.app_store.tasks.filtered(TaskStoreFilter::default());
-        let tasks = all_tasks.get_untracked();
+        let tree = self.tree.get_untracked();
 
         let parent_id = self.default_parent_id.and_then(|s| s.get_untracked());
 
-        // Sort key: before the first root task (root = matching parent_id).
         let first_root_key = nodes
             .iter()
             .find(|n| n.parent_id == parent_id)
-            .and_then(|n| task_sort_key(&tasks, n.task_id));
+            .and_then(|n| tree.sort_key(n.task_id).map(|s| s.to_string()));
         let sort_key = north_dto::sort_key_between(None, first_root_key.as_deref());
 
         let project_id = parent_id
-            .and_then(|pid| {
-                tasks
-                    .iter()
-                    .find(|t| t.id == pid)
-                    .and_then(|t| t.project_id)
-            })
+            .and_then(|pid| tree.get(pid).and_then(|t| t.project_id))
             .or_else(|| self.default_project_id.and_then(|s| s.get_untracked()));
 
         let input = CreateTask {
@@ -490,9 +534,7 @@ impl TraversableTaskListController {
                 if let Some(kv) = keep_visible {
                     kv.keep(task.id);
                 }
-                // Blur before changing inline_mode (see create_task_anchored).
                 blur_active_element();
-                // Chain: next create goes after the newly created task.
                 inline_mode.set(InlineMode::Create {
                     anchor_task_id: task.id,
                     placement: Placement::After,
@@ -508,8 +550,6 @@ impl TraversableTaskListController {
         self.inline_mode.set(InlineMode::None);
     }
 
-    /// Split raw input into (title, optional body).
-    /// First line becomes the title; remaining lines become the body.
     fn parse_title_body(raw: &str) -> (String, Option<String>) {
         let mut lines = raw.splitn(2, '\n');
         let title = lines.next().unwrap_or("").trim().to_string();
@@ -534,9 +574,6 @@ impl TraversableTaskListController {
             .map(|t| t.completed_at.is_some())
             .unwrap_or(false);
 
-        // When completing, pin the task so it stays visible until refresh,
-        // then advance cursor to neighbor before the task moves to the
-        // completed group.
         if !is_completed {
             if let Some(kc) = self.keep_completed {
                 kc.keep(task_id);
@@ -545,9 +582,6 @@ impl TraversableTaskListController {
             let next_cursor = next_sibling(&nodes, task_id)
                 .or_else(|| prev_sibling(&nodes, task_id))
                 .or_else(|| {
-                    // No siblings left — pick the next item in flat order so
-                    // the cursor stays at the same visual position rather than
-                    // jumping up to the parent.
                     let idx = nodes.iter().position(|n| n.task_id == task_id)?;
                     if idx + 1 < nodes.len() {
                         Some(nodes[idx + 1].task_id)
@@ -593,7 +627,6 @@ impl TraversableTaskListController {
         };
         let nodes = self.flat_nodes.get_untracked();
 
-        // Next sibling → prev sibling → parent → None.
         let next_cursor = next_sibling(&nodes, task_id)
             .or_else(|| prev_sibling(&nodes, task_id))
             .or_else(|| parent_of(&nodes, task_id));
@@ -629,13 +662,6 @@ impl TraversableTaskListController {
 
     // ── Task reorder (Shift+Arrow) ──────────────────────────────
 
-    fn all_tasks(&self) -> Vec<TaskModel> {
-        self.app_store
-            .tasks
-            .filtered(TaskStoreFilter::default())
-            .get_untracked()
-    }
-
     fn siblings(&self, task_id: i64) -> Vec<i64> {
         let nodes = self.flat_nodes.get_untracked();
         let parent_id = nodes
@@ -652,12 +678,18 @@ impl TraversableTaskListController {
             .collect()
     }
 
+    fn get_sort_key(&self, task_id: i64) -> Option<String> {
+        self.tree
+            .get_untracked()
+            .sort_key(task_id)
+            .map(|s| s.to_string())
+    }
+
     pub fn reorder_up(&self) {
         let Some(task_id) = self.cursor_task_id.get_untracked() else {
             return;
         };
         let siblings = self.siblings(task_id);
-        let tasks = self.all_tasks();
         let Some(pos) = siblings.iter().position(|&id| id == task_id) else {
             return;
         };
@@ -666,11 +698,11 @@ impl TraversableTaskListController {
         }
 
         let above_key = if pos >= 2 {
-            task_sort_key(&tasks, siblings[pos - 2])
+            self.get_sort_key(siblings[pos - 2])
         } else {
             None
         };
-        let below_key = task_sort_key(&tasks, siblings[pos - 1]);
+        let below_key = self.get_sort_key(siblings[pos - 1]);
         let new_key = north_dto::sort_key_between(above_key.as_deref(), below_key.as_deref());
         self.reorder_task(task_id, new_key, None);
     }
@@ -680,7 +712,6 @@ impl TraversableTaskListController {
             return;
         };
         let siblings = self.siblings(task_id);
-        let tasks = self.all_tasks();
         let Some(pos) = siblings.iter().position(|&id| id == task_id) else {
             return;
         };
@@ -688,10 +719,8 @@ impl TraversableTaskListController {
             return;
         }
 
-        let above_key = task_sort_key(&tasks, siblings[pos + 1]);
-        let below_key = siblings
-            .get(pos + 2)
-            .and_then(|&id| task_sort_key(&tasks, id));
+        let above_key = self.get_sort_key(siblings[pos + 1]);
+        let below_key = siblings.get(pos + 2).and_then(|&id| self.get_sort_key(id));
         let new_key = north_dto::sort_key_between(above_key.as_deref(), below_key.as_deref());
         self.reorder_task(task_id, new_key, None);
     }
@@ -704,13 +733,11 @@ impl TraversableTaskListController {
         let Some(prev_id) = prev_sibling(&nodes, task_id) else {
             return;
         };
-        let tasks = self.all_tasks();
 
-        // Become last child of previous sibling.
         let last_child_key = nodes
             .iter()
             .filter(|n| n.parent_id == Some(prev_id))
-            .filter_map(|n| task_sort_key(&tasks, n.task_id))
+            .filter_map(|n| self.get_sort_key(n.task_id))
             .next_back();
         let new_key = north_dto::sort_key_after(last_child_key.as_deref());
         self.reorder_task(task_id, new_key, Some(Some(prev_id)));
@@ -728,9 +755,7 @@ impl TraversableTaskListController {
 
         let parent_node = nodes.iter().find(|n| n.task_id == parent_id);
         let grandparent_id = parent_node.and_then(|n| n.parent_id);
-        let tasks = self.all_tasks();
 
-        // Place after parent among grandparent's children.
         let parent_siblings: Vec<i64> = nodes
             .iter()
             .filter(|n| n.parent_id == grandparent_id)
@@ -741,10 +766,10 @@ impl TraversableTaskListController {
             .position(|&id| id == parent_id)
             .unwrap_or(0);
 
-        let above_key = task_sort_key(&tasks, parent_id);
+        let above_key = self.get_sort_key(parent_id);
         let below_key = parent_siblings
             .get(parent_pos + 1)
-            .and_then(|&id| task_sort_key(&tasks, id));
+            .and_then(|&id| self.get_sort_key(id));
         let new_key = north_dto::sort_key_between(above_key.as_deref(), below_key.as_deref());
         self.reorder_task(task_id, new_key, Some(grandparent_id));
     }
@@ -782,12 +807,8 @@ impl TraversableTaskListController {
 
         match mode {
             InlineMode::None => self.handle_keydown_normal(ev),
-            InlineMode::Edit { .. } => {
-                // Edit input handles its own keys; nothing here.
-            }
-            InlineMode::Create { .. } | InlineMode::CreateTop => {
-                // Create input handles its own keys; nothing here.
-            }
+            InlineMode::Edit { .. } => {}
+            InlineMode::Create { .. } | InlineMode::CreateTop => {}
         }
     }
 
@@ -883,5 +904,48 @@ impl TraversableTaskListController {
             }
             _ => {}
         }
+    }
+}
+
+/// Compute a sort_key using the TaskTree for O(1) lookups instead of scanning all_tasks.
+fn compute_sort_key_from_tree(
+    flat: &[FlatNode],
+    tree: &TaskTree,
+    anchor_task_id: i64,
+    placement: Placement,
+    parent_id: Option<i64>,
+) -> String {
+    let siblings: Vec<i64> = flat
+        .iter()
+        .filter(|n| n.parent_id == parent_id)
+        .map(|n| n.task_id)
+        .collect();
+
+    if let Some(anchor_pos) = siblings.iter().position(|&id| id == anchor_task_id) {
+        match placement {
+            Placement::After => {
+                let above_key = tree.sort_key(anchor_task_id).map(|s| s.to_string());
+                let below_key = siblings
+                    .get(anchor_pos + 1)
+                    .and_then(|&id| tree.sort_key(id).map(|s| s.to_string()));
+                north_dto::sort_key_between(above_key.as_deref(), below_key.as_deref())
+            }
+            Placement::Before => {
+                let above_key = if anchor_pos > 0 {
+                    siblings
+                        .get(anchor_pos - 1)
+                        .and_then(|&id| tree.sort_key(id).map(|s| s.to_string()))
+                } else {
+                    None
+                };
+                let below_key = tree.sort_key(anchor_task_id).map(|s| s.to_string());
+                north_dto::sort_key_between(above_key.as_deref(), below_key.as_deref())
+            }
+        }
+    } else {
+        let last_key = siblings
+            .last()
+            .and_then(|&id| tree.sort_key(id).map(|s| s.to_string()));
+        north_dto::sort_key_after(last_key.as_deref())
     }
 }

@@ -1,7 +1,3 @@
-mod actionable;
-mod node_filter;
-mod toolbar;
+mod task_tree_view;
 
-pub use actionable::{is_actionable, ActionableController};
-pub use node_filter::NodeFilterController;
-pub use toolbar::build_toolbar;
+pub use task_tree_view::TaskTreeView;
