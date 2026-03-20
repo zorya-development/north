@@ -10,6 +10,7 @@ pub mod status_bar_store;
 pub mod tag_store;
 pub mod task_detail_modal_store;
 pub mod task_store;
+pub mod task_tree;
 
 pub use app_store::AppStore;
 pub use browser_storage_store::BrowserStorageStore;
@@ -23,5 +24,6 @@ pub use status_bar_store::{StatusBarStore, StatusBarStyle, StatusBarVariant};
 pub use tag_store::TagStore;
 pub use task_detail_modal_store::TaskDetailModalStore;
 pub use task_store::{IdFilter, TaskStore, TaskStoreFilter};
+pub use task_tree::{ChildGroup, FlatNode, TaskTree};
 
 pub use north_repositories::{Recurrence, TaskModel};

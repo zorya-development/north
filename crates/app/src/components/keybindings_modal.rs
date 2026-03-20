@@ -15,6 +15,7 @@ pub fn KeybindingsModal(open: ReadSignal<bool>, set_open: WriteSignal<bool>) -> 
         ("E", "Open detail"),
         ("R", "Mark as reviewed"),
         ("S", "Toggle someday"),
+        ("Z", "Fold/unfold subtasks"),
         ("Delete", "Delete task"),
         ("Escape", "Clear selection"),
         ("?", "This help"),

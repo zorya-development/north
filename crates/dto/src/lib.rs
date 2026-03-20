@@ -6,6 +6,7 @@ pub mod saved_filter;
 pub mod serde_helpers;
 pub mod sort_key;
 pub mod tag;
+pub mod tag_tokens;
 pub mod task;
 pub mod user;
 
@@ -16,5 +17,6 @@ pub use recurrence::*;
 pub use saved_filter::*;
 pub use sort_key::*;
 pub use tag::*;
+pub use tag_tokens::*;
 pub use task::*;
 pub use user::*;

@@ -21,7 +21,7 @@ north/
 ├── style/main.css              # TailwindCSS v4, dark theme, Inter + JetBrains Mono
 ├── public/                     # Static assets served at /public
 ├── uploads/                    # User-uploaded files (volume mount)
-├── docs/                       # PRD.md, DESIGN.md, UI_KIT.md
+├── docs/                       # ARCHITECTURE.md, UI_KIT.md, RELEASE_*.md, regress.md
 ├── chart/                      # Helm chart for Kubernetes deployment
 ├── .github/workflows/
 │   ├── ci.yml                  # CI: build + check (parallel) → e2e
@@ -43,7 +43,7 @@ north/
 
 ### dto (north-dto)
 Pure data types with serde + chrono, no IO. Compiled for both server and WASM. Includes recurrence types (`RecurrenceType`, `RecurrenceRule`, `Frequency`, `Weekday`) with RRULE serialization, human-readable `summarize()`, and after-completion/scheduled modes. Key types:
-- `Task` (includes enrichment fields: project_title, tags, subtask_count, completed_subtask_count, actionable, recurrence_type, recurrence_rule)
+- `Task` (includes enrichment fields: project_title, tags, subtask_count, completed_subtask_count, actionable, someday, recurrence_type, recurrence_rule)
 - `CreateTask` (includes optional `sort_key` for positional insertion)
 - `TaskFilter`, `ProjectFilter`, `ProjectStatus` (Active, Archived)
 - `UserSettings` (review_interval_days, default_sequential_limit, timezone)
@@ -61,7 +61,7 @@ Key patterns:
 - `compute_actionable()` — sequential task logic in Rust
 - `execute_dsl_filter()` — filter DSL evaluation via `filter::eval_expr`
 
-**Filter DSL subsystem** (`core/filter/`): AST types (`dsl.rs`), recursive descent parser (`parser.rs`), autocomplete context detection (`context.rs`), server-side suggestion generation (`autocomplete.rs`), AST evaluation (`translator.rs`), and `TaskFieldRegistry` (`field_registry.rs`) with compile-time exhaustive `Task` destructure for field safety. Supports fields (title, body, project, tags, status, due_date, start_at, created, updated), operators (`=`, `!=`, `=~`, `>`, `<`, `>=`, `<=`, `is null`, `in [...]`), logical operators (`AND`, `OR`, `NOT`, parentheses), and `ORDER BY`.
+**Filter DSL subsystem** (`core/filter/`): AST types (`dsl.rs`), recursive descent parser (`parser.rs`), autocomplete context detection (`context.rs`), server-side suggestion generation (`autocomplete.rs`), AST evaluation (`translator.rs`), `TaskFieldRegistry` (`field_registry.rs`) with compile-time exhaustive `Task` destructure for field safety, and `text_parser.rs` for `#tag`/`@project` token extraction. Supports fields (title, body, project, tags, status, someday, due_date, start_at, created, updated), operators (`=`, `!=`, `=~`, `>`, `<`, `>=`, `<=`, `is null`, `in [...]`), logical operators (`AND`, `OR`, `NOT`, parentheses), and `ORDER BY`.
 
 ### stores (north-stores)
 Reactive client state. `AppStore` wraps all sub-stores, provided globally via context:
@@ -73,7 +73,10 @@ Reactive client state. `AppStore` wraps all sub-stores, provided globally via co
 - **TaskDetailModalStore** — modal state, navigation, subtask handling
 - **ModalStore** — string-based modal registry (`open()`, `close()`, `is_open()`, `is_any_open()`). Decouples keyboard listeners from modal DOM structure.
 - **StatusBarStore** — bottom-bar messages. `show_message(text, variant)` (persistent with spinner), `notify(variant, text)` (auto-dismissing toast, 10s). Variants: Info, Danger, Success.
+- **SettingsStore** — reactive user settings state (review interval, timezone, sequential limit)
 - **BrowserStorageStore** — reactive proxy over localStorage. Lazily creates `RwSignal<bool>` per key. Used for per-page UI toggles (e.g. `north:hide-non-actionable:{page}`).
+
+Also contains **TaskTree** (`task_tree.rs`) — indexed tree built from `Vec<TaskModel>` with O(1) lookups (`get`, `children_of`, `parent_of`, `sort_key`), domain methods (`is_actionable`, `ancestors`, `is_descendant`, `count_matching`), and flattening with ancestor preservation. Children pre-sorted into `ChildGroup { active, someday, completed }`. Lives as `Memo<TaskTree>` on `TaskStore`.
 
 ### repositories (north-repositories)
 Thin async facade. Decouples stores from server function details. No business logic — pure pass-through. Includes `TaskRepository`, `ProjectRepository`, `FilterRepository`, `TagRepository`, `SettingsRepository`.
@@ -93,13 +96,15 @@ Generic UI component library. No dto dependencies — only `leptos`, `pulldown-c
 ### app (north-app)
 Leptos library crate. Features: `hydrate` (WASM client), `ssr` (server-side).
 
-**Pages** (`pages/`): login, inbox, today, all_tasks, project, archive, review, settings, filter, filter_help. Each follows container/controller/view pattern.
+**Pages** (`pages/`): login, inbox, today, all_tasks, someday, project, archive, review, settings, filter, filter_help. Each follows container/controller/view pattern.
 
-**Containers** (`containers/`): Complex stateful domain components — autocomplete, inline_task_input, project_picker, sidebar, tag_picker, task_checkbox, task_detail_modal, task_list_item, task_meta, traversable_task_list.
+**Containers** (`containers/`): Complex stateful domain components — autocomplete, inline_task_input, project_picker, sidebar, smart_textarea, tag_picker, task_checkbox, task_detail_modal, task_list_item, task_meta, traversable_task_list.
 
-**Components** (`components/`): Simpler/presentational — date_picker, filter_autocomplete, recurrence_modal, keybindings_modal, status_bar, drag_drop, theme_toggle, layout.
+**Components** (`components/`): Simpler/presentational — connectivity_monitor, date_picker, drag_drop, enriched_markdown, filter_autocomplete, keybindings_modal, layout, mirror_overlay, page_header, recurrence_modal, rich_title, status_bar, theme_toggle.
 
-**Atoms** (`atoms/`): UI Kit atoms — currently `Text` (TextVariant, TextColor, TextTag) based on MD3 type scale. Enum props use `fn classes(self) -> &'static str` pattern.
+**Atoms** (`atoms/`): UI Kit atoms — `Text` (TextVariant, TextColor, TextTag) and `Toolbar` (ToolbarSeparator). Based on MD3 type scale. Enum props use `fn classes(self) -> &'static str` pattern.
+
+**Libs** (`libs/`): Utility modules — `keep_completed_visible`, `keep_task_visible`, `reactive_recurrence_rule`, `task_tree_view` (filtered view over `TaskTree` for page controllers), `textarea`.
 
 ### server (north-server)
 Axum binary. Auth middleware injects `AuthUser { id, role }` into request extensions. Route handlers delegate to `north-core`.
@@ -114,11 +119,13 @@ POST   /api/tasks              (protected)
 GET    /api/tasks/:id          (protected)
 PATCH  /api/tasks/:id          (protected)
 DELETE /api/tasks/:id          (protected)
-PATCH  /api/tasks/:id/review   (protected)
 GET    /api/projects           (protected, supports ProjectFilter query params)
 POST   /api/projects           (protected)
 GET    /api/projects/:id       (protected)
 PATCH  /api/projects/:id       (protected)
+DELETE /api/projects/:id       (protected)
+GET    /api/filters            (protected)
+DELETE /api/filters/:id        (protected)
 GET    /api/stats              (protected)
 ```
 
@@ -127,7 +134,7 @@ GET    /api/stats              (protected)
 ```
 users (email, password_hash, name, role ENUM, settings JSONB, created_at, updated_at)
 ├── projects (title, description, color, view_type ENUM, status ENUM, position, created_at, updated_at)
-│   └── tasks (title, body, sort_key, sequential_limit, start_at, due_date, completed_at, reviewed_at, recurrence_type ENUM, recurrence_rule, ...)
+│   └── tasks (title, body, sort_key, sequential_limit, someday, start_at, due_date, completed_at, reviewed_at, recurrence_type ENUM, recurrence_rule, ...)
 │       ├── tasks (subtasks via parent_id self-reference)
 │       └── task_tags → tags (join table)
 ├── tags (name, color, UNIQUE per user)
@@ -141,7 +148,7 @@ Triggers: `update_updated_at()` on users, projects, tasks.
 ## Component Details
 
 ### TraversableTaskList
-Keyboard-driven tree list container — the sole list component for all pages. Builds a flat `Vec<FlatNode>` from hierarchical tasks via DFS pre-order (active sorted by sort_key first, completed at bottom per parent group). Maintains a task-ID-based cursor with tree-aware navigation (Up/Down = siblings, Left = parent, Right = first child).
+Keyboard-driven tree list container — the sole list component for all pages. Accepts a `TaskTreeView` (filtered view over the shared `TaskTree`) as its primary data interface. Builds a flat `Vec<FlatNode>` via `TaskTree::flatten()` with DFS pre-order (active → someday → completed per parent group). Maintains a task-ID-based cursor with tree-aware navigation (Up/Down = siblings, Left = parent, Right = first child).
 
 Features:
 - Inline editing (Enter to edit, Enter to save, Escape to cancel)
@@ -150,6 +157,7 @@ Features:
 - Keyboard reordering (Shift+Arrow) and drag-and-drop (Above/Below/Nest zones with cycle prevention)
 - Two keyboard modes: **global** (window_event_listener, skips when ModalStore reports any modal open) and **scoped** (element-level, used inside modals)
 - R key marks selected task as reviewed (when `item_config.show_review` is true)
+- S key toggles someday status on selected task
 
 ### ExtraVisibleIds
 Context type (`ExtraVisibleIds(RwSignal<Vec<i64>>)`) provided by TraversableTaskList and TaskDetailModal. Keeps inline-created subtasks visible even when they exceed the sequential_limit. Scoped to container lifecycle.

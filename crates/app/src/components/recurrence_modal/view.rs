@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use north_dto::{Frequency, RecurrenceType, Weekday};
 use north_ui::Modal;
 
-use super::components::{DayCheckbox, PresetChip, RadioChip};
+use super::components::{Chip, DayCheckbox};
 use super::controller::RecurrenceModalController;
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
 
@@ -42,27 +42,27 @@ pub fn RecurrenceModalView(
 
                 // Preset chips
                 <div class="flex flex-wrap gap-1.5">
-                    <PresetChip
+                    <Chip
                         label="Daily"
                         active=Signal::derive(move || active_preset.get() == "daily")
                         on_click=Callback::new(move |()| ctrl.rule.select_preset("daily"))
                     />
-                    <PresetChip
+                    <Chip
                         label="Weekly"
                         active=Signal::derive(move || active_preset.get() == "weekly")
                         on_click=Callback::new(move |()| ctrl.rule.select_preset("weekly"))
                     />
-                    <PresetChip
+                    <Chip
                         label="Monthly"
                         active=Signal::derive(move || active_preset.get() == "monthly")
                         on_click=Callback::new(move |()| ctrl.rule.select_preset("monthly"))
                     />
-                    <PresetChip
+                    <Chip
                         label="Yearly"
                         active=Signal::derive(move || active_preset.get() == "yearly")
                         on_click=Callback::new(move |()| ctrl.rule.select_preset("yearly"))
                     />
-                    <PresetChip
+                    <Chip
                         label="Custom"
                         active=Signal::derive(move || active_preset.get() == "custom")
                         on_click=Callback::new(move |()| ctrl.rule.select_preset("custom"))
@@ -256,7 +256,7 @@ pub fn RecurrenceModalView(
                         "Timing"
                     </Text>
                     <div class="flex gap-1.5">
-                        <RadioChip
+                        <Chip
                             label="From due date"
                             active=Signal::derive(move || {
                                 ctrl.rule.recurrence_type.get()
@@ -268,7 +268,7 @@ pub fn RecurrenceModalView(
                                 );
                             })
                         />
-                        <RadioChip
+                        <Chip
                             label="After completion"
                             active=Signal::derive(move || {
                                 ctrl.rule.recurrence_type.get()

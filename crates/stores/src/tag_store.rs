@@ -40,4 +40,14 @@ impl TagStore {
     pub fn get(&self) -> Vec<Tag> {
         self.tags.get()
     }
+
+    pub fn merge(&self, new_tags: Vec<Tag>) {
+        self.tags.update(|existing| {
+            for tag in new_tags {
+                if !existing.iter().any(|t| t.id == tag.id) {
+                    existing.push(tag);
+                }
+            }
+        });
+    }
 }

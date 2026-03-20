@@ -13,6 +13,7 @@ use crate::containers::tag_picker::TagPicker;
 use crate::containers::task_checkbox::TaskCheckbox;
 use crate::containers::task_list_item::ItemConfig;
 use crate::containers::traversable_task_list::TraversableTaskList;
+use north_stores::use_app_store;
 use north_ui::{Icon, IconKind};
 
 #[component]
@@ -23,6 +24,7 @@ pub fn TaskDetailModalView(
     let subtask_filter = ctrl.subtask_filter;
     let title_input_ref = NodeRef::<leptos::html::Textarea>::new();
     let subtask_cursor = RwSignal::new(None::<i64>);
+    let settings = use_app_store().settings;
 
     view! {
         <div class="fixed inset-0 z-50 flex items-center justify-center">
@@ -43,6 +45,7 @@ pub fn TaskDetailModalView(
                     let ancestor_list = ctrl.ancestors();
                     let has_stack_val = ctrl.has_stack();
 
+                    let tz = settings.get().timezone;
                     let task_id = task.id;
                     let title = task.title.clone();
                     let body = task.body.clone();
@@ -301,6 +304,7 @@ pub fn TaskDetailModalView(
                                     <DateTimePicker
                                         task_id=task_id
                                         start_at=start_at
+                                        tz=tz
                                         on_set_start_at=Callback::new(
                                             move |(_id, start_at): (i64, String)| {
                                                 ctrl.set_start_at(start_at)

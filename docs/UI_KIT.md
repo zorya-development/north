@@ -4,7 +4,7 @@ Component library for the North GTD task management system. Built on Leptos + Ta
 
 ## Current State
 
-The `north-ui` crate has 7 generic UI components: Icon, Dropdown, Popover, Checkbox, Modal, Autocomplete, Spinner, Markdown. Semantic atoms live in `crates/app/src/atoms/` — currently: **Text** (done, migrated across app).
+The `north-ui` crate has 8 generic UI components: Icon, Dropdown, Popover, Checkbox, Modal, Autocomplete, Spinner, Markdown. Semantic atoms live in `crates/app/src/atoms/` — currently: **Text** (done, migrated across app), **Toolbar** (done — toolbar container + separator).
 
 **Key pain points (remaining):**
 - Button styling repeated in 6+ patterns across files (primary, icon, text, danger, nav, small)
@@ -571,7 +571,7 @@ Renders: `<div role="separator" class="border-t border-border">` (horizontal) or
     open=show_modal.read()
     on_close=Callback::new(move |_| set_show_modal.set(false))
     size=ModalSize::Lg
-    title=view! { <Text variant=TextVariant::Title>"Edit Task"</Text> }.into()
+    title=view! { <Text variant=TextVariant::TitleLg>"Edit Task"</Text> }.into()
     footer=view! {
         <Button variant=ButtonVariant::Secondary on_click=on_cancel>"Cancel"</Button>
         <Button on_click=on_save>"Save"</Button>
@@ -604,10 +604,10 @@ Renders: `<div role="separator" class="border-t border-border">` (horizontal) or
 
 **Renders:**
 ```
-Label (Text variant=Label)
+Label (Text variant=LabelMd)
 ├── Children (Input/Textarea/Select)
-├── Error text (Text variant=Caption color=Danger)  — if error
-└── Help text (Text variant=Caption color=Tertiary)  — if help
+├── Error text (Text variant=BodySm color=Danger)  — if error
+└── Help text (Text variant=BodySm color=Tertiary)  — if help
 ```
 
 **Usage example:**

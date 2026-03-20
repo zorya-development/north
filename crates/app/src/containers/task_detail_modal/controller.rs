@@ -1,17 +1,13 @@
 use leptos::prelude::*;
 use north_dto::RecurrenceType;
-use north_stores::{
-    AppStore, IdFilter, ModalStore, TaskDetailModalStore, TaskModel, TaskStoreFilter,
-};
+use north_stores::{AppStore, IdFilter, TaskModel, TaskStoreFilter};
 
 use crate::containers::traversable_task_list::{CompletedToggle, ToolbarConfig};
 use crate::libs::KeepCompletedVisible;
 
 #[derive(Clone, Copy)]
 pub struct TaskDetailModalController {
-    store: TaskDetailModalStore,
     app_store: AppStore,
-    modal: ModalStore,
     pub title_draft: RwSignal<String>,
     pub body_draft: RwSignal<String>,
     pub body_editing: RwSignal<bool>,
@@ -33,9 +29,7 @@ impl TaskDetailModalController {
         });
 
         Self {
-            store: app_store.task_detail_modal,
             app_store,
-            modal: app_store.modal,
             title_draft: RwSignal::new(String::new()),
             body_draft: RwSignal::new(String::new()),
             body_editing: RwSignal::new(false),
@@ -48,15 +42,24 @@ impl TaskDetailModalController {
     // --- Data access ---
 
     pub fn task(&self) -> Option<TaskModel> {
-        self.store.task()
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
+        task_detail_modal.task()
     }
 
     pub fn ancestors(&self) -> Vec<(i64, String, i64)> {
-        self.store.ancestors()
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
+        task_detail_modal.ancestors()
     }
 
     pub fn has_stack(&self) -> bool {
-        self.store.has_stack()
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
+        task_detail_modal.has_stack()
     }
 
     pub fn subtask_ids(&self, task_id: i64) -> Memo<Vec<i64>> {
@@ -79,34 +82,53 @@ impl TaskDetailModalController {
     }
 
     pub fn show_recurrence_modal(&self) -> bool {
-        self.modal.is_open("recurrence")
+        let AppStore { modal, .. } = self.app_store;
+        modal.is_open("recurrence")
     }
 
     // --- Navigation ---
 
     pub fn close(&self) {
-        self.store.close();
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
+        task_detail_modal.close();
     }
 
     pub fn prev(&self) {
-        self.store.prev();
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
+        task_detail_modal.prev();
     }
 
     pub fn next(&self) {
-        self.store.next();
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
+        task_detail_modal.next();
     }
 
     pub fn navigate_to_ancestor(&self, id: i64) {
-        self.store.navigate_to_ancestor(id);
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
+        task_detail_modal.navigate_to_ancestor(id);
     }
 
     pub fn navigate_to_subtask(&self, id: i64) {
-        self.store.navigate_to_subtask(id);
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
+        task_detail_modal.navigate_to_subtask(id);
     }
 
     // --- Mutations ---
 
     pub fn save(&self) {
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
         let Some(t) = self.title_draft.try_get_untracked() else {
             return;
         };
@@ -115,65 +137,101 @@ impl TaskDetailModalController {
         };
         let b = if b.trim().is_empty() { None } else { Some(b) };
 
-        if let Some(task) = untrack(|| self.store.task()) {
+        if let Some(task) = untrack(|| task_detail_modal.task()) {
             if task.title == t && task.body == b {
                 return;
             }
         }
 
-        self.store.update(t, b);
+        task_detail_modal.update(t, b);
     }
 
     pub fn delete(&self) {
-        self.store.delete();
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
+        task_detail_modal.delete();
     }
 
     pub fn set_project(&self, project_id: i64) {
-        self.store.set_project(project_id);
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
+        task_detail_modal.set_project(project_id);
     }
 
     pub fn clear_project(&self) {
-        self.store.clear_project();
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
+        task_detail_modal.clear_project();
     }
 
     pub fn set_tags(&self, tags: Vec<String>) {
-        self.store.set_tags(tags);
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
+        task_detail_modal.set_tags(tags);
     }
 
     pub fn set_start_at(&self, start_at: String) {
-        self.store.set_start_at(start_at);
+        let AppStore {
+            task_detail_modal,
+            settings,
+            ..
+        } = self.app_store;
+        let tz = settings.get().timezone;
+        task_detail_modal.set_start_at(start_at, tz);
     }
 
     pub fn clear_start_at(&self) {
-        self.store.clear_start_at();
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
+        task_detail_modal.clear_start_at();
     }
 
     pub fn set_due_date(&self, val: String) {
-        self.store.set_due_date(val);
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
+        task_detail_modal.set_due_date(val);
     }
 
     pub fn clear_due_date(&self) {
-        self.store.clear_due_date();
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
+        task_detail_modal.clear_due_date();
     }
 
     pub fn set_recurrence(&self, rt: Option<RecurrenceType>, rr: Option<String>) {
-        self.store.set_recurrence(rt, rr);
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
+        task_detail_modal.set_recurrence(rt, rr);
     }
 
     pub fn set_sequential_limit(&self, n: i16) {
-        self.store.set_sequential_limit(n);
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
+        task_detail_modal.set_sequential_limit(n);
     }
 
     pub fn open_recurrence_modal(&self) {
-        self.modal.open("recurrence");
+        let AppStore { modal, .. } = self.app_store;
+        modal.open("recurrence");
     }
 
     pub fn close_recurrence_modal(&self) {
-        self.modal.close("recurrence");
+        let AppStore { modal, .. } = self.app_store;
+        modal.close("recurrence");
     }
 
     pub fn reorder_task(&self, id: i64, key: String, parent: Option<Option<i64>>) {
-        self.app_store.tasks.reorder_task(id, key, parent);
+        let AppStore { tasks, .. } = self.app_store;
+        tasks.reorder_task(id, key, parent);
     }
 
     pub fn sync_drafts(&self, title: String, body: Option<String>) {
@@ -213,7 +271,8 @@ impl TaskDetailModalController {
     // --- Private ---
 
     fn all_subtasks(&self, task_id: i64) -> Memo<Vec<TaskModel>> {
-        self.app_store.tasks.filtered(TaskStoreFilter {
+        let AppStore { tasks, .. } = self.app_store;
+        tasks.filtered(TaskStoreFilter {
             parent_id: IdFilter::Is(task_id),
             ..Default::default()
         })

@@ -28,7 +28,7 @@ pub struct Task {
     #[serde(default)]
     pub project_title: Option<String>,
     #[serde(default)]
-    pub tags: Vec<crate::TagInfo>,
+    pub tags: Vec<crate::Tag>,
     #[serde(default)]
     pub subtask_count: i64,
     #[serde(default)]

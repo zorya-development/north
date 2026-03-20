@@ -1,9 +1,11 @@
-use chrono::Utc;
+use chrono::{TimeZone, Utc};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use north_dto::RecurrenceType;
-use north_dto::{CreateTask, TagInfo, UpdateTask};
+use north_dto::{CreateTask, Tag, UpdateTask};
 use north_repositories::{TaskModel, TaskRepository};
+
+use crate::task_tree::TaskTree;
 
 #[cfg(feature = "hydrate")]
 const REORDER_DEBOUNCE_MS: i32 = 1000;
@@ -19,6 +21,7 @@ struct PendingReorder {
 pub struct TaskStore {
     tasks: RwSignal<Vec<TaskModel>>,
     loaded: RwSignal<bool>,
+    pub task_tree: Memo<TaskTree>,
     #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
     reorder_timeout: RwSignal<i32>,
     #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
@@ -49,9 +52,12 @@ impl Default for TaskStore {
 
 impl TaskStore {
     pub fn new() -> Self {
+        let tasks = RwSignal::new(vec![]);
+        let task_tree = Memo::new(move |_| TaskTree::build(tasks.get()));
         Self {
-            tasks: RwSignal::new(vec![]),
+            tasks,
             loaded: RwSignal::new(false),
+            task_tree,
             reorder_timeout: RwSignal::new(0),
             pending_reorder: RwSignal::new(None),
         }
@@ -209,6 +215,51 @@ impl TaskStore {
         });
     }
 
+    pub fn update_task_with_tags(
+        &self,
+        id: i64,
+        title: String,
+        body: Option<String>,
+        tag_names: Vec<String>,
+    ) {
+        let store = *self;
+        // Optimistic tag update
+        store.update_in_place(id, |t| {
+            let new_tags: Vec<Tag> = tag_names
+                .iter()
+                .map(|name| {
+                    let color = t
+                        .tags
+                        .iter()
+                        .find(|ti| ti.name == *name)
+                        .map(|ti| ti.color.clone())
+                        .unwrap_or_else(|| north_dto::DEFAULT_COLOR.to_string());
+                    Tag {
+                        id: 0,
+                        user_id: 0,
+                        name: name.clone(),
+                        color,
+                    }
+                })
+                .collect();
+            t.tags = new_tags;
+        });
+        spawn_local(async move {
+            let input = UpdateTask {
+                title: Some(title),
+                body: Some(body),
+                ..Default::default()
+            };
+            if let Ok(task) = TaskRepository::update(id, input).await {
+                let _ = TaskRepository::set_tags(id, tag_names).await;
+                store.refetch_async().await;
+                if task.is_url_fetching.is_some() {
+                    store.poll_url_resolution(id);
+                }
+            }
+        });
+    }
+
     pub fn create_task(&self, input: CreateTask) {
         let store = *self;
         spawn_local(async move {
@@ -244,14 +295,20 @@ impl TaskStore {
         }
     }
 
-    pub fn set_start_at(&self, id: i64, start_at: String) {
+    pub fn set_start_at(&self, id: i64, start_at: String, tz: String) {
         let store = *self;
         spawn_local(async move {
             let dt = chrono::NaiveDateTime::parse_from_str(&start_at, "%Y-%m-%dT%H:%M")
                 .or_else(|_| chrono::NaiveDateTime::parse_from_str(&start_at, "%Y-%m-%dT%H:%M:%S"));
             if let Ok(dt) = dt {
+                let parsed_tz: chrono_tz::Tz = tz.parse().unwrap_or(chrono_tz::Tz::UTC);
+                let utc_dt = parsed_tz
+                    .from_local_datetime(&dt)
+                    .single()
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .unwrap_or_else(|| dt.and_utc());
                 let input = UpdateTask {
-                    start_at: Some(Some(dt.and_utc())),
+                    start_at: Some(Some(utc_dt)),
                     ..Default::default()
                 };
                 if TaskRepository::update(id, input).await.is_ok() {
@@ -304,7 +361,7 @@ impl TaskStore {
         let store = *self;
         // Optimistic update — build new tags list from desired names
         store.update_in_place(task_id, |t| {
-            let new_tags: Vec<TagInfo> = tag_names
+            let new_tags: Vec<Tag> = tag_names
                 .iter()
                 .map(|name| {
                     // Preserve color for existing tags, use default for new ones
@@ -314,7 +371,9 @@ impl TaskStore {
                         .find(|ti| ti.name == *name)
                         .map(|ti| ti.color.clone())
                         .unwrap_or_else(|| north_dto::DEFAULT_COLOR.to_string());
-                    TagInfo {
+                    Tag {
+                        id: 0,
+                        user_id: 0,
                         name: name.clone(),
                         color,
                     }

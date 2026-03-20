@@ -127,6 +127,151 @@ test.describe("Tag filter bar", () => {
     await expect(bar).not.toBeVisible();
   });
 
+  test("new tag added in modal appears and is selectable in toolbar", async ({
+    authenticatedPage: page,
+  }) => {
+    await api.createTask({ title: "Tagged task" });
+    await api.createTask({ title: "Other task" });
+
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    const rows = page.locator('[data-testid="task-row"]');
+    await expect(rows).toHaveCount(2);
+
+    // No tag filter bar initially
+    const bar = page.locator('[data-testid="tag-filter-bar"]');
+    await expect(bar).not.toBeVisible();
+
+    // Open task detail modal for first task
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("e");
+
+    const modal = page.locator('[data-testid="task-detail-modal"]');
+    await expect(modal).toBeVisible();
+
+    // Add a tag via the tag picker
+    await modal.locator('[data-testid="tag-picker-trigger"]').click();
+    await modal.locator('[data-testid="tag-picker-input"]').fill("urgent");
+    await modal.locator('[data-testid="tag-picker-input"]').press("Enter");
+
+    // Close popover by clicking elsewhere
+    await modal.locator('[data-testid="task-detail-title"]').click();
+
+    // Close modal
+    await page.locator('[data-testid="task-detail-close"]').click();
+    await expect(modal).not.toBeVisible();
+
+    // Tag filter bar should now appear with the new tag
+    await expect(bar).toBeVisible();
+    const tagBtn = bar.locator('[data-testid="tag-filter-button"]').filter({ hasText: "urgent" });
+    await expect(tagBtn).toBeVisible();
+
+    // Click the tag to filter — only the tagged task should remain
+    await tagBtn.click();
+    await expect(rows).toHaveCount(1);
+    await expect(page.getByText("Tagged task")).toBeVisible();
+    await expect(page.getByText("Other task")).not.toBeVisible();
+  });
+
+  test("new tag created inline appears and is selectable in toolbar", async ({
+    authenticatedPage: page,
+  }) => {
+    await api.createTask({ title: "Existing task" });
+
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    // No tag filter bar initially
+    const bar = page.locator('[data-testid="tag-filter-bar"]');
+    await expect(bar).not.toBeVisible();
+
+    // Create a new task with a tag using inline input
+    const addBtn = page.locator('[data-testid="ttl-add-task"]');
+    await addBtn.click();
+
+    const input = page.locator('[data-testid="inline-create-input"]');
+    await expect(input).toBeVisible();
+    await input.fill("New task #important");
+    await input.press("Enter");
+
+    // Wait for the task to appear
+    const rows = page.locator('[data-testid="task-row"]');
+    await expect(rows).toHaveCount(2);
+
+    // Tag filter bar should now appear with the new tag
+    await expect(bar).toBeVisible({ timeout: 5000 });
+    const tagBtn = bar.locator('[data-testid="tag-filter-button"]').filter({ hasText: "important" });
+    await expect(tagBtn).toBeVisible();
+
+    // Click the tag to filter — only the tagged task should remain
+    await tagBtn.click();
+    await expect(rows).toHaveCount(1);
+    await expect(page.getByText("New task")).toBeVisible();
+    await expect(page.getByText("Existing task")).not.toBeVisible();
+  });
+
+  test("k:v tag values become selectable as tasks are created incrementally", async ({
+    authenticatedPage: page,
+  }) => {
+    // Seed one task so the list is visible on load
+    await api.createTask({ title: "Critical bug #priority:high" });
+
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    const bar = page.locator('[data-testid="tag-filter-bar"]');
+    const rows = page.locator('[data-testid="task-row"]');
+
+    // Helper: create task via inline input
+    const createTask = async (title: string) => {
+      await page.locator('[data-testid="ttl-add-task"]').click();
+      const input = page.locator('[data-testid="inline-create-input"]');
+      await expect(input).toBeVisible();
+      await input.fill(title);
+      await input.press("Enter");
+    };
+
+    // Helper: open popover, verify value is selectable and filters correctly
+    const expectValueSelectable = async (value: string, taskCount: number) => {
+      const chip = bar.locator('[data-testid="kv-filter-chip"]').filter({ hasText: "priority" });
+      await chip.click();
+      const popover = page.locator('[data-testid="kv-filter-popover"]');
+      await expect(popover).toBeVisible();
+      const option = popover
+        .locator('[data-testid="kv-filter-option"]')
+        .filter({ hasText: value });
+      await expect(option).toBeVisible();
+      await option.click();
+      await expect(rows).toHaveCount(taskCount);
+      // Deselect to reset filter
+      await option.click();
+      // Close popover
+      await chip.click({ force: true });
+    };
+
+    // 1. priority:high already exists from seed — verify selectable
+    await expect(bar).toBeVisible();
+    await expect(rows).toHaveCount(1);
+    await expectValueSelectable("high", 1);
+
+    // 2. Create task with #priority:medium — verify it appears and is selectable
+    await createTask("Normal work #priority:medium");
+    await expect(rows).toHaveCount(2);
+    await expectValueSelectable("medium", 1);
+
+    // 3. Create task with #priority:low — verify it appears and is selectable
+    await createTask("Minor tweak #priority:low");
+    await expect(rows).toHaveCount(3);
+    await expectValueSelectable("low", 1);
+  });
+
   test("active tag has distinct styling from inactive", async ({
     authenticatedPage: page,
   }) => {

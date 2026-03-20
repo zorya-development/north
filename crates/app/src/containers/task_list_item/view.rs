@@ -9,9 +9,12 @@ use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
 use crate::containers::task_checkbox::TaskCheckbox;
 use crate::containers::task_meta::TaskMeta;
+use north_dto::tag::parse_kv;
 use north_dto::Project;
 use north_stores::TaskModel;
 use north_ui::{DropdownItem, DropdownMenu, Icon, IconKind};
+
+use north_stores::use_app_store;
 
 use super::components::{ProjectPrefix, SomedayPrefix};
 
@@ -34,6 +37,8 @@ pub fn TaskListItemView(
     on_set_tags: Callback<Vec<String>>,
 ) -> impl IntoView {
     let _ = show_project; // Used by ItemConfig for future TaskMeta project display
+    let app_store = use_app_store();
+    let tree = app_store.tasks.task_tree;
     let drag_ctx = use_context::<DragDropContext>();
     let (hovered, set_hovered) = signal(false);
     let (menu_open, set_menu_open) = signal(false);
@@ -52,6 +57,7 @@ pub fn TaskListItemView(
                 return view! { <div/> }.into_any();
             };
 
+            let tz = app_store.settings.get().timezone;
             let task_id = t.id;
             let title = t.title.clone();
             let sort_key = t.sort_key.clone();
@@ -176,30 +182,37 @@ pub fn TaskListItemView(
                     }
                 >
                     {if draggable {
-                        Some(view! {
-                            <span
-                                class=move || format!(
-                                    "dnd-handle absolute left-0 \
-                                     top-1/2 -translate-x-full \
-                                     -translate-y-1/2 \
-                                     {} cursor-grab \
-                                     active:cursor-grabbing \
-                                     transition-opacity",
-                                    if hovered.get() {
-                                        "opacity-60"
-                                    } else {
-                                        "opacity-0"
-                                    },
-                                )
-                                on:click=move |ev| ev.stop_propagation()
-                                on:mousedown=move |ev| ev.stop_propagation()
-                            >
-                                <Icon
-                                    kind=IconKind::DragHandle
-                                    class="w-4 h-4 text-text-tertiary"
-                                />
-                            </span>
-                        })
+                        let has_children = !tree.get_untracked()
+                            .children_of(Some(task_id)).is_empty();
+                        if has_children {
+                            // Fold chevron occupies this space
+                            None
+                        } else {
+                            Some(view! {
+                                <span
+                                    class=move || format!(
+                                        "dnd-handle absolute left-0 \
+                                         top-1/2 -translate-x-full \
+                                         -translate-y-1/2 \
+                                         {} cursor-grab \
+                                         active:cursor-grabbing \
+                                         transition-opacity",
+                                        if hovered.get() {
+                                            "opacity-60"
+                                        } else {
+                                            "opacity-0"
+                                        },
+                                    )
+                                    on:click=move |ev| ev.stop_propagation()
+                                    on:mousedown=move |ev| ev.stop_propagation()
+                                >
+                                    <Icon
+                                        kind=IconKind::DragHandle
+                                        class="w-4 h-4 text-text-tertiary"
+                                    />
+                                </span>
+                            })
+                        }
                     } else {
                         None
                     }}
@@ -236,6 +249,13 @@ pub fn TaskListItemView(
                                     let encoded = urlencoding::encode(&query).into_owned();
                                     let href = format!("/filters/new?q={encoded}");
                                     let name = tag.name.clone();
+                                    let tag_display = if let Some((key, value)) = parse_kv(&name) {
+                                        view! {
+                                            {key.to_string()}":"{value.to_string()}
+                                        }.into_any()
+                                    } else {
+                                        name.into_any()
+                                    };
                                     view! {
                                         <span class="text-text-secondary text-sm ml-1.5">
                                             "#"
@@ -246,7 +266,7 @@ pub fn TaskListItemView(
                                                     ev.stop_propagation();
                                                 }
                                             >
-                                                {name}
+                                                {tag_display}
                                             </a>
                                         </span>
                                     }
@@ -294,6 +314,7 @@ pub fn TaskListItemView(
                             <DateTimePicker
                                 task_id=task_id
                                 start_at=start_at
+                                tz=tz.clone()
                                 on_set_start_at=Callback::new(
                                     move |(_, sa)| {
                                         on_set_start_at.run(sa)
@@ -372,6 +393,7 @@ pub fn TaskListItemView(
                         start_at=start_at
                         due_date=due_date
                         tags=tags
+                        tz=tz.clone()
                         reviewed_at=reviewed_at
                         show_review=show_review
                         show_tags=!show_inline_tags

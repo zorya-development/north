@@ -371,4 +371,25 @@ test.describe("Inbox", () => {
     const bodyArea = modal.locator('[data-testid="task-detail-body"]');
     await expect(bodyArea).toContainText("Body line");
   });
+
+  test("Ctrl+Enter preserves Cyrillic title when switching to body", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/inbox");
+    await page
+      .locator('[data-testid="empty-task-list"]')
+      .waitFor({ state: "visible" });
+
+    await page.locator('[data-testid="ttl-add-task"]').click();
+
+    const input = page.locator('[data-testid="inline-create-input"]');
+    await expect(input).toBeVisible();
+
+    // Type Cyrillic + Latin mixed title, then Ctrl+Enter to switch to body
+    await input.pressSequentially("попробовать кванты Q4_K_M");
+    await input.press("Control+Enter");
+
+    // Title text should be preserved with a newline appended
+    await expect(input).toHaveValue("попробовать кванты Q4_K_M\n");
+  });
 });

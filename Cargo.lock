@@ -1893,6 +1893,7 @@ dependencies = [
  "argon2",
  "axum-extra",
  "chrono",
+ "chrono-tz",
  "console_error_panic_hook",
  "http",
  "jsonwebtoken",
@@ -2024,6 +2025,7 @@ name = "north-stores"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "chrono-tz",
  "gloo-timers",
  "leptos",
  "north-dto",

@@ -51,6 +51,10 @@ playwright-exec *args='':
 playwright-down:
     docker compose {{ compose-test }} down
 
+# Detect duplicated code across crates
+dupes *args='':
+    npx jscpd ./crates/ {{ args }}
+
 # Bump base image version: just bump-base {major,minor,patch}
 bump-base part:
     #!/usr/bin/env bash

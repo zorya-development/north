@@ -30,13 +30,15 @@ just migrate-redo      # Revert + reapply last migration
 just build             # Release build
 just seed              # Seed admin account
 just check             # fmt + lint + test
+just dupes             # Detect duplicated code (jscpd via npx, runs on host)
 ```
 
-E2E tests (Playwright, run from host — not inside app container):
+E2E tests (Playwright, run from host — not inside app container).
+Test app runs `cargo leptos watch` — code changes auto-rebuild, no manual build needed.
 
 ```bash
 just playwright              # Launch Playwright UI mode (port 8080)
-just playwright-exec         # Run tests in already-running containers (used by Claude Code)
+just playwright-exec --grep "pattern"  # Run specific tests in already-running containers
 just playwright-down         # Tear down test containers
 ```
 

@@ -1,6 +1,6 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use north_dto::{RecurrenceRule, RecurrenceType};
-use north_dto::{TagInfo, Task};
+use north_dto::{Tag, Task};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Recurrence {
@@ -43,7 +43,7 @@ pub struct TaskModel {
     pub is_url_fetching: Option<DateTime<Utc>>,
     pub someday: bool,
     pub project_title: Option<String>,
-    pub tags: Vec<TagInfo>,
+    pub tags: Vec<Tag>,
     pub subtask_count: i64,
     pub completed_subtask_count: i64,
 }

@@ -6,6 +6,7 @@ pub enum TaskMetaItemVariant {
     #[default]
     Default,
     Info,
+    Accent,
     Danger,
 }
 
@@ -14,6 +15,7 @@ impl TaskMetaItemVariant {
         match self {
             Self::Default => "",
             Self::Info => "text-text-secondary",
+            Self::Accent => "text-accent",
             Self::Danger => "text-danger",
         }
     }

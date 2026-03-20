@@ -22,15 +22,16 @@ impl FilterService {
     }
 
     pub async fn get_by_id(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<SavedFilter> {
-        let mut conn = pool.get().await?;
-        let row = saved_filters::table
-            .filter(saved_filters::id.eq(id))
-            .filter(saved_filters::user_id.eq(user_id))
-            .select(SavedFilterRow::as_select())
-            .first(&mut conn)
-            .await
-            .optional()?
-            .ok_or_else(|| ServiceError::NotFound("Filter not found".into()))?;
+        let row = crate::helpers::get_owned!(
+            pool,
+            saved_filters::table,
+            saved_filters::id,
+            saved_filters::user_id,
+            id,
+            user_id,
+            SavedFilterRow,
+            "Filter"
+        )?;
         Ok(SavedFilter::from(row))
     }
 
@@ -112,19 +113,14 @@ impl FilterService {
     }
 
     pub async fn delete(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<()> {
-        let mut conn = pool.get().await?;
-        let affected = diesel::delete(
-            saved_filters::table
-                .filter(saved_filters::id.eq(id))
-                .filter(saved_filters::user_id.eq(user_id)),
+        crate::helpers::delete_owned!(
+            pool,
+            saved_filters::table,
+            saved_filters::id,
+            saved_filters::user_id,
+            id,
+            user_id,
+            "Filter"
         )
-        .execute(&mut conn)
-        .await?;
-
-        if affected == 0 {
-            return Err(ServiceError::NotFound("Filter not found".into()));
-        }
-
-        Ok(())
     }
 }

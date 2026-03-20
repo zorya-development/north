@@ -1,3 +1,4 @@
+#[macro_use]
 pub mod auth;
 pub mod filters;
 pub mod ping;

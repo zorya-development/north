@@ -1,11 +1,7 @@
 use leptos::prelude::*;
 
 #[component]
-pub fn PresetChip(
-    label: &'static str,
-    active: Signal<bool>,
-    on_click: Callback<()>,
-) -> impl IntoView {
+pub fn Chip(label: &'static str, active: Signal<bool>, on_click: Callback<()>) -> impl IntoView {
     view! {
         <button
             on:click=move |_| on_click.run(())

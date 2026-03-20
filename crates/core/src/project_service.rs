@@ -1,4 +1,3 @@
-use diesel::dsl::max;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use north_db::models::{NewProject, ProjectChangeset, ProjectRow};
@@ -31,15 +30,16 @@ impl ProjectService {
     }
 
     pub async fn get_by_id(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<Project> {
-        let mut conn = pool.get().await?;
-        let row = projects::table
-            .filter(projects::id.eq(id))
-            .filter(projects::user_id.eq(user_id))
-            .select(ProjectRow::as_select())
-            .first(&mut conn)
-            .await
-            .optional()?
-            .ok_or_else(|| ServiceError::NotFound("Project not found".into()))?;
+        let row = crate::helpers::get_owned!(
+            pool,
+            projects::table,
+            projects::id,
+            projects::user_id,
+            id,
+            user_id,
+            ProjectRow,
+            "Project"
+        )?;
         Ok(Project::from(row))
     }
 
@@ -52,7 +52,7 @@ impl ProjectService {
 
         let max_pos: Option<i32> = projects::table
             .filter(projects::user_id.eq(user_id))
-            .select(max(projects::position))
+            .select(diesel::dsl::max(projects::position))
             .first(&mut conn)
             .await?;
         let position = max_pos.unwrap_or(-1) + 1;
@@ -150,18 +150,15 @@ impl ProjectService {
     }
 
     pub async fn delete(pool: &DbPool, user_id: i64, id: i64) -> ServiceResult<()> {
-        let mut conn = pool.get().await?;
-        let affected = diesel::delete(
-            projects::table
-                .filter(projects::id.eq(id))
-                .filter(projects::user_id.eq(user_id)),
+        crate::helpers::delete_owned!(
+            pool,
+            projects::table,
+            projects::id,
+            projects::user_id,
+            id,
+            user_id,
+            "Project"
         )
-        .execute(&mut conn)
-        .await?;
-        if affected == 0 {
-            return Err(ServiceError::NotFound("Project not found".into()));
-        }
-        Ok(())
     }
 
     /// Find project by title (case-insensitive) for @project token parsing

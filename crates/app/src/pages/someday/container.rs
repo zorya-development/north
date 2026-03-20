@@ -11,9 +11,7 @@ pub fn SomedayPage() -> impl IntoView {
 
     view! {
         <SomedayView
-            root_task_ids=ctrl.root_task_ids
-            is_loaded=ctrl.is_loaded
-            node_filter=ctrl.node_filter
+            view=ctrl.view
             on_task_click=Callback::new(move |id| ctrl.open_detail(id))
             on_reorder=Callback::new(move |(id, key, parent)| {
                 ctrl.reorder_task(id, key, parent)

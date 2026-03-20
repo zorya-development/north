@@ -1,15 +1,13 @@
 use leptos::prelude::*;
-use north_ui::{Icon, IconKind};
 
-use crate::atoms::{Text, TextVariant};
+use crate::components::page_header::PageHeader;
 use crate::containers::task_list_item::ItemConfig;
 use crate::containers::traversable_task_list::{ToolbarConfig, TraversableTaskList};
+use crate::libs::TaskTreeView;
 
 #[component]
 pub fn SomedayView(
-    root_task_ids: Memo<Vec<i64>>,
-    is_loaded: Signal<bool>,
-    node_filter: Signal<Callback<north_stores::TaskModel, bool>>,
+    view: TaskTreeView,
     on_task_click: Callback<i64>,
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
     toolbar: ToolbarConfig,
@@ -24,28 +22,14 @@ pub fn SomedayView(
 
     view! {
         <div class="space-y-4">
-            <div class="flex items-center justify-between">
-                <Text variant=TextVariant::HeadingLg>"Someday"</Text>
-                <button
-                    on:click=move |_| show_keybindings_help.set(true)
-                    class="flex items-center gap-1.5 text-xs \
-                           text-text-secondary hover:text-text-primary \
-                           transition-colors cursor-pointer"
-                    title="Keyboard shortcuts"
-                >
-                    <Icon kind=IconKind::Keyboard class="w-3.5 h-3.5" />
-                    <span class="font-mono">"?"</span>
-                    " for help"
-                </button>
-            </div>
+            <PageHeader title="Someday" show_keybindings_help=show_keybindings_help />
 
             <TraversableTaskList
-                root_task_ids=root_task_ids
-                node_filter=node_filter
+                view=view
                 item_config=item_config
-                is_loaded=is_loaded
                 on_reorder=on_reorder
                 on_task_click=on_task_click
+                fold_storage_key="north:collapsed:someday".to_string()
                 toolbar=toolbar
                 show_keybindings_help=show_keybindings_help
                 empty_message="No someday tasks. Press S on any task to defer it."

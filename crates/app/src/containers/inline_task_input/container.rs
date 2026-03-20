@@ -47,6 +47,9 @@ pub fn InlineTaskInput(
                     if let Some(task) =
                         store.create_task_async(input).await
                     {
+                        if !task.tags.is_empty() {
+                            app_store.tags.merge(task.tags.clone());
+                        }
                         on_created.run(task.id);
                     }
                     if let Some(el) = input_ref.get() {

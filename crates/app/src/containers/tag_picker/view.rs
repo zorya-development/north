@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_dto::{Tag, TagInfo};
+use north_dto::Tag;
 
 use crate::atoms::{Text, TextColor, TextTag, TextVariant};
 use north_ui::{Icon, IconKind, Popover};
@@ -7,8 +7,8 @@ use north_ui::{Icon, IconKind, Popover};
 #[component]
 pub fn TagPickerView(
     task_id: i64,
-    display_tags: ReadSignal<Vec<TagInfo>>,
-    set_display_tags: WriteSignal<Vec<TagInfo>>,
+    display_tags: ReadSignal<Vec<Tag>>,
+    set_display_tags: WriteSignal<Vec<Tag>>,
     popover_open: ReadSignal<bool>,
     set_popover_open: WriteSignal<bool>,
     all_tags: Memo<Vec<Tag>>,
@@ -40,7 +40,9 @@ pub fn TagPickerView(
                 set_current_tags.set(names.clone());
 
                 let mut tags = display_tags.get_untracked();
-                tags.push(TagInfo {
+                tags.push(Tag {
+                    id: 0,
+                    user_id: 0,
                     name,
                     color: north_dto::DEFAULT_COLOR.to_string(),
                 });
@@ -82,7 +84,7 @@ pub fn TagPickerView(
                     {move || {
                         let tags = display_tags.get();
                         let names = current_tags.get();
-                        let active_tags: Vec<&TagInfo> = tags
+                        let active_tags: Vec<&Tag> = tags
                             .iter()
                             .filter(|t| names.contains(&t.name))
                             .collect();
