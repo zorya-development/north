@@ -186,11 +186,11 @@ impl TaskDetailModalStore {
         self.task_store.update_task(task.id, title, body);
     }
 
-    pub fn set_start_at(&self, start_at: String) {
+    pub fn set_start_at(&self, start_at: String, tz: String) {
         let Some(task) = self.task_untracked() else {
             return;
         };
-        self.task_store.set_start_at(task.id, start_at);
+        self.task_store.set_start_at(task.id, start_at, tz);
     }
 
     pub fn clear_start_at(&self) {

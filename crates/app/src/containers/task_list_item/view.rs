@@ -37,7 +37,8 @@ pub fn TaskListItemView(
     on_set_tags: Callback<Vec<String>>,
 ) -> impl IntoView {
     let _ = show_project; // Used by ItemConfig for future TaskMeta project display
-    let tree = use_app_store().tasks.task_tree;
+    let app_store = use_app_store();
+    let tree = app_store.tasks.task_tree;
     let drag_ctx = use_context::<DragDropContext>();
     let (hovered, set_hovered) = signal(false);
     let (menu_open, set_menu_open) = signal(false);
@@ -56,6 +57,7 @@ pub fn TaskListItemView(
                 return view! { <div/> }.into_any();
             };
 
+            let tz = app_store.settings.get().timezone;
             let task_id = t.id;
             let title = t.title.clone();
             let sort_key = t.sort_key.clone();
@@ -312,6 +314,7 @@ pub fn TaskListItemView(
                             <DateTimePicker
                                 task_id=task_id
                                 start_at=start_at
+                                tz=tz.clone()
                                 on_set_start_at=Callback::new(
                                     move |(_, sa)| {
                                         on_set_start_at.run(sa)
@@ -390,6 +393,7 @@ pub fn TaskListItemView(
                         start_at=start_at
                         due_date=due_date
                         tags=tags
+                        tz=tz.clone()
                         reviewed_at=reviewed_at
                         show_review=show_review
                         show_tags=!show_inline_tags

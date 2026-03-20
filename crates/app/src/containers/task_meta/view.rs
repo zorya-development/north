@@ -62,12 +62,14 @@ pub fn TaskMetaView(
             })}
             {start_at_display.map(|display| {
                 view! {
-                    <TaskMetaItem
-                        icon=IconKind::Calendar
-                        variant=start_at_variant
-                    >
-                        {display}
-                    </TaskMetaItem>
+                    <span data-testid="task-meta-start-at">
+                        <TaskMetaItem
+                            icon=IconKind::Calendar
+                            variant=start_at_variant
+                        >
+                            {display}
+                        </TaskMetaItem>
+                    </span>
                 }
             })}
             {(subtask_count > 0).then(|| {

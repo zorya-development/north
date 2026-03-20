@@ -7,6 +7,7 @@ use super::view::DateTimePickerView;
 pub fn DateTimePicker(
     task_id: i64,
     start_at: Option<chrono::DateTime<chrono::Utc>>,
+    tz: String,
     on_set_start_at: Callback<(i64, String)>,
     on_clear_start_at: Callback<i64>,
     #[prop(default = false)] icon_only: bool,
@@ -19,12 +20,15 @@ pub fn DateTimePicker(
     let picked_date = RwSignal::new(String::new());
     let picked_time = RwSignal::new("09:00".to_string());
 
-    let start_at_display = start_at.map(|dt| dt.format("%b %-d, %-I:%M %p").to_string());
+    let parsed_tz: chrono_tz::Tz = tz.parse().unwrap_or(chrono_tz::Tz::UTC);
+    let local_dt = start_at.map(|dt| dt.with_timezone(&parsed_tz));
 
-    let initial_date = start_at
+    let start_at_display = local_dt.map(|dt| dt.format("%b %-d, %-I:%M %p").to_string());
+
+    let initial_date = local_dt
         .map(|dt| dt.format("%Y-%m-%d").to_string())
         .unwrap_or_default();
-    let initial_time = start_at
+    let initial_time = local_dt
         .map(|dt| dt.format("%H:%M").to_string())
         .unwrap_or_else(|| "09:00".to_string());
 

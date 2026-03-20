@@ -12,6 +12,7 @@ north-dto = { workspace = true }
 north-repositories = { workspace = true }
 leptos = "0.7"
 chrono = { workspace = true }
+chrono-tz = { workspace = true }
 wasm-bindgen = { version = "0.2", optional = true }
 web-sys = { version = "0.3", optional = true, features = ["Window", "Storage"] }
 gloo-timers = { version = "0.3", features = ["futures"], optional = true }

@@ -176,9 +176,12 @@ impl TaskDetailModalController {
 
     pub fn set_start_at(&self, start_at: String) {
         let AppStore {
-            task_detail_modal, ..
+            task_detail_modal,
+            settings,
+            ..
         } = self.app_store;
-        task_detail_modal.set_start_at(start_at);
+        let tz = settings.get().timezone;
+        task_detail_modal.set_start_at(start_at, tz);
     }
 
     pub fn clear_start_at(&self) {

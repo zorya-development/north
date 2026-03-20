@@ -21,7 +21,7 @@ pub fn DateTimePickerView(
     #[prop(default = false)] always_visible: bool,
 ) -> impl IntoView {
     let date_text_class = if is_overdue {
-        "text-danger"
+        "text-accent"
     } else {
         "text-text-secondary"
     };

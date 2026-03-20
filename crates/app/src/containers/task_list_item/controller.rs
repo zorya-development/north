@@ -28,8 +28,11 @@ impl TaskListItemController {
     }
 
     pub fn set_start_at(&self, start_at: String) {
-        let AppStore { tasks, .. } = self.app_store;
-        tasks.set_start_at(self.task_id, start_at);
+        let AppStore {
+            tasks, settings, ..
+        } = self.app_store;
+        let tz = settings.get().timezone;
+        tasks.set_start_at(self.task_id, start_at, tz);
     }
 
     pub fn clear_start_at(&self) {

@@ -1,4 +1,4 @@
-use chrono::Utc;
+use chrono::{TimeZone, Utc};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use north_dto::RecurrenceType;
@@ -295,14 +295,20 @@ impl TaskStore {
         }
     }
 
-    pub fn set_start_at(&self, id: i64, start_at: String) {
+    pub fn set_start_at(&self, id: i64, start_at: String, tz: String) {
         let store = *self;
         spawn_local(async move {
             let dt = chrono::NaiveDateTime::parse_from_str(&start_at, "%Y-%m-%dT%H:%M")
                 .or_else(|_| chrono::NaiveDateTime::parse_from_str(&start_at, "%Y-%m-%dT%H:%M:%S"));
             if let Ok(dt) = dt {
+                let parsed_tz: chrono_tz::Tz = tz.parse().unwrap_or(chrono_tz::Tz::UTC);
+                let utc_dt = parsed_tz
+                    .from_local_datetime(&dt)
+                    .single()
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .unwrap_or_else(|| dt.and_utc());
                 let input = UpdateTask {
-                    start_at: Some(Some(dt.and_utc())),
+                    start_at: Some(Some(utc_dt)),
                     ..Default::default()
                 };
                 if TaskRepository::update(id, input).await.is_ok() {

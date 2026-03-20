@@ -10,6 +10,7 @@ pub fn TaskMeta(
     start_at: Option<chrono::DateTime<chrono::Utc>>,
     due_date: Option<chrono::NaiveDate>,
     tags: Vec<Tag>,
+    #[prop(default = String::new())] tz: String,
     #[prop(default = None)] reviewed_at: Option<chrono::NaiveDate>,
     #[prop(default = false)] show_review: bool,
     #[prop(default = 0)] subtask_count: i64,
@@ -31,14 +32,16 @@ pub fn TaskMeta(
     has_meta.then(|| {
         let recurrence_label = recurrence.as_ref().map(|r| r.summarize());
 
+        let parsed_tz: chrono_tz::Tz = tz.parse().unwrap_or(chrono_tz::Tz::UTC);
         let (start_at_display, start_at_variant) = match start_at {
             Some(dt) => {
                 let variant = if dt < chrono::Utc::now() {
-                    TaskMetaItemVariant::Danger
+                    TaskMetaItemVariant::Accent
                 } else {
                     TaskMetaItemVariant::Info
                 };
-                (Some(dt.format("%b %-d, %-I:%M %p").to_string()), variant)
+                let local = dt.with_timezone(&parsed_tz);
+                (Some(local.format("%b %-d, %-I:%M %p").to_string()), variant)
             }
             None => (None, TaskMetaItemVariant::Info),
         };
