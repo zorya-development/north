@@ -5,7 +5,7 @@ use north_ui::{Icon, IconKind};
 use crate::atoms::{Text, TextVariant};
 use crate::containers::task_list_item::ItemConfig;
 use crate::containers::traversable_task_list::{ToolbarConfig, TraversableTaskList};
-use crate::controllers::TaskTreeView;
+use crate::libs::TaskTreeView;
 
 #[component]
 pub fn ProjectView(

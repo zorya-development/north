@@ -3,7 +3,7 @@ use north_dto::Project;
 use north_stores::{AppStore, TaskDetailModalStore, TaskModel};
 
 use crate::containers::traversable_task_list::{ActionableToggle, CompletedToggle, ToolbarConfig};
-use crate::controllers::TaskTreeView;
+use crate::libs::TaskTreeView;
 use crate::libs::{KeepCompletedVisible, KeepTaskVisible};
 
 const HIDE_NON_ACTIONABLE_KEY: &str = "north:hide-non-actionable:project";

@@ -41,23 +41,25 @@ If you forget the `User-facing:` section, add an API key and the system will aut
 Commit Messages
     ↓
 ┌─────────────────────────────────────┐
-│ generate-release-notes-v2.sh        │
-├─────────────────────────────────────┤
-│ 1. Extract structured notes         │ ← Parses "User-facing:" sections
-│ 2. Generate technical changelog     │ ← git-cliff
-│ 3. AI enhance if needed (optional)  │ ← Claude API
-│ 4. Combine into final notes         │ ← Markdown output
+│ git-cliff (cliff.toml)              │ ← Generates technical changelog
+│            ↓                        │
+│ generate-release-notes.sh           │ ← AI enhances if ANTHROPIC_API_KEY set
+│            ↓                        │
+│ Final release notes                 │ ← Markdown output
 └─────────────────────────────────────┘
     ↓
 GitHub Release
 ```
 
+> **Note:** `scripts/generate-release-notes-v2.sh` implements the full hybrid approach (parsing `User-facing:` sections + AI fallback) described in this doc, but CI currently uses `scripts/generate-release-notes.sh` which takes pre-generated git-cliff output and optionally AI-enhances it.
+
 ### Files
 
 | File | Purpose |
 |------|---------|
-| `scripts/generate-release-notes-v2.sh` | Main orchestrator (hybrid) |
-| `scripts/extract-user-notes.sh` | Parse structured commits |
+| `scripts/generate-release-notes.sh` | CI orchestrator (AI-enhances git-cliff output) |
+| `scripts/generate-release-notes-v2.sh` | Hybrid orchestrator (parses `User-facing:` + AI fallback) |
+| `scripts/extract-user-notes.sh` | Parse structured commits (used by v2) |
 | `cliff.toml` | Technical changelog config |
 | `.github/workflows/release.yml` | CI integration |
 | `.github/commit-template.md` | Commit message template |
@@ -81,7 +83,7 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 
 When you run `just bump-version`, the release workflow automatically:
 
-1. Generates release notes using `generate-release-notes-v2.sh`
+1. Generates release notes using `generate-release-notes.sh`
 2. Uses API key if available (set `ANTHROPIC_API_KEY` in repo secrets)
 3. Creates GitHub release with formatted notes
 
@@ -205,7 +207,7 @@ Cost: ~$0.01 per release (Claude Sonnet processes ~2KB changelog)
 
 ### Customize Output
 
-Edit `scripts/generate-release-notes-v2.sh`:
+Edit `scripts/generate-release-notes.sh` (or `generate-release-notes-v2.sh` for the hybrid version):
 
 ```bash
 # Change AI model
@@ -263,7 +265,7 @@ Your next release will automatically use the new system. No changes to `just bum
 
 - Check commit range: `git log v0.3.0..HEAD --oneline`
 - Verify cliff.toml syntax: `git-cliff --config cliff.toml --unreleased`
-- Test locally: `./scripts/generate-release-notes-v2.sh test`
+- Test locally: `./scripts/generate-release-notes.sh test`
 
 ### "AI enhancement failed"
 

@@ -3,7 +3,7 @@ use leptos::prelude::*;
 use crate::components::page_header::PageHeader;
 use crate::containers::task_list_item::ItemConfig;
 use crate::containers::traversable_task_list::{ToolbarConfig, TraversableTaskList};
-use crate::controllers::TaskTreeView;
+use crate::libs::TaskTreeView;
 
 #[component]
 pub fn TodayView(

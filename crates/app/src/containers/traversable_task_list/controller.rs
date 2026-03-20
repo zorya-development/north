@@ -8,7 +8,7 @@ use north_stores::{AppStore, ModalStore, StatusBarVariant, TaskModel, TaskTree};
 
 use super::tree::*;
 use crate::containers::task_list_item::ItemConfig;
-use crate::controllers::TaskTreeView;
+use crate::libs::TaskTreeView;
 use crate::libs::{KeepCompletedVisible, KeepTaskVisible};
 
 /// Blur the currently focused element so that blur handlers fire while

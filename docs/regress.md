@@ -161,3 +161,53 @@ Human-driven pre-release checklist. Tick each box during a testing session befor
 - [x] Change review interval, save — toast "Saved" appears; value persists on reload
 - [x] Change timezone, save — value persists on reload
 - [ ] Invalid review interval (e.g. `0` or non-numeric) — validation error shown, no save
+
+---
+
+## 15. Someday _(covered by `e2e/specs/someday.spec.ts`)_
+
+- [ ] Press `S` on a task — task moves to someday section with muted text and `@Someday` prefix
+- [ ] Navigate to `/someday` — only someday tasks shown
+- [ ] Press `S` on a someday task — task returns to normal
+- [ ] Someday tasks excluded from Review page
+- [ ] Sidebar shows Someday nav link
+
+---
+
+## 16. Smart Textarea Autocomplete _(covered by `e2e/specs/smart-textarea-autocomplete.spec.ts`)_
+
+- [ ] In task body textarea, type `#` — tag suggestions appear
+- [ ] In task body textarea, type `@` — project suggestions appear
+- [ ] Selecting a suggestion inserts it into the body
+
+---
+
+## 17. Project Isolation _(covered by `e2e/specs/project-isolation.spec.ts`)_
+
+- [ ] Tasks created on a project page only appear in that project
+- [ ] Tasks from other projects do not bleed into the current project view
+
+---
+
+## 18. Tag Filter _(covered by `e2e/specs/tag-filter.spec.ts`)_
+
+- [ ] Filter DSL `tags = "tagname"` returns only tasks with that tag
+
+---
+
+## 19. Task Extra Visibility _(covered by `e2e/specs/task-extra-visibility.spec.ts`)_
+
+- [ ] Inline-created subtasks remain visible even when they exceed the sequential limit
+
+---
+
+## 20. Task URL Links _(covered by `e2e/specs/task-url-links.spec.ts`)_
+
+- [ ] URLs in task body are rendered as clickable links
+
+---
+
+## 21. Toolbar _(covered by `e2e/specs/toolbar.spec.ts`)_
+
+- [ ] Page toolbar renders with expected actions
+- [ ] Toolbar actions (e.g. hide non-actionable toggle) work correctly

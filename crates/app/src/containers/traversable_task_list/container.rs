@@ -6,7 +6,7 @@ use super::toolbar_config::ToolbarConfig;
 use super::view::TraversableTaskListView;
 use crate::components::drag_drop::DragDropContext;
 use crate::containers::task_list_item::ItemConfig;
-use crate::controllers::TaskTreeView;
+use crate::libs::TaskTreeView;
 
 #[derive(Clone, Copy)]
 pub struct ExtraVisibleIds(pub RwSignal<Vec<i64>>);
