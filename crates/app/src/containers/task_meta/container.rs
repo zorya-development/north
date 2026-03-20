@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_dto::TagInfo;
+use north_dto::Tag;
 use north_stores::Recurrence;
 
 use super::task_meta_item::TaskMetaItemVariant;
@@ -9,7 +9,7 @@ use super::view::TaskMetaView;
 pub fn TaskMeta(
     start_at: Option<chrono::DateTime<chrono::Utc>>,
     due_date: Option<chrono::NaiveDate>,
-    tags: Vec<TagInfo>,
+    tags: Vec<Tag>,
     #[prop(default = None)] reviewed_at: Option<chrono::NaiveDate>,
     #[prop(default = false)] show_review: bool,
     #[prop(default = 0)] subtask_count: i64,

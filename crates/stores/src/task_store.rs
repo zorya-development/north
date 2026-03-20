@@ -2,7 +2,7 @@ use chrono::Utc;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use north_dto::RecurrenceType;
-use north_dto::{CreateTask, TagInfo, UpdateTask};
+use north_dto::{CreateTask, Tag, UpdateTask};
 use north_repositories::{TaskModel, TaskRepository};
 
 use crate::task_tree::TaskTree;
@@ -225,7 +225,7 @@ impl TaskStore {
         let store = *self;
         // Optimistic tag update
         store.update_in_place(id, |t| {
-            let new_tags: Vec<TagInfo> = tag_names
+            let new_tags: Vec<Tag> = tag_names
                 .iter()
                 .map(|name| {
                     let color = t
@@ -234,7 +234,9 @@ impl TaskStore {
                         .find(|ti| ti.name == *name)
                         .map(|ti| ti.color.clone())
                         .unwrap_or_else(|| north_dto::DEFAULT_COLOR.to_string());
-                    TagInfo {
+                    Tag {
+                        id: 0,
+                        user_id: 0,
                         name: name.clone(),
                         color,
                     }
@@ -353,7 +355,7 @@ impl TaskStore {
         let store = *self;
         // Optimistic update — build new tags list from desired names
         store.update_in_place(task_id, |t| {
-            let new_tags: Vec<TagInfo> = tag_names
+            let new_tags: Vec<Tag> = tag_names
                 .iter()
                 .map(|name| {
                     // Preserve color for existing tags, use default for new ones
@@ -363,7 +365,9 @@ impl TaskStore {
                         .find(|ti| ti.name == *name)
                         .map(|ti| ti.color.clone())
                         .unwrap_or_else(|| north_dto::DEFAULT_COLOR.to_string());
-                    TagInfo {
+                    Tag {
+                        id: 0,
+                        user_id: 0,
                         name: name.clone(),
                         color,
                     }

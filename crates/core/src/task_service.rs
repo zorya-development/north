@@ -8,7 +8,7 @@ use north_db::schema::{projects, tags, task_tags, tasks, users};
 use north_db::sql_types::RecurrenceTypeMapping;
 use north_db::DbPool;
 use north_dto::RecurrenceType;
-use north_dto::{CreateTask, TagInfo, Task, TaskFilter, UpdateTask, UserSettings};
+use north_dto::{CreateTask, Tag, Task, TaskFilter, UpdateTask, UserSettings};
 
 use crate::{ServiceError, ServiceResult};
 
@@ -838,12 +838,9 @@ impl TaskService {
             .load(&mut conn)
             .await?;
 
-        let mut tags_map: HashMap<i64, Vec<TagInfo>> = HashMap::new();
+        let mut tags_map: HashMap<i64, Vec<Tag>> = HashMap::new();
         for (task_id, tag) in tag_rows {
-            tags_map
-                .entry(task_id)
-                .or_default()
-                .push(TagInfo::from(&tag));
+            tags_map.entry(task_id).or_default().push(Tag::from(tag));
         }
 
         // Batch load subtask counts

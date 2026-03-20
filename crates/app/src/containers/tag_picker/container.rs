@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use north_dto::TagInfo;
+use north_dto::Tag;
 use north_stores::use_app_store;
 
 use super::view::TagPickerView;
@@ -7,7 +7,7 @@ use super::view::TagPickerView;
 #[component]
 pub fn TagPicker(
     task_id: i64,
-    tags: Vec<TagInfo>,
+    tags: Vec<Tag>,
     on_set_tags: Callback<(i64, Vec<String>)>,
     #[prop(default = false)] icon_only: bool,
     #[prop(default = false)] always_visible: bool,

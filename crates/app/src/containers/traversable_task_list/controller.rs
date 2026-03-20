@@ -572,11 +572,14 @@ impl TraversableTaskListController {
 
         self.create_input_value.set(String::new());
 
-        let AppStore { tasks, .. } = self.app_store;
+        let app_store = self.app_store;
         let inline_mode = self.inline_mode;
         let keep_visible = self.keep_visible;
         spawn_local(async move {
-            if let Some(task) = tasks.create_task_async(input).await {
+            if let Some(task) = app_store.tasks.create_task_async(input).await {
+                if !task.tags.is_empty() {
+                    app_store.tags.merge(task.tags.clone());
+                }
                 if let Some(kv) = keep_visible {
                     kv.keep(task.id);
                 }
@@ -626,11 +629,14 @@ impl TraversableTaskListController {
 
         self.create_input_value.set(String::new());
 
-        let AppStore { tasks, .. } = self.app_store;
+        let app_store = self.app_store;
         let inline_mode = self.inline_mode;
         let keep_visible = self.keep_visible;
         spawn_local(async move {
-            if let Some(task) = tasks.create_task_async(input).await {
+            if let Some(task) = app_store.tasks.create_task_async(input).await {
+                if !task.tags.is_empty() {
+                    app_store.tags.merge(task.tags.clone());
+                }
                 if let Some(kv) = keep_visible {
                     kv.keep(task.id);
                 }

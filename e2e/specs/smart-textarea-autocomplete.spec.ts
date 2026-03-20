@@ -213,6 +213,38 @@ test.describe("SmartTextarea Autocomplete", () => {
     ).toContainText(["Work"]);
   });
 
+  test("tag created via inline task appears in autocomplete for next task", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/inbox");
+    await page
+      .locator(
+        '[data-testid="task-list"], [data-testid="empty-task-list"]',
+      )
+      .first()
+      .waitFor({ state: "visible" });
+
+    // Create a task with #first tag
+    await page.locator('[data-testid="ttl-add-task"]').click();
+    const input = page.locator('[data-testid="inline-create-input"]');
+    await expect(input).toBeVisible();
+    await input.pressSequentially("Task one #first");
+    await input.press("Enter");
+
+    // Wait for the task to appear
+    const rows = page.locator('[data-testid="task-row"]');
+    await expect(rows.first()).toContainText("Task one");
+
+    // Start creating a second task and type # to trigger autocomplete
+    await input.pressSequentially("Task two #");
+
+    const dropdown = page.locator('[data-testid="autocomplete-dropdown"]');
+    await expect(dropdown).toBeVisible();
+    await expect(
+      dropdown.locator('[data-testid="autocomplete-item"]').filter({ hasText: "first" }),
+    ).toBeVisible();
+  });
+
   test("Escape closes autocomplete dropdown without closing input", async ({
     authenticatedPage: page,
   }) => {

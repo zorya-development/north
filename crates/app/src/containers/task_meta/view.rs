@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 use north_dto::tag::parse_kv;
-use north_dto::TagInfo;
+use north_dto::Tag;
 use north_ui::IconKind;
 
 use super::task_meta_item::{TaskMetaItem, TaskMetaItemVariant};
@@ -16,7 +16,7 @@ pub fn TaskMetaView(
     #[prop(default = None)] on_toggle_subtasks: Option<Callback<()>>,
     #[prop(default = None)] due_date_display: Option<String>,
     #[prop(default = TaskMetaItemVariant::Info)] due_date_variant: TaskMetaItemVariant,
-    #[prop(default = vec![])] tags: Vec<TagInfo>,
+    #[prop(default = vec![])] tags: Vec<Tag>,
     #[prop(default = true)] show_tags: bool,
     #[prop(default = false)] show_review: bool,
     #[prop(default = None)] reviewed_at_display: Option<String>,
