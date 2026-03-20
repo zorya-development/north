@@ -28,8 +28,7 @@ pub fn TraversableTaskListView(
     let create_input_value = ctrl.create_input_value;
     let container_ref = NodeRef::<leptos::html::Div>::new();
     let drag_ctx = use_context::<DragDropContext>();
-    let app_store = north_stores::use_app_store();
-    let tree_for_drop = app_store.tasks.task_tree;
+    let tree_for_drop = ctrl.tree;
 
     let show_keybindings_help = ctrl.show_keybindings_help;
     let has_toolbar = toolbar.enabled;
@@ -485,10 +484,7 @@ fn InlineEditInput(
     depth: Memo<u8>,
     ctrl: TraversableTaskListController,
 ) -> impl IntoView {
-    let app_store = north_stores::use_app_store();
-    let task = app_store.tasks.get_by_id(task_id).get_untracked();
-    let initial_title = task.as_ref().map(|t| t.title.clone()).unwrap_or_default();
-    let initial_body = task.and_then(|t| t.body);
+    let (initial_title, initial_body) = ctrl.task_for_edit(task_id);
 
     // Combine title + body into a single multiline value
     let initial_value = match initial_body {

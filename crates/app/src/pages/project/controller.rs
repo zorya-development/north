@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 use north_dto::Project;
-use north_stores::{AppStore, TaskDetailModalStore, TaskModel};
+use north_stores::{AppStore, TaskModel};
 
 use crate::containers::traversable_task_list::{ActionableToggle, CompletedToggle, ToolbarConfig};
 use crate::libs::TaskTreeView;
@@ -10,7 +10,6 @@ const HIDE_NON_ACTIONABLE_KEY: &str = "north:hide-non-actionable:project";
 
 #[derive(Clone, Copy)]
 pub struct ProjectController {
-    task_detail_modal_store: TaskDetailModalStore,
     pub project: Memo<Option<Project>>,
     pub view: TaskTreeView,
     pub show_completed: RwSignal<bool>,
@@ -121,7 +120,6 @@ impl ProjectController {
         });
 
         Self {
-            task_detail_modal_store: app_store.task_detail_modal,
             project,
             view,
             show_completed,
@@ -134,6 +132,9 @@ impl ProjectController {
     }
 
     pub fn open_detail(&self, task_id: i64) {
+        let AppStore {
+            task_detail_modal, ..
+        } = self.app_store;
         let pid = self.project_id.get_untracked();
         let tree = self.view.tree.get_untracked();
         let root_ids: Vec<i64> = tree
@@ -146,18 +147,19 @@ impl ProjectController {
                     .unwrap_or(false)
             })
             .collect();
-        self.task_detail_modal_store.open(task_id, root_ids);
+        task_detail_modal.open(task_id, root_ids);
     }
 
     pub fn reorder_task(&self, task_id: i64, sort_key: String, parent_id: Option<Option<i64>>) {
-        self.app_store
-            .tasks
-            .reorder_task(task_id, sort_key, parent_id);
+        let AppStore { tasks, .. } = self.app_store;
+        tasks.reorder_task(task_id, sort_key, parent_id);
     }
 
     pub fn toolbar_config(&self) -> ToolbarConfig {
         let show_completed = self.show_completed;
-        let app_store = self.app_store;
+        let AppStore {
+            browser_storage, ..
+        } = self.app_store;
         ToolbarConfig {
             enabled: true,
             show_add_task: true,
@@ -172,9 +174,7 @@ impl ProjectController {
                 is_active: self.hide_actionable,
                 count: self.actionable_count,
                 on_toggle: Callback::new(move |()| {
-                    app_store
-                        .browser_storage
-                        .toggle_bool(HIDE_NON_ACTIONABLE_KEY);
+                    browser_storage.toggle_bool(HIDE_NON_ACTIONABLE_KEY);
                 }),
             }),
         }

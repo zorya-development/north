@@ -1,7 +1,7 @@
 use chrono::Utc;
 use leptos::prelude::*;
 use north_dto::ProjectStatus;
-use north_stores::{AppStore, TaskDetailModalStore, TaskModel};
+use north_stores::{AppStore, TaskModel};
 
 use crate::containers::traversable_task_list::{ActionableToggle, ToolbarConfig};
 use crate::libs::TaskTreeView;
@@ -11,7 +11,6 @@ const HIDE_NON_ACTIONABLE_KEY: &str = "north:hide-non-actionable:review";
 
 #[derive(Clone, Copy)]
 pub struct ReviewController {
-    task_detail_modal_store: TaskDetailModalStore,
     pub pending_view: TaskTreeView,
     pub reviewed_view: TaskTreeView,
     pub show_reviewed: (ReadSignal<bool>, WriteSignal<bool>),
@@ -125,7 +124,6 @@ impl ReviewController {
         });
 
         Self {
-            task_detail_modal_store: app_store.task_detail_modal,
             pending_view,
             reviewed_view,
             show_reviewed,
@@ -136,15 +134,16 @@ impl ReviewController {
     }
 
     pub fn open_detail(&self, task_id: i64) {
-        // Use pending view's tree for navigation IDs
+        let AppStore {
+            task_detail_modal,
+            settings,
+            projects: project_store,
+            ..
+        } = self.app_store;
         let tree = self.pending_view.tree.get_untracked();
-        let interval = self
-            .app_store
-            .settings
-            .review_interval_days()
-            .get_untracked();
+        let interval = settings.review_interval_days().get_untracked();
         let cutoff = Utc::now().date_naive() - chrono::Duration::days(interval);
-        let projects = self.app_store.projects.get();
+        let projects = project_store.get();
 
         let root_ids: Vec<i64> = tree
             .children_of(None)
@@ -171,11 +170,13 @@ impl ReviewController {
                     .unwrap_or(false)
             })
             .collect();
-        self.task_detail_modal_store.open(task_id, root_ids);
+        task_detail_modal.open(task_id, root_ids);
     }
 
     pub fn toolbar_config(&self) -> ToolbarConfig {
-        let app_store = self.app_store;
+        let AppStore {
+            browser_storage, ..
+        } = self.app_store;
         ToolbarConfig {
             enabled: true,
             show_add_task: false,
@@ -184,9 +185,7 @@ impl ReviewController {
                 is_active: self.hide_actionable,
                 count: self.actionable_count,
                 on_toggle: Callback::new(move |()| {
-                    app_store
-                        .browser_storage
-                        .toggle_bool(HIDE_NON_ACTIONABLE_KEY);
+                    browser_storage.toggle_bool(HIDE_NON_ACTIONABLE_KEY);
                 }),
             }),
         }

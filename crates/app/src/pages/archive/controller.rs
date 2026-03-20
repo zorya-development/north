@@ -41,7 +41,10 @@ impl ArchiveController {
     }
 
     pub fn unarchive(&self, id: i64) {
-        let app_store = self.app_store;
+        let AppStore {
+            projects: project_store,
+            ..
+        } = self.app_store;
         let projects = self.projects;
         projects.update(|list| list.retain(|p| p.id != id));
         spawn_local(async move {
@@ -50,7 +53,7 @@ impl ArchiveController {
                 ..Default::default()
             };
             if ProjectRepository::update(id, input).await.is_ok() {
-                app_store.projects.refetch();
+                project_store.refetch();
             }
         });
     }

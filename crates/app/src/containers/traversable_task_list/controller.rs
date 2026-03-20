@@ -4,7 +4,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos::wasm_bindgen::JsCast;
 use north_dto::CreateTask;
-use north_stores::{AppStore, ModalStore, StatusBarVariant, TaskModel, TaskTree};
+use north_stores::{AppStore, StatusBarVariant, TaskModel, TaskTree};
 
 use super::tree::*;
 use crate::containers::task_list_item::ItemConfig;
@@ -36,9 +36,8 @@ pub struct TraversableTaskListController {
     pub active_tag_names: RwSignal<Vec<String>>,
     pub available_tags: Memo<Vec<(String, String)>>,
     app_store: AppStore,
-    modal: ModalStore,
     /// Shared tree — available when using TaskTreeView, lazily derived otherwise.
-    tree: Memo<TaskTree>,
+    pub tree: Memo<TaskTree>,
     allow_create: bool,
     allow_reorder: bool,
     scoped: bool,
@@ -54,7 +53,6 @@ impl TraversableTaskListController {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         app_store: AppStore,
-        modal: ModalStore,
         view: Option<TaskTreeView>,
         legacy_root_task_ids: Option<Memo<Vec<i64>>>,
         show_keybindings_help: RwSignal<bool>,
@@ -289,7 +287,6 @@ impl TraversableTaskListController {
             active_tag_names,
             available_tags,
             app_store,
-            modal,
             tree,
             allow_create,
             allow_reorder,
@@ -364,9 +361,8 @@ impl TraversableTaskListController {
     pub fn save_edit(&self, new_title: String, new_body: Option<String>) {
         if let InlineMode::Edit { task_id } = self.inline_mode.get_untracked() {
             if !new_title.is_empty() {
-                self.app_store
-                    .tasks
-                    .update_task(task_id, new_title, new_body);
+                let AppStore { tasks, .. } = self.app_store;
+                tasks.update_task(task_id, new_title, new_body);
             }
             blur_active_element();
             self.inline_mode.set(InlineMode::None);
@@ -472,11 +468,11 @@ impl TraversableTaskListController {
 
         self.create_input_value.set(String::new());
 
-        let store = self.app_store.tasks;
+        let AppStore { tasks, .. } = self.app_store;
         let inline_mode = self.inline_mode;
         let keep_visible = self.keep_visible;
         spawn_local(async move {
-            if let Some(task) = store.create_task_async(input).await {
+            if let Some(task) = tasks.create_task_async(input).await {
                 if let Some(kv) = keep_visible {
                     kv.keep(task.id);
                 }
@@ -526,11 +522,11 @@ impl TraversableTaskListController {
 
         self.create_input_value.set(String::new());
 
-        let store = self.app_store.tasks;
+        let AppStore { tasks, .. } = self.app_store;
         let inline_mode = self.inline_mode;
         let keep_visible = self.keep_visible;
         spawn_local(async move {
-            if let Some(task) = store.create_task_async(input).await {
+            if let Some(task) = tasks.create_task_async(input).await {
                 if let Some(kv) = keep_visible {
                     kv.keep(task.id);
                 }
@@ -563,12 +559,11 @@ impl TraversableTaskListController {
     // ── Toggle complete ────────────────────────────────────────
 
     pub fn toggle_complete(&self) {
+        let AppStore { tasks, .. } = self.app_store;
         let Some(task_id) = self.cursor_task_id.get_untracked() else {
             return;
         };
-        let is_completed = self
-            .app_store
-            .tasks
+        let is_completed = tasks
             .get_by_id(task_id)
             .get_untracked()
             .map(|t| t.completed_at.is_some())
@@ -594,16 +589,19 @@ impl TraversableTaskListController {
             self.cursor_task_id.set(next_cursor);
         }
 
-        self.app_store.tasks.toggle_complete(task_id, is_completed);
+        tasks.toggle_complete(task_id, is_completed);
     }
 
     // ── Delete with confirmation ─────────────────────────────
 
     pub fn request_delete(&self) {
+        let AppStore {
+            tasks, status_bar, ..
+        } = self.app_store;
         let Some(task_id) = self.cursor_task_id.get_untracked() else {
             return;
         };
-        let task = self.app_store.tasks.get_by_id(task_id).get_untracked();
+        let task = tasks.get_by_id(task_id).get_untracked();
         let title = task.as_ref().map(|t| t.title.clone()).unwrap_or_default();
         let has_recurrence = task
             .as_ref()
@@ -615,13 +613,16 @@ impl TraversableTaskListController {
         } else {
             ""
         };
-        self.app_store.status_bar.show_message(
+        status_bar.show_message(
             format!("Delete \"{title}\"?{suffix}  Enter to confirm \u{00b7} Esc to cancel"),
             StatusBarVariant::Danger,
         );
     }
 
     pub fn confirm_delete(&self) {
+        let AppStore {
+            tasks, status_bar, ..
+        } = self.app_store;
         let Some(task_id) = self.cursor_task_id.get_untracked() else {
             return;
         };
@@ -632,14 +633,15 @@ impl TraversableTaskListController {
             .or_else(|| parent_of(&nodes, task_id));
 
         self.pending_delete.set(false);
-        self.app_store.status_bar.hide_message();
+        status_bar.hide_message();
         self.cursor_task_id.set(next_cursor);
-        self.app_store.tasks.delete_task(task_id);
+        tasks.delete_task(task_id);
     }
 
     pub fn cancel_delete(&self) {
+        let AppStore { status_bar, .. } = self.app_store;
         self.pending_delete.set(false);
-        self.app_store.status_bar.hide_message();
+        status_bar.hide_message();
     }
 
     // ── Task click / detail modal ──────────────────────────────
@@ -774,10 +776,19 @@ impl TraversableTaskListController {
         self.reorder_task(task_id, new_key, Some(grandparent_id));
     }
 
+    pub fn task_for_edit(&self, task_id: i64) -> (String, Option<String>) {
+        let AppStore { tasks, .. } = self.app_store;
+        let task = tasks.get_by_id(task_id).get_untracked();
+        let title = task.as_ref().map(|t| t.title.clone()).unwrap_or_default();
+        let body = task.and_then(|t| t.body);
+        (title, body)
+    }
+
     // ── Keyboard handler ───────────────────────────────────────
 
     pub fn handle_keydown(&self, ev: &web_sys::KeyboardEvent) {
-        if !self.scoped && self.modal.is_any_open() {
+        let AppStore { modal, .. } = self.app_store;
+        if !self.scoped && modal.is_any_open() {
             return;
         }
 
@@ -877,14 +888,16 @@ impl TraversableTaskListController {
                 if self.item_config.show_review {
                     ev.prevent_default();
                     if let Some(task_id) = self.cursor_task_id.get_untracked() {
-                        self.app_store.tasks.review_task(task_id);
+                        let AppStore { tasks, .. } = self.app_store;
+                        tasks.review_task(task_id);
                     }
                 }
             }
             "s" | "S" => {
                 ev.prevent_default();
                 if let Some(task_id) = self.cursor_task_id.get_untracked() {
-                    self.app_store.tasks.toggle_someday(task_id);
+                    let AppStore { tasks, .. } = self.app_store;
+                    tasks.toggle_someday(task_id);
                 }
             }
             " " => {
