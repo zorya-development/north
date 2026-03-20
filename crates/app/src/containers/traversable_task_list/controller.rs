@@ -468,9 +468,10 @@ impl TraversableTaskListController {
 
     pub fn save_edit(&self, new_title: String, new_body: Option<String>) {
         if let InlineMode::Edit { task_id } = self.inline_mode.get_untracked() {
-            if !new_title.is_empty() {
+            let (cleaned_title, tags) = north_dto::extract_tag_tokens(&new_title);
+            if !cleaned_title.is_empty() {
                 let AppStore { tasks, .. } = self.app_store;
-                tasks.update_task(task_id, new_title, new_body);
+                tasks.update_task_with_tags(task_id, cleaned_title, new_body, tags);
             }
             blur_active_element();
             self.inline_mode.set(InlineMode::None);
@@ -887,8 +888,16 @@ impl TraversableTaskListController {
     pub fn task_for_edit(&self, task_id: i64) -> (String, Option<String>) {
         let AppStore { tasks, .. } = self.app_store;
         let task = tasks.get_by_id(task_id).get_untracked();
-        let title = task.as_ref().map(|t| t.title.clone()).unwrap_or_default();
-        let body = task.and_then(|t| t.body);
+        let mut title = task.as_ref().map(|t| t.title.clone()).unwrap_or_default();
+        let body = task.as_ref().and_then(|t| t.body.clone());
+        // Reconstruct #tag tokens so the user can see/edit them inline
+        if let Some(t) = &task {
+            for tag in &t.tags {
+                title.push(' ');
+                title.push('#');
+                title.push_str(&tag.name);
+            }
+        }
         (title, body)
     }
 

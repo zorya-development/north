@@ -215,6 +215,49 @@ impl TaskStore {
         });
     }
 
+    pub fn update_task_with_tags(
+        &self,
+        id: i64,
+        title: String,
+        body: Option<String>,
+        tag_names: Vec<String>,
+    ) {
+        let store = *self;
+        // Optimistic tag update
+        store.update_in_place(id, |t| {
+            let new_tags: Vec<TagInfo> = tag_names
+                .iter()
+                .map(|name| {
+                    let color = t
+                        .tags
+                        .iter()
+                        .find(|ti| ti.name == *name)
+                        .map(|ti| ti.color.clone())
+                        .unwrap_or_else(|| north_dto::DEFAULT_COLOR.to_string());
+                    TagInfo {
+                        name: name.clone(),
+                        color,
+                    }
+                })
+                .collect();
+            t.tags = new_tags;
+        });
+        spawn_local(async move {
+            let input = UpdateTask {
+                title: Some(title),
+                body: Some(body),
+                ..Default::default()
+            };
+            if let Ok(task) = TaskRepository::update(id, input).await {
+                let _ = TaskRepository::set_tags(id, tag_names).await;
+                store.refetch_async().await;
+                if task.is_url_fetching.is_some() {
+                    store.poll_url_resolution(id);
+                }
+            }
+        });
+    }
+
     pub fn create_task(&self, input: CreateTask) {
         let store = *self;
         spawn_local(async move {
