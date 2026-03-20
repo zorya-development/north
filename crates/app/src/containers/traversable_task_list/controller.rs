@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, HashSet};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos::wasm_bindgen::JsCast;
+use north_dto::tag::matches_faceted_filter;
 use north_dto::CreateTask;
 use north_stores::{AppStore, StatusBarVariant, TaskModel, TaskTree};
 
@@ -179,10 +180,7 @@ impl TraversableTaskListController {
                             if !active_tags.is_empty() {
                                 let tag_names: Vec<&str> =
                                     task.tags.iter().map(|tag| tag.name.as_str()).collect();
-                                if !active_tags
-                                    .iter()
-                                    .all(|req| tag_names.contains(&req.as_str()))
-                                {
+                                if !matches_faceted_filter(&tag_names, &active_tags) {
                                     continue;
                                 }
                             }
@@ -283,10 +281,7 @@ impl TraversableTaskListController {
                             if !active_tags.is_empty() {
                                 let tag_names: Vec<&str> =
                                     task.tags.iter().map(|tag| tag.name.as_str()).collect();
-                                if !active_tags
-                                    .iter()
-                                    .all(|req| tag_names.contains(&req.as_str()))
-                                {
+                                if !matches_faceted_filter(&tag_names, &active_tags) {
                                     return false;
                                 }
                             }

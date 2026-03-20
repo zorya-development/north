@@ -9,6 +9,7 @@ use crate::containers::project_picker::ProjectPicker;
 use crate::containers::tag_picker::TagPicker;
 use crate::containers::task_checkbox::TaskCheckbox;
 use crate::containers::task_meta::TaskMeta;
+use north_dto::tag::parse_kv;
 use north_dto::Project;
 use north_stores::TaskModel;
 use north_ui::{DropdownItem, DropdownMenu, Icon, IconKind};
@@ -246,6 +247,13 @@ pub fn TaskListItemView(
                                     let encoded = urlencoding::encode(&query).into_owned();
                                     let href = format!("/filters/new?q={encoded}");
                                     let name = tag.name.clone();
+                                    let tag_display = if let Some((key, value)) = parse_kv(&name) {
+                                        view! {
+                                            {key.to_string()}":"{value.to_string()}
+                                        }.into_any()
+                                    } else {
+                                        name.into_any()
+                                    };
                                     view! {
                                         <span class="text-text-secondary text-sm ml-1.5">
                                             "#"
@@ -256,7 +264,7 @@ pub fn TaskListItemView(
                                                     ev.stop_propagation();
                                                 }
                                             >
-                                                {name}
+                                                {tag_display}
                                             </a>
                                         </span>
                                     }

@@ -1,4 +1,5 @@
 use leptos::prelude::*;
+use north_dto::tag::parse_kv;
 use north_dto::TagInfo;
 use north_ui::IconKind;
 
@@ -97,12 +98,19 @@ pub fn TaskMetaView(
             {(show_tags && !tags.is_empty()).then(|| {
                 tags.into_iter()
                     .map(|tag| {
+                        let display = if let Some((key, value)) = parse_kv(&tag.name) {
+                            view! {
+                                {key.to_string()}":"{value.to_string()}
+                            }.into_any()
+                        } else {
+                            tag.name.clone().into_any()
+                        };
                         view! {
                             <TaskMetaItem
                                 icon=IconKind::Tag
                                 style=format!("color: {}", tag.color)
                             >
-                                {tag.name}
+                                {display}
                             </TaskMetaItem>
                         }
                     })
