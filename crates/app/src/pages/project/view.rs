@@ -12,6 +12,7 @@ pub fn ProjectView(
     project: Memo<Option<Project>>,
     view: TaskTreeView,
     default_project_id: Signal<Option<i64>>,
+    project_id: Signal<i64>,
     on_task_click: Callback<i64>,
     on_reorder: Callback<(i64, String, Option<Option<i64>>)>,
     toolbar: ToolbarConfig,
@@ -55,6 +56,7 @@ pub fn ProjectView(
                 on_reorder=on_reorder
                 on_task_click=on_task_click
                 default_project_id=default_project_id
+                fold_storage_key=format!("north:collapsed:project:{}", project_id.get_untracked())
                 toolbar=toolbar
                 show_keybindings_help=show_keybindings_help
                 empty_message="No tasks in this project. Add one above."

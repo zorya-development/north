@@ -11,6 +11,34 @@ use crate::containers::task_list_item::ItemConfig;
 use crate::libs::TaskTreeView;
 use crate::libs::{KeepCompletedVisible, KeepTaskVisible};
 
+#[cfg(target_arch = "wasm32")]
+fn load_collapsed_ids(key: &str) -> HashSet<i64> {
+    web_sys::window()
+        .and_then(|w| w.local_storage().ok().flatten())
+        .and_then(|s| s.get_item(key).ok().flatten())
+        .and_then(|json| serde_json::from_str::<Vec<i64>>(&json).ok())
+        .map(|v| v.into_iter().collect())
+        .unwrap_or_default()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn load_collapsed_ids(_key: &str) -> HashSet<i64> {
+    HashSet::new()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn save_collapsed_ids(key: &str, ids: &HashSet<i64>) {
+    if let Some(storage) = web_sys::window().and_then(|w| w.local_storage().ok().flatten()) {
+        let vec: Vec<i64> = ids.iter().copied().collect();
+        if let Ok(json) = serde_json::to_string(&vec) {
+            let _ = storage.set_item(key, &json);
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn save_collapsed_ids(_key: &str, _ids: &HashSet<i64>) {}
+
 /// Blur the currently focused element so that blur handlers fire while
 /// signals/callbacks are still alive — before a `<Show>` disposes the scope.
 fn blur_active_element() {
@@ -38,6 +66,8 @@ pub struct TraversableTaskListController {
     app_store: AppStore,
     /// Shared tree — available when using TaskTreeView, lazily derived otherwise.
     pub tree: Memo<TaskTree>,
+    pub collapsed_ids: RwSignal<HashSet<i64>>,
+    fold_storage_key: StoredValue<Option<String>>,
     allow_create: bool,
     allow_reorder: bool,
     scoped: bool,
@@ -67,9 +97,17 @@ impl TraversableTaskListController {
         scoped: bool,
         cursor_task_id: Option<RwSignal<Option<i64>>>,
         node_filter: Option<Signal<Callback<TaskModel, bool>>>,
+        fold_storage_key: Option<String>,
     ) -> Self {
         let search_query: RwSignal<String> = RwSignal::new(String::new());
         let active_tag_names: RwSignal<Vec<String>> = RwSignal::new(vec![]);
+
+        let initial_collapsed = fold_storage_key
+            .as_deref()
+            .map(load_collapsed_ids)
+            .unwrap_or_default();
+        let collapsed_ids: RwSignal<HashSet<i64>> = RwSignal::new(initial_collapsed);
+        let fold_storage_key = StoredValue::new(fold_storage_key);
 
         // Use shared tree from TaskStore (always available)
         let tree = app_store.tasks.task_tree;
@@ -126,48 +164,69 @@ impl TraversableTaskListController {
                 let extras = extra_visible.get();
                 let active_tags = active_tag_names.get();
                 let query = search_query.get().trim().to_lowercase();
+                let collapsed = collapsed_ids.get();
 
                 // Step 1: Flatten with page filter + extra_visible
                 let nodes = tree.flatten(|t| filter.run(t.clone()), &extras);
 
                 // Step 2: Apply local filters (tags + search) with ancestor preservation
-                if active_tags.is_empty() && query.is_empty() {
-                    return nodes;
-                }
-
-                let mut local_visible: HashSet<i64> = HashSet::new();
-                for node in &nodes {
-                    if let Some(task) = tree.get(node.task_id) {
-                        if !active_tags.is_empty() {
-                            let tag_names: Vec<&str> =
-                                task.tags.iter().map(|tag| tag.name.as_str()).collect();
-                            if !active_tags
-                                .iter()
-                                .all(|req| tag_names.contains(&req.as_str()))
+                let nodes = if active_tags.is_empty() && query.is_empty() {
+                    nodes
+                } else {
+                    let mut local_visible: HashSet<i64> = HashSet::new();
+                    for node in &nodes {
+                        if let Some(task) = tree.get(node.task_id) {
+                            if !active_tags.is_empty() {
+                                let tag_names: Vec<&str> =
+                                    task.tags.iter().map(|tag| tag.name.as_str()).collect();
+                                if !active_tags
+                                    .iter()
+                                    .all(|req| tag_names.contains(&req.as_str()))
+                                {
+                                    continue;
+                                }
+                            }
+                            if !query.is_empty()
+                                && !task.title.to_lowercase().contains(&query)
+                                && !task
+                                    .body
+                                    .as_ref()
+                                    .is_some_and(|b| b.to_lowercase().contains(&query))
                             {
                                 continue;
                             }
-                        }
-                        if !query.is_empty()
-                            && !task.title.to_lowercase().contains(&query)
-                            && !task
-                                .body
-                                .as_ref()
-                                .is_some_and(|b| b.to_lowercase().contains(&query))
-                        {
-                            continue;
-                        }
-                        local_visible.insert(task.id);
-                        for anc_id in tree.ancestors(task.id) {
-                            local_visible.insert(anc_id);
+                            local_visible.insert(task.id);
+                            for anc_id in tree.ancestors(task.id) {
+                                local_visible.insert(anc_id);
+                            }
                         }
                     }
-                }
 
-                nodes
-                    .into_iter()
-                    .filter(|n| local_visible.contains(&n.task_id))
-                    .collect()
+                    nodes
+                        .into_iter()
+                        .filter(|n| local_visible.contains(&n.task_id))
+                        .collect()
+                };
+
+                // Step 3: Remove descendants of collapsed tasks
+                if collapsed.is_empty() {
+                    return nodes;
+                }
+                let mut result = Vec::with_capacity(nodes.len());
+                let mut skip_below: Option<u8> = None;
+                for node in nodes {
+                    if let Some(max_d) = skip_below {
+                        if node.depth > max_d {
+                            continue;
+                        }
+                        skip_below = None;
+                    }
+                    if collapsed.contains(&node.task_id) {
+                        skip_below = Some(node.depth);
+                    }
+                    result.push(node);
+                }
+                result
             });
 
             (flat_nodes, available_tags)
@@ -247,6 +306,26 @@ impl TraversableTaskListController {
                     });
                 }
 
+                // Remove descendants of collapsed tasks
+                let collapsed = collapsed_ids.get();
+                if !collapsed.is_empty() {
+                    let mut result = Vec::with_capacity(nodes.len());
+                    let mut skip_below: Option<u8> = None;
+                    for node in nodes {
+                        if let Some(max_d) = skip_below {
+                            if node.depth > max_d {
+                                continue;
+                            }
+                            skip_below = None;
+                        }
+                        if collapsed.contains(&node.task_id) {
+                            skip_below = Some(node.depth);
+                        }
+                        result.push(node);
+                    }
+                    return result;
+                }
+
                 nodes
             });
 
@@ -288,6 +367,8 @@ impl TraversableTaskListController {
             available_tags,
             app_store,
             tree,
+            collapsed_ids,
+            fold_storage_key,
             allow_create,
             allow_reorder,
             scoped,
@@ -333,8 +414,18 @@ impl TraversableTaskListController {
     }
 
     pub fn move_right(&self) {
-        let nodes = self.flat_nodes.get_untracked();
         if let Some(id) = self.cursor_task_id.get_untracked() {
+            // If task is collapsed, unfold it and navigate to first child
+            if self.collapsed_ids.get_untracked().contains(&id) {
+                self.toggle_fold(id);
+                let tree = self.tree.get_untracked();
+                let group = tree.children_of(Some(id));
+                if let Some(&first) = group.all_ids().next() {
+                    self.cursor_task_id.set(Some(first));
+                }
+                return;
+            }
+            let nodes = self.flat_nodes.get_untracked();
             if let Some(child) = first_child(&nodes, id) {
                 self.cursor_task_id.set(Some(child));
             }
@@ -348,6 +439,23 @@ impl TraversableTaskListController {
                 self.cursor_task_id.set(Some(parent));
             }
         }
+    }
+
+    pub fn toggle_fold(&self, task_id: i64) {
+        let tree = self.tree.get_untracked();
+        if tree.children_of(Some(task_id)).is_empty() {
+            return;
+        }
+        self.collapsed_ids.update(|ids| {
+            if !ids.remove(&task_id) {
+                ids.insert(task_id);
+            }
+        });
+        self.fold_storage_key.with_value(|key| {
+            if let Some(ref k) = key {
+                save_collapsed_ids(k, &self.collapsed_ids.get_untracked());
+            }
+        });
     }
 
     // ── Inline edit ────────────────────────────────────────────
@@ -898,6 +1006,12 @@ impl TraversableTaskListController {
                 if let Some(task_id) = self.cursor_task_id.get_untracked() {
                     let AppStore { tasks, .. } = self.app_store;
                     tasks.toggle_someday(task_id);
+                }
+            }
+            "z" | "Z" => {
+                ev.prevent_default();
+                if let Some(task_id) = self.cursor_task_id.get_untracked() {
+                    self.toggle_fold(task_id);
                 }
             }
             " " => {

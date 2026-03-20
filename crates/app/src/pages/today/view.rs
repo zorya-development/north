@@ -24,6 +24,7 @@ pub fn TodayView(
                 allow_create=false
                 allow_reorder=false
                 on_task_click=on_task_click
+                fold_storage_key="north:collapsed:today".to_string()
                 toolbar=toolbar
                 show_keybindings_help=show_keybindings_help
                 empty_message="No tasks scheduled for today."

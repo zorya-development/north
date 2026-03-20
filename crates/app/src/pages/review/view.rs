@@ -30,6 +30,7 @@ pub fn ReviewView(
                 allow_create=false
                 allow_reorder=false
                 on_task_click=on_task_click
+                fold_storage_key="north:collapsed:review".to_string()
                 toolbar=toolbar
                 show_keybindings_help=show_keybindings_help
                 empty_message="All tasks are up to date. Nothing to review."
@@ -60,6 +61,7 @@ pub fn ReviewView(
                             allow_create=false
                             allow_reorder=false
                             on_task_click=on_task_click
+                            fold_storage_key="north:collapsed:review".to_string()
                             empty_message="No recently reviewed tasks."
                         />
                     </div>

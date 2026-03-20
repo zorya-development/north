@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 use north_stores::TaskTree;
-use north_ui::Spinner;
+use north_ui::{Icon, IconKind, Spinner};
 use wasm_bindgen::JsCast;
 
 use super::controller::TraversableTaskListController;
@@ -29,6 +29,8 @@ pub fn TraversableTaskListView(
     let container_ref = NodeRef::<leptos::html::Div>::new();
     let drag_ctx = use_context::<DragDropContext>();
     let tree_for_drop = ctrl.tree;
+    let collapsed_ids = ctrl.collapsed_ids;
+    let tree_for_chevron = ctrl.tree;
 
     let show_keybindings_help = ctrl.show_keybindings_help;
     let has_toolbar = toolbar.enabled;
@@ -269,6 +271,15 @@ pub fn TraversableTaskListView(
                             .unwrap_or(initial_depth)
                     });
 
+                    let has_children = Memo::new(move |_| {
+                        let tree = tree_for_chevron.get();
+                        !tree.children_of(Some(task_id)).is_empty()
+                    });
+
+                    let is_collapsed = Memo::new(move |_| {
+                        collapsed_ids.get().contains(&task_id)
+                    });
+
                     let is_selected = Memo::new(move |_| {
                         cursor_task_id.get() == Some(task_id)
                     });
@@ -342,10 +353,38 @@ pub fn TraversableTaskListView(
                                     ctrl.open_detail_for(task_id);
                                 }
                             >
-                                <TaskListItem
-                                    task_id=task_id
-                                    config=item_config
-                                />
+                                <div class="flex items-start">
+                                    <div class="w-4 -ml-4 shrink-0 pt-0.4">
+                                        <Show when=move || has_children.get()>
+                                            <button
+                                                class="text-text-tertiary hover:text-text-secondary \
+                                                       transition-colors cursor-pointer"
+                                                on:click=move |ev: web_sys::MouseEvent| {
+                                                    ev.stop_propagation();
+                                                    ctrl.toggle_fold(task_id);
+                                                }
+                                            >
+                                                {move || {
+                                                    if is_collapsed.get() {
+                                                        view! {
+                                                            <Icon kind=IconKind::ChevronRight class="w-3 h-3" />
+                                                        }.into_any()
+                                                    } else {
+                                                        view! {
+                                                            <Icon kind=IconKind::ChevronDown class="w-3 h-3" />
+                                                        }.into_any()
+                                                    }
+                                                }}
+                                            </button>
+                                        </Show>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <TaskListItem
+                                            task_id=task_id
+                                            config=item_config
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </Show>
 

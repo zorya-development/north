@@ -28,6 +28,7 @@ pub fn AllTasksView(
                 item_config=item_config
                 on_reorder=on_reorder
                 on_task_click=on_task_click
+                fold_storage_key="north:collapsed:all-tasks".to_string()
                 toolbar=toolbar
                 show_keybindings_help=show_keybindings_help
                 empty_message="No tasks yet. Add one above."

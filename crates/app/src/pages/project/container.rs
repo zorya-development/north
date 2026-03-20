@@ -27,6 +27,7 @@ pub fn ProjectPage() -> impl IntoView {
             project=ctrl.project
             view=ctrl.view
             default_project_id=default_project_id
+            project_id=project_id
             on_task_click=Callback::new(move |id| ctrl.open_detail(id))
             on_reorder=Callback::new(move |(id, key, parent)| {
                 ctrl.reorder_task(id, key, parent)

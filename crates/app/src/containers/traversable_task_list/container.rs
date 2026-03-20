@@ -46,6 +46,7 @@ pub fn TraversableTaskList(
     node_filter: Option<Signal<Callback<north_stores::TaskModel, bool>>>,
     #[prop(default = ToolbarConfig::none())] toolbar: ToolbarConfig,
     #[prop(optional)] show_keybindings_help: Option<RwSignal<bool>>,
+    #[prop(optional)] fold_storage_key: Option<String>,
 ) -> impl IntoView {
     let app_store = use_app_store();
     if item_config.draggable {
@@ -83,6 +84,7 @@ pub fn TraversableTaskList(
         scoped,
         cursor_task_id,
         node_filter,
+        fold_storage_key,
     );
 
     view! {

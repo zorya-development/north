@@ -13,6 +13,8 @@ use north_dto::Project;
 use north_stores::TaskModel;
 use north_ui::{DropdownItem, DropdownMenu, Icon, IconKind};
 
+use north_stores::use_app_store;
+
 use super::components::{ProjectPrefix, SomedayPrefix};
 
 #[component]
@@ -34,6 +36,7 @@ pub fn TaskListItemView(
     on_set_tags: Callback<Vec<String>>,
 ) -> impl IntoView {
     let _ = show_project; // Used by ItemConfig for future TaskMeta project display
+    let tree = use_app_store().tasks.task_tree;
     let drag_ctx = use_context::<DragDropContext>();
     let (hovered, set_hovered) = signal(false);
     let (menu_open, set_menu_open) = signal(false);
@@ -176,30 +179,37 @@ pub fn TaskListItemView(
                     }
                 >
                     {if draggable {
-                        Some(view! {
-                            <span
-                                class=move || format!(
-                                    "dnd-handle absolute left-0 \
-                                     top-1/2 -translate-x-full \
-                                     -translate-y-1/2 \
-                                     {} cursor-grab \
-                                     active:cursor-grabbing \
-                                     transition-opacity",
-                                    if hovered.get() {
-                                        "opacity-60"
-                                    } else {
-                                        "opacity-0"
-                                    },
-                                )
-                                on:click=move |ev| ev.stop_propagation()
-                                on:mousedown=move |ev| ev.stop_propagation()
-                            >
-                                <Icon
-                                    kind=IconKind::DragHandle
-                                    class="w-4 h-4 text-text-tertiary"
-                                />
-                            </span>
-                        })
+                        let has_children = !tree.get_untracked()
+                            .children_of(Some(task_id)).is_empty();
+                        if has_children {
+                            // Fold chevron occupies this space
+                            None
+                        } else {
+                            Some(view! {
+                                <span
+                                    class=move || format!(
+                                        "dnd-handle absolute left-0 \
+                                         top-1/2 -translate-x-full \
+                                         -translate-y-1/2 \
+                                         {} cursor-grab \
+                                         active:cursor-grabbing \
+                                         transition-opacity",
+                                        if hovered.get() {
+                                            "opacity-60"
+                                        } else {
+                                            "opacity-0"
+                                        },
+                                    )
+                                    on:click=move |ev| ev.stop_propagation()
+                                    on:mousedown=move |ev| ev.stop_propagation()
+                                >
+                                    <Icon
+                                        kind=IconKind::DragHandle
+                                        class="w-4 h-4 text-text-tertiary"
+                                    />
+                                </span>
+                            })
+                        }
                     } else {
                         None
                     }}
