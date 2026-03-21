@@ -102,4 +102,42 @@ test.describe("Project task isolation", () => {
     await expect(rows.nth(1)).toContainText("Beta Task");
     await expect(page.locator("text=Alpha Task")).toHaveCount(0);
   });
+
+  test("completed tasks from other projects do not leak into project view", async ({
+    authenticatedPage: page,
+  }) => {
+    // Complete both Alpha tasks and one Beta task
+    const allTasks = await api.listTasks();
+    for (const t of allTasks.filter((t) => t.title.startsWith("Alpha Task"))) {
+      await api.updateTask(t.id, {
+        completed_at: new Date().toISOString(),
+      });
+    }
+    const betaTask = allTasks.find((t) => t.title === "Beta Task 1")!;
+    await api.updateTask(betaTask.id, {
+      completed_at: new Date().toISOString(),
+    });
+
+    // Navigate to Project Beta
+    await page.goto(`/projects/${projectB.id}`);
+    await page
+      .locator('[data-testid="task-list"]')
+      .waitFor({ state: "visible" });
+
+    // Only the uncompleted Beta task visible
+    const rows = page.locator('[data-testid="task-row"]');
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText("Beta Task 2");
+
+    // Toggle "Show completed"
+    await page.locator('[data-testid="ttl-toggle-completed"]').click();
+
+    // Both Beta tasks visible (1 active + 1 completed)
+    await expect(rows).toHaveCount(2);
+    await expect(rows.nth(0)).toContainText("Beta Task");
+    await expect(rows.nth(1)).toContainText("Beta Task");
+
+    // No Alpha tasks leak through
+    await expect(page.locator("text=Alpha Task")).toHaveCount(0);
+  });
 });

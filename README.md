@@ -9,15 +9,17 @@ A self-hosted, GTD-inspired task management system built entirely in Rust. North
 ## Features
 
 - **Inbox & Today views** — capture tasks quickly, then focus on what's actionable today
-- **Sequential subtasks** — configurable N-next visibility so you only see the tasks you should work on now
+- **Sequential subtasks** — configurable N-next visibility so you only see the tasks you should work on now; fold/collapse subtrees with `Z`
 - **Recurring tasks** — flexible recurrence rules (daily, weekly, monthly, yearly) with fixed-schedule or after-completion modes
 - **GTD review cycles** — per-task review tracking with configurable intervals to keep your system current
-- **Projects & tags** — organize work with colored projects (list or kanban view) and user-defined tags
+- **Projects & tags** — organize work with colored projects (list or kanban view) and user-defined tags, including `key:value` tags for faceted filtering (e.g. `priority:high`, `type:bug`)
+- **Tag filter toolbar** — per-page toolbar with tag toggles, search, and visibility controls for completed and non-actionable tasks
 - **Filter DSL** — JQL-like query language with autocomplete for building saved filters (`status = 'ACTIVE' AND tags =~ 'work:*' ORDER BY due_date ASC`)
 - **Keyboard-driven task management** — full keyboard navigation with tree-aware cursor, inline editing, task creation, and reordering (press `?` to see all shortcuts)
-- **Inline parsing** — type `#tag` or `@project` directly in task titles to assign tags and projects on the fly
+- **Inline parsing** — type `#tag` or `@project` directly in task titles to assign tags and projects on the fly; tags are preserved and editable across inline edit sessions
 - **Markdown support** — full CommonMark rendering in task descriptions
 - **Drag and drop** — reorder tasks, nest subtasks, and organize with drag-and-drop or keyboard shortcuts
+- **Mobile-friendly** — responsive layout with touch-optimized theme
 - **Dark & light themes** — respects system preference with manual toggle
 - **Timezone support** — per-user timezone setting for accurate scheduling and recurrence display
 - **REST API** — full CRUD API for external integrations alongside the web UI

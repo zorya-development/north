@@ -34,12 +34,12 @@ impl SomedayController {
             let tree = tree.get();
             let pinned = keep_completed_signal.get();
             Callback::new(move |task: TaskModel| {
-                if task.completed_at.is_some() {
-                    return pinned.contains(&task.id);
-                }
                 // Root gating: only someday tasks
                 if task.parent_id.is_none() && !task.someday {
                     return false;
+                }
+                if task.completed_at.is_some() {
+                    return pinned.contains(&task.id);
                 }
                 if hide && !tree.is_actionable(task.id) {
                     return false;
