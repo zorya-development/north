@@ -772,7 +772,7 @@ fn NavItem(
                 base.to_string()
             }
         } else {
-            let base = "flex items-center gap-2 px-3 py-0.5 rounded-lg text-sm \
+            let base = "flex items-center gap-2 px-3 py-2 lg:py-0.5 rounded-lg text-sm \
                         text-text-primary hover:bg-bg-tertiary transition-colors";
             if active {
                 format!("{base} bg-bg-tertiary font-medium")

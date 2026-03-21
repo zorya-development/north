@@ -14,12 +14,16 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
         <html lang="en">
             <head>
                 <meta charset="utf-8"/>
-                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+                <meta name="theme-color" content="#F9F8F6" media="(prefers-color-scheme: light)"/>
+                <meta name="theme-color" content="#1C1D2B" media="(prefers-color-scheme: dark)"/>
                 <script>
                     "(function(){try{var t=localStorage.getItem('north-theme');\
                     if(t==='dark'||(t!=='light'&&window.matchMedia\
                     ('(prefers-color-scheme:dark)').matches))\
-                    {document.documentElement.classList.add('dark')}\
+                    {document.documentElement.classList.add('dark');\
+                    document.querySelectorAll('meta[name=\"theme-color\"]')\
+                    .forEach(function(m){m.setAttribute('content','#1C1D2B')})}\
                     }catch(e){}})()"
                 </script>
                 <AutoReload options=options.clone()/>

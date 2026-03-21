@@ -285,7 +285,7 @@ pub fn TaskListItemView(
                             };
 
                             view! {
-                                <span class="flex-1 pt-0.5 flex items-baseline flex-wrap">
+                                <span class="flex-1 pt-0.5">
                                     {someday_prefix}
                                     {project_prefix}
                                     <RichTitle
@@ -302,7 +302,7 @@ pub fn TaskListItemView(
                         <div
                             class=move || format!(
                                 "{} transition-opacity \
-                                 flex items-center",
+                                 hidden lg:flex items-center",
                                 if hovered.get() {
                                     "opacity-100"
                                 } else {

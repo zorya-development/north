@@ -50,7 +50,8 @@ pub fn TagFilterRow(
         <Show when=move || has_tags.get()>
             <div
                 data-testid="tag-filter-bar"
-                class="flex flex-wrap items-center gap-2"
+                class="flex flex-wrap items-center gap-2 \
+                       py-1 lg:py-0"
             >
                 // Simple tags: flat toggle buttons (unchanged)
                 <For
@@ -72,10 +73,10 @@ pub fn TagFilterRow(
                                 data-active=move || is_active.get().to_string()
                                 class=move || {
                                     if is_active.get() {
-                                        "text-xs text-accent cursor-pointer \
+                                        "text-xs py-1 lg:py-0 text-accent cursor-pointer \
                                          transition-colors"
                                     } else {
-                                        "text-xs text-text-tertiary \
+                                        "text-xs py-1 lg:py-0 text-text-tertiary \
                                          hover:text-text-secondary \
                                          cursor-pointer transition-colors"
                                     }
@@ -142,10 +143,10 @@ pub fn TagFilterRow(
                                             data-testid="kv-filter-chip"
                                             class=move || {
                                                 if has_active.get() {
-                                                    "text-xs text-accent cursor-pointer \
+                                                    "text-xs py-1 lg:py-0 text-accent cursor-pointer \
                                                      transition-colors"
                                                 } else {
-                                                    "text-xs text-text-tertiary \
+                                                    "text-xs py-1 lg:py-0 text-text-tertiary \
                                                      hover:text-text-secondary \
                                                      cursor-pointer transition-colors"
                                                 }

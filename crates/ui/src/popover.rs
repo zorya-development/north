@@ -56,26 +56,43 @@ pub fn Popover(
 
         let gap = 4.0;
         let margin = 8.0;
+        let mobile_breakpoint = 1024.0;
 
-        // Vertical: prefer below trigger, flip above if needed
-        let top = if tr.bottom() + gap + ph <= vh - margin {
-            tr.bottom() + gap
-        } else if tr.top() - gap - ph >= margin {
-            tr.top() - gap - ph
+        let (top, left) = if vw < mobile_breakpoint {
+            // Mobile: center the popover on screen
+            let top = ((vh - ph) / 2.0).max(margin);
+            let left = ((vw - pw) / 2.0).max(margin);
+            (top, left)
         } else {
-            (vh - ph - margin).max(margin)
-        };
+            // Desktop: position relative to trigger
+            // Vertical: prefer below trigger, flip above if needed
+            let top = if tr.bottom() + gap + ph <= vh - margin {
+                tr.bottom() + gap
+            } else if tr.top() - gap - ph >= margin {
+                tr.top() - gap - ph
+            } else {
+                (vh - ph - margin).max(margin)
+            };
 
-        // Horizontal: prefer left-aligned, shift left if overflows
-        let left = if tr.left() + pw <= vw - margin {
-            tr.left()
-        } else {
-            (tr.right() - pw).max(margin)
+            // Horizontal: prefer left-aligned, shift left if overflows
+            let left = if tr.left() + pw <= vw - margin {
+                tr.left()
+            } else {
+                (tr.right() - pw).max(margin)
+            };
+            (top, left)
         };
 
         let style = panel_ws.style();
         let _ = style.set_property("top", &format!("{top}px"));
         let _ = style.set_property("left", &format!("{left}px"));
+        // On mobile, constrain width to viewport
+        if vw < mobile_breakpoint {
+            let max_w = vw - margin * 2.0;
+            let _ = style.set_property("max-width", &format!("{max_w}px"));
+        } else {
+            let _ = style.remove_property("max-width");
+        }
         // Position set — reveal the panel
         let _ = style.remove_property("visibility");
     });
