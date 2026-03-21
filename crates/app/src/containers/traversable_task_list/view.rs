@@ -109,8 +109,8 @@ pub fn TraversableTaskListView(
         let show_add = toolbar.show_add_task;
 
         view! {
-            <div class="mb-2">
-                <Toolbar class="mb-1">
+            <div class="mb-2 space-y-2 lg:space-y-1">
+                <Toolbar>
                     {show_add.then(|| view! {
                         <button
                             data-testid="ttl-add-task"
@@ -166,8 +166,8 @@ pub fn TraversableTaskListView(
                             <ToolbarSeparator />
                         }
                     })}
-                    <SearchInput query=search_query />
                 </Toolbar>
+                <SearchInput query=search_query />
                 <TagFilterRow
                     available_tags=available_tags
                     active_tag_names=active_tag_names
@@ -247,6 +247,7 @@ pub fn TraversableTaskListView(
             // Task list — <For> is always mounted, handles its own diffing
             <div
                 data-testid="task-list"
+                class=""
                 style:display=move || {
                     if is_loaded.get() && !flat_nodes.get().is_empty() {
                         ""
@@ -353,31 +354,30 @@ pub fn TraversableTaskListView(
                                     ctrl.open_detail_for(task_id);
                                 }
                             >
-                                <div class="flex items-start">
-                                    <div class="w-4 -ml-4 shrink-0 pt-0.4">
-                                        <Show when=move || has_children.get()>
-                                            <button
-                                                class="text-text-tertiary hover:text-text-secondary \
-                                                       transition-colors cursor-pointer"
-                                                on:click=move |ev: web_sys::MouseEvent| {
-                                                    ev.stop_propagation();
-                                                    ctrl.toggle_fold(task_id);
+                                <div class="relative flex items-start">
+                                    <Show when=move || has_children.get()>
+                                        <button
+                                            class="absolute -left-5 top-0.5 w-4 h-4 flex items-center justify-center \
+                                                   text-text-tertiary hover:text-text-secondary \
+                                                   transition-colors cursor-pointer"
+                                            on:click=move |ev: web_sys::MouseEvent| {
+                                                ev.stop_propagation();
+                                                ctrl.toggle_fold(task_id);
+                                            }
+                                        >
+                                            {move || {
+                                                if is_collapsed.get() {
+                                                    view! {
+                                                        <Icon kind=IconKind::ChevronRight class="w-3 h-3" />
+                                                    }.into_any()
+                                                } else {
+                                                    view! {
+                                                        <Icon kind=IconKind::ChevronDown class="w-3 h-3" />
+                                                    }.into_any()
                                                 }
-                                            >
-                                                {move || {
-                                                    if is_collapsed.get() {
-                                                        view! {
-                                                            <Icon kind=IconKind::ChevronRight class="w-3 h-3" />
-                                                        }.into_any()
-                                                    } else {
-                                                        view! {
-                                                            <Icon kind=IconKind::ChevronDown class="w-3 h-3" />
-                                                        }.into_any()
-                                                    }
-                                                }}
-                                            </button>
-                                        </Show>
-                                    </div>
+                                            }}
+                                        </button>
+                                    </Show>
                                     <div class="flex-1 min-w-0">
                                         <TaskListItem
                                             task_id=task_id

@@ -69,7 +69,7 @@ pub fn StatusBar() -> impl IntoView {
                 class=move || {
                 format!(
                     "status-bar fixed bottom-0 left-0 right-0 z-50 \
-                     flex items-center px-4 py-1.5 \
+                     flex items-center px-4 py-1.5 pb-safe \
                      font-mono text-sm shadow-lg {}",
                     variant_class.get().unwrap_or("")
                 )

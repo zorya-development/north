@@ -15,9 +15,9 @@ pub fn PageHeader(title: &'static str, show_keybindings_help: RwSignal<bool>) ->
                        transition-colors cursor-pointer"
                 title="Keyboard shortcuts"
             >
-                <Icon kind=IconKind::Keyboard class="w-3.5 h-3.5" />
-                <span class="font-mono">"?"</span>
-                " for help"
+                <Icon kind=IconKind::QuestionMark class="w-4 h-4 lg:w-3.5 lg:h-3.5" />
+                <span class="hidden lg:inline font-mono">"?"</span>
+                <span class="hidden lg:inline">" for help"</span>
             </button>
         </div>
     }

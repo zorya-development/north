@@ -25,6 +25,7 @@ pub fn TaskDetailModalView(
     let title_input_ref = NodeRef::<leptos::html::Textarea>::new();
     let subtask_cursor = RwSignal::new(None::<i64>);
     let settings = use_app_store().settings;
+    let (mobile_settings_open, set_mobile_settings_open) = signal(false);
 
     view! {
         <div class="fixed inset-0 z-50 flex items-center justify-center">
@@ -35,9 +36,10 @@ pub fn TaskDetailModalView(
             <div
                 role="dialog"
                 data-testid="task-detail-modal"
-                class="relative border border-(--border-muted) \
-                       rounded-2xl shadow-2xl max-w-3xl w-full mx-4 \
-                       max-h-[85vh] flex flex-col"
+                class="relative border-0 lg:border border-(--border-muted) \
+                       rounded-none lg:rounded-2xl shadow-2xl \
+                       max-w-3xl w-full mx-0 lg:mx-4 \
+                       h-full lg:h-auto lg:max-h-[85vh] flex flex-col"
                 style="background-color: var(--bg-secondary)"
             >
                 {move || {
@@ -83,25 +85,42 @@ pub fn TaskDetailModalView(
                                     px-4 py-3 border-b border-(--border-muted) \
                                     flex-shrink-0">
                             <div class="flex items-center gap-1 \
-                                        text-xs text-text-tertiary \
-                                        min-w-0 truncate">
-                                {project_title.clone().map(|pt| {
-                                    view! {
-                                        <Icon
-                                            kind=IconKind::Folder
-                                            class="w-3.5 h-3.5 text-text-tertiary \
-                                                   flex-shrink-0"
-                                        />
-                                        <Text variant=TextVariant::BodySm color=TextColor::Secondary>
-                                            {pt}
-                                        </Text>
-                                    }
-                                })}
+                                        min-w-0">
+                                <button
+                                    data-testid="task-detail-delete"
+                                    class="p-2 lg:p-1 rounded text-danger \
+                                           hover:text-danger-hover \
+                                           hover:bg-bg-tertiary \
+                                           transition-colors flex-shrink-0"
+                                    on:click=move |_| ctrl.delete()
+                                    title="Delete task"
+                                >
+                                    <Icon
+                                        kind=IconKind::Trash
+                                        class="w-4 h-4"
+                                    />
+                                </button>
+                                <div class="flex items-center gap-1 \
+                                            text-xs text-text-tertiary \
+                                            min-w-0 truncate">
+                                    {project_title.clone().map(|pt| {
+                                        view! {
+                                            <Icon
+                                                kind=IconKind::Folder
+                                                class="w-3.5 h-3.5 text-text-tertiary \
+                                                       flex-shrink-0"
+                                            />
+                                            <Text variant=TextVariant::BodySm color=TextColor::Secondary>
+                                                {pt}
+                                            </Text>
+                                        }
+                                    })}
+                                </div>
                             </div>
                             <div class="flex items-center gap-1">
                                 <button
                                     data-testid="task-detail-prev"
-                                    class="p-1 rounded text-text-tertiary \
+                                    class="p-2 lg:p-1 rounded text-text-tertiary \
                                            hover:text-text-primary \
                                            hover:bg-bg-tertiary \
                                            transition-colors \
@@ -117,7 +136,7 @@ pub fn TaskDetailModalView(
                                 </button>
                                 <button
                                     data-testid="task-detail-next"
-                                    class="p-1 rounded text-text-tertiary \
+                                    class="p-2 lg:p-1 rounded text-text-tertiary \
                                            hover:text-text-primary \
                                            hover:bg-bg-tertiary \
                                            transition-colors \
@@ -132,22 +151,22 @@ pub fn TaskDetailModalView(
                                     />
                                 </button>
                                 <button
-                                    data-testid="task-detail-delete"
-                                    class="p-1 rounded text-danger \
-                                           hover:text-danger-hover \
+                                    class="p-2 lg:hidden rounded text-text-tertiary \
+                                           hover:text-text-primary \
                                            hover:bg-bg-tertiary \
                                            transition-colors"
-                                    on:click=move |_| ctrl.delete()
-                                    title="Delete task"
+                                    on:click=move |_| set_mobile_settings_open.set(true)
+                                    data-testid="task-detail-settings-btn"
+                                    title="Task settings"
                                 >
                                     <Icon
-                                        kind=IconKind::Trash
+                                        kind=IconKind::Settings
                                         class="w-4 h-4"
                                     />
                                 </button>
                                 <button
                                     data-testid="task-detail-close"
-                                    class="p-1 rounded text-text-tertiary \
+                                    class="p-2 lg:p-1 rounded text-text-tertiary \
                                            hover:text-text-primary \
                                            hover:bg-bg-tertiary \
                                            transition-colors"
@@ -199,7 +218,7 @@ pub fn TaskDetailModalView(
                         })}
 
                         // Body
-                        <div class="flex flex-1 min-h-0 overflow-hidden">
+                        <div class="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden">
                             // Left column
                             <div class="flex-1 overflow-y-auto p-4 \
                                         space-y-4">
@@ -263,10 +282,46 @@ pub fn TaskDetailModalView(
                                 </div>
                             </div>
 
-                            // Right sidebar
-                            <div class="w-52 border-l border-(--border-muted) \
-                                        px-3 py-3 space-y-2 \
-                                        overflow-y-auto flex-shrink-0">
+                            // Right sidebar — desktop: static column; mobile: slide-over panel
+                            // Mobile slide-over backdrop
+                            <div
+                                class=move || if mobile_settings_open.get() {
+                                    "lg:hidden fixed inset-0 z-10 bg-black/30"
+                                } else {
+                                    "lg:hidden fixed inset-0 z-10 bg-black/30 \
+                                     opacity-0 pointer-events-none"
+                                }
+                                on:click=move |_| set_mobile_settings_open.set(false)
+                            />
+                            <div
+                                data-testid="task-detail-settings"
+                                class=move || format!(
+                                "{} max-lg:fixed max-lg:inset-y-0 max-lg:right-0 \
+                                 max-lg:z-20 max-lg:w-64 max-lg:overflow-y-auto \
+                                 relative w-52 border-l \
+                                 border-(--border-muted) \
+                                 px-3 py-3 space-y-2 flex-shrink-0",
+                                if mobile_settings_open.get() {
+                                    "max-lg:block"
+                                } else {
+                                    "max-lg:hidden"
+                                }
+                            )
+                                style="background-color: var(--bg-secondary)"
+                            >
+                                // Mobile panel header
+                                <div class="flex items-center justify-between mb-2 lg:hidden">
+                                    <Text variant=TextVariant::TitleMd>"Settings"</Text>
+                                    <button
+                                        class="p-1 rounded text-text-tertiary \
+                                               hover:text-text-primary \
+                                               hover:bg-bg-tertiary \
+                                               transition-colors"
+                                        on:click=move |_| set_mobile_settings_open.set(false)
+                                    >
+                                        <Icon kind=IconKind::Close class="w-4 h-4"/>
+                                    </button>
+                                </div>
                                 // Project
                                 <SidebarRow label="Project">
                                     <ProjectPicker

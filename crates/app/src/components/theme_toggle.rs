@@ -7,9 +7,14 @@ mod js {
 
     #[wasm_bindgen(inline_js = "
         export function set_theme(theme) { localStorage.setItem('north-theme', theme); }
+        export function update_theme_color(color) {
+            document.querySelectorAll('meta[name=\"theme-color\"]')
+                .forEach(m => m.setAttribute('content', color));
+        }
     ")]
     extern "C" {
         pub fn set_theme(theme: &str);
+        pub fn update_theme_color(color: &str);
     }
 }
 
@@ -45,6 +50,7 @@ pub fn ThemeToggle(#[prop(optional)] collapsed: Option<Signal<bool>>) -> impl In
             }
             let theme = if new_dark { "dark" } else { "light" };
             js::set_theme(theme);
+            js::update_theme_color(if new_dark { "#1C1D2B" } else { "#F9F8F6" });
         }
     };
 
