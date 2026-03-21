@@ -55,7 +55,7 @@ pub async fn delete_task(id: i64) -> Result<(), ServerFnError> {
     with_auth!(|pool, uid| north_core::TaskService::delete(pool, uid, id))
 }
 
-#[server(ApiSetTaskTagsFn, "/api")]
+#[server(name = ApiSetTaskTagsFn, prefix = "/api", input = Json)]
 pub async fn set_task_tags(task_id: i64, tag_names: Vec<String>) -> Result<(), ServerFnError> {
     with_auth!(|pool, uid| {
         north_core::TagService::sync_task_tags_pooled(pool, uid, task_id, &tag_names)

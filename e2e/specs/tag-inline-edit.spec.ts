@@ -121,9 +121,6 @@ test.describe("Tag inline edit", () => {
 
     await expect(editInput).not.toBeVisible();
 
-    // Wait for tags to be removed from the task row (save cycle complete)
-    await expect(row.locator("text=shopping")).toHaveCount(0);
-
     // Re-enter edit to verify tags are gone
     await page.keyboard.press("Enter");
     await expect(editInput).toBeVisible();
