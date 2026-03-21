@@ -39,15 +39,15 @@ impl TodayController {
             let tree = tree.get();
             let pinned = keep_completed_signal.get();
             Callback::new(move |task: TaskModel| {
-                if task.completed_at.is_some() {
-                    return show || pinned.contains(&task.id);
-                }
                 // Root gating: must have start_at <= now
                 if task.parent_id.is_none() {
                     let dominated = task.start_at.map(|dt| dt <= Utc::now()).unwrap_or(false);
                     if !dominated {
                         return false;
                     }
+                }
+                if task.completed_at.is_some() {
+                    return show || pinned.contains(&task.id);
                 }
                 if hide && !tree.is_actionable(task.id) {
                     return false;

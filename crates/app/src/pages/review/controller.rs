@@ -58,9 +58,6 @@ impl ReviewController {
             let tree = tree.get();
             let pinned = keep_completed_signal.get();
             Callback::new(move |task: TaskModel| {
-                if task.completed_at.is_some() {
-                    return pinned.contains(&task.id);
-                }
                 // Root gating: eligible + needs review
                 if task.parent_id.is_none() {
                     if !is_review_eligible(&task, &projects) {
@@ -73,6 +70,9 @@ impl ReviewController {
                     if !needs_review {
                         return false;
                     }
+                }
+                if task.completed_at.is_some() {
+                    return pinned.contains(&task.id);
                 }
                 if hide && !tree.is_actionable(task.id) {
                     return false;
@@ -96,9 +96,6 @@ impl ReviewController {
                 if !show {
                     return false;
                 }
-                if task.completed_at.is_some() {
-                    return pinned.contains(&task.id);
-                }
                 // Root gating: eligible + recently reviewed
                 if task.parent_id.is_none() {
                     if !is_review_eligible(&task, &projects) {
@@ -111,6 +108,9 @@ impl ReviewController {
                     if !recently_reviewed {
                         return false;
                     }
+                }
+                if task.completed_at.is_some() {
+                    return pinned.contains(&task.id);
                 }
                 true
             })
